@@ -1,4 +1,4 @@
 .DS_Store
-pcap-to-parquet/target/*
-dnslib4java/target/*
-pcaplib4java/target/*
+pcap-to-parquet/target/
+dnslib4java/target/
+pcaplib4java/target/

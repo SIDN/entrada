@@ -9,7 +9,7 @@
 ############################################################
 
 #home dir of entrada
-ENTRADA_HOME="/staging/loader/logic/"
+ENTRADA_HOME=""
 #tmp dir used for keep state files
 TMP_DIR="$ENTRADA_HOME/tmp/"
 
@@ -20,18 +20,18 @@ CONFIG_FILE="../config/entrada-settings.properties"
 IMPALA_NODE=""
 
 #hdfs locations for storing data
-HDFS_HOME="/user/hive/"
+HDFS_HOME=""
 
 #input directories, subdirs must have same name as name server
 DATA_RSYNC_DIR="/home/captures"
-#output directory root
-DATA_DIR="/staging/pcap"
+#root directory for data input/output
+DATA_DIR=""
 
 #Log location
 ENTRADA_LOG_DIR="/var/log/entrada"
 
 #name servers, seperate multiple NS with a colon ;
-NAMESERVERS="ns1.dns.nl;ns2.dns.nl"
+NAMESERVERS=""
 
 #java
 JAVA_BIN="/usr/lib/jvm/java-7-oracle/bin/java"

@@ -7,7 +7,7 @@
 ############################################################
 
 CLASS=nl.sidn.pcap.Update
-PATH=$PATH:$SCRIPT_DIR:/usr/local/bin
+#PATH=$PATH:$SCRIPT_DIR:/usr/local/bin
 #CONFIG_FILE=$SCRIPT_DIR/../config/entrada-settings.properties
 
 #run the update command first, do this here to avoid multiple processen

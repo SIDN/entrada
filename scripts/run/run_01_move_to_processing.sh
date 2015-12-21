@@ -24,7 +24,7 @@ do
   if ! [[ `lsof +D $INCOMING_DIR/$SERVER | grep $f` ]]
   then
      file=$(basename $f)
-     echo "mv $file $PROCESSING_DIR/$SERVER/$file"
+     echo "[$(date)] : move $file $PROCESSING_DIR/$SERVER/$file"
      mv $f $PROCESSING_DIR/$SERVER/$file
   fi
 done

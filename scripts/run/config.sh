@@ -13,6 +13,9 @@ ENTRADA_HOME="/staging/loader/logic/"
 #tmp dir used for keep state files
 TMP_DIR="$ENTRADA_HOME/tmp/"
 
+#decoder config file
+CONFIG_FILE="../config/entrada-settings.properties"
+
 #Impala deamon hostname for impala-shell to connect to
 IMPALA_NODE=""
 

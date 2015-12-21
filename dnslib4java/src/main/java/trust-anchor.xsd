@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="ISO-8859-1" ?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+
+	<xs:element name="TrustAnchor">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="Zone" type="xs:string" />
+				<xs:element name="KeyDigest" type="keydigest" />
+			</xs:sequence>
+			<xs:attribute name="id" type="xs:string" use="required" />
+			<xs:attribute name="source" type="xs:string" use="required" />
+		</xs:complexType>
+
+	</xs:element>
+
+
+	<xs:complexType name="keydigest">
+		<xs:sequence>
+			<xs:element name="KeyTag" type="xs:int" />
+			<xs:element name="Algorithm" type="xs:int" />
+			<xs:element name="DigestType" type="xs:int" />
+			<xs:element name="Digest" type="xs:string" />
+		</xs:sequence>
+		<xs:attribute name="id" type="xs:string" use="required" />
+		<xs:attribute name="validFrom" type="xs:dateTime" use="required" />
+		<xs:attribute name="validUntil" type="xs:dateTime" use="optional" />
+	</xs:complexType>
+
+</xs:schema>
+
+<!-- <TrustAnchor id="AD42165F-B099-4778-8F42-D34A1D41FD93" source="http://data.iana.org/root-anchors/root-anchors.xml"> 
+	<Zone>.</Zone> <KeyDigest id="42" validFrom="2010-07-01T00:00:00-00:00" validUntil="2011-07-01T00:00:00-00:00"> 
+	<KeyTag>34291</KeyTag> <Algorithm>5</Algorithm> <DigestType>1</DigestType> 
+	<Digest>c8cb3d7fe518835490af8029c23efbce6b6ef3e2</Digest> </KeyDigest> </TrustAnchor> -->   

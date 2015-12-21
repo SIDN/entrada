@@ -1,0 +1,178 @@
+package nl.sidn.stats;
+
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TimeZone;
+
+import nl.sidn.pcap.util.Settings;
+
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+
+public class MetricManager {
+	
+	private static final Logger LOGGER = LoggerFactory.getLogger(MetricManager.class);
+	
+	//dns stats
+	public static String METRIC_IMPORT_DNS_QUERY_COUNT = ".dns.request.count";
+	public static String METRIC_IMPORT_DNS_RESPONSE_COUNT = ".dns.response.count";	
+	public static String METRIC_IMPORT_DNS_NO_REQUEST_COUNT = ".dns.response.norequest.count";
+	public static String METRIC_IMPORT_DNS_QTYPE = ".dns.request.qtype";
+	public static String METRIC_IMPORT_DNS_RCODE = ".dns.request.rcode";
+	public static String METRIC_IMPORT_DNS_OPCODE = ".dns.request.opcode";
+	
+	//layer 4 stats
+	public static String METRIC_IMPORT_DNS_TCPSTREAM_COUNT = ".dns.tcp.session.count";
+	public static String METRIC_IMPORT_TCP_COUNT = ".tcp.packet.count";
+	public static String METRIC_IMPORT_UDP_COUNT = ".udp.packet.count";
+	
+	public static String METRIC_IMPORT_UDP_REQUEST_FRAGMENTED_COUNT = ".udp.request.fragmented.count";
+	public static String METRIC_IMPORT_UDP_RESPONSE_FRAGMENTED_COUNT = ".udp.response.fragmented.count";
+	public static String METRIC_IMPORT_TCP_REQUEST_FRAGMENTED_COUNT = ".tcp.request.fragmented.count";	
+	public static String METRIC_IMPORT_TCP_RESPONSE_FRAGMENTED_COUNT = ".tcp.response.fragmented.count";
+	public static String METRIC_IMPORT_IP_VERSION_4_COUNT = ".ip.version.4.count";
+	public static String METRIC_IMPORT_IP_VERSION_6_COUNT = ".ip.version.6.count";
+		
+	public static String METRIC_IMPORT_IP_COUNT = ".ip.count";
+	public static String METRIC_IMPORT_COUNTRY_COUNT = ".country.count";
+	public static String METRIC_IMPORT_ASN_COUNT = ".asn.count";
+	public static String METRIC_IMPORT_DNS_DOMAINNAME_COUNT = ".dns.domainname.count";
+	public static String METRIC_IMPORT_DNS_RESPONSE_BYTES_SIZE = ".dns.response.bytes.size";
+	public static String METRIC_IMPORT_DNS_QUERY_BYTES_SIZE = ".dns.request.bytes.size";
+
+	//decoder app stats
+	public static String METRIC_IMPORT_DNS_COUNT = ".dns.message.count";
+	public static String METRIC_IMPORT_FILES_COUNT = ".files.count";
+	public static String METRIC_IMPORT_RUN_TIME = ".time.duration";
+	public static String METRIC_IMPORT_RUN_ERROR_COUNT = ".run.error.count";
+	
+	public static String METRIC_IMPORT_TCP_PREFIX_ERROR_COUNT = ".tcp.prefix.error.count";
+	public static String METRIC_IMPORT_DNS_DECODE_ERROR_COUNT = ".dns.decode.error.count";
+	
+	public static String METRIC_IMPORT_STATE_PERSIST_UDP_FLOW_COUNT = ".state.persist.udp.flow.count";
+	public static String METRIC_IMPORT_STATE_PERSIST_TCP_FLOW_COUNT = ".state.persist.tcp.flow.count";
+	public static String METRIC_IMPORT_STATE_PERSIST_DNS_COUNT = ".state.persist.dns.count";
+	
+	//icmp
+	public static String METRIC_ICMP_COUNT = ".icmp.packet.count";
+	public static String METRIC_ICMP_V4 = ".icmp.v4";
+	public static String METRIC_ICMP_V6 = ".icmp.v6";
+	public static String METRIC_ICMP_PREFIX_TYPE_V4 = ".icmp.v4.prefix.type";
+	public static String METRIC_ICMP_PREFIX_TYPE_V6 = ".icmp.v6.prefix.type";
+	public static String METRIC_ICMP_ERROR = ".icmp.error";
+	public static String METRIC_ICMP_INFO = ".icmp.info";
+	
+	private static MetricManager _metricManager = null;
+	
+	//private Map<String, Metric> oldMetricCache = null;
+	private Map<String, Metric> metricCache = new HashMap<String, Metric>();
+	private List<Metric> realtimeMetrics = new ArrayList<>();
+	
+	private String graphitePrefix = StringUtils.trimToEmpty(Settings.getInstance().getSetting("graphite.prefix"));
+	private int retention = Settings.getInstance().getIntSetting("graphite.retention");
+	private int threshhold = Settings.getInstance().getIntSetting("graphite.threshhold");
+	
+	public static MetricManager getInstance(){
+		if(_metricManager == null){
+			_metricManager = new MetricManager();
+		}
+		return _metricManager;
+	}
+
+	private MetricManager(){}
+	
+	/**
+	 * send overall metrics, use current system time
+	 * @param metric
+	 * @param value
+	 */
+	public void send(String metric, int value){
+		String metricName = createMetricName(metric);
+		TimeZone timeZone = TimeZone.getTimeZone("UTC");
+		Calendar calendar = Calendar.getInstance(timeZone);
+		realtimeMetrics.add(new Metric(metricName, value,calendar.getTimeInMillis()/1000));
+	}
+
+	private String createMetricName(String metric){
+		//replace dot in the server name with underscore otherwise graphite will assume nesting
+		String cleanServer =  StringUtils.trimToEmpty(StringUtils.replace(Settings.getInstance().getName(),".","_"));
+		return graphitePrefix + "." + cleanServer + metric;
+	}
+
+	/**
+	 * send aggregated counts (per server) aggregate by 10s bucket
+	 * @param metric
+	 * @param value
+	 * @param timestamp
+	 * @param server
+	 */
+	public void sendAggregated(String metric, int value, long timestamp){
+		long metricTime = roundTimestamp(timestamp);
+		String metricName = createMetricName(metric);
+		String lookup = metricName + "." + metricTime;
+		Metric m = metricCache.get(lookup);
+		if(m != null){
+			m.update(value);
+		}else{
+			metricCache.put(lookup, new Metric(metricName, value,metricTime));
+		}
+	}
+	
+	public void flush(){
+		if(LOGGER.isDebugEnabled()){
+			LOGGER.debug("Write metrics to queue");
+			for(String key : metricCache.keySet()){
+				LOGGER.debug("Metric key: " + key);
+				LOGGER.debug("Metric value: " + metricCache.get(key));
+			}
+		}
+		
+		GraphiteAdapter graphiteAdapter = new GraphiteAdapter();
+		graphiteAdapter.connect();
+		
+		StringBuffer buffer = new StringBuffer();
+		if(graphiteAdapter.isConnected()){
+			for(String key : metricCache.keySet()){
+				Metric m = metricCache.get(key);
+				/**
+				 * Use a threshhold to determine if the value should be sent to graphite
+				 * low values may indicate trailing queries in later pcap files.
+				 * duplicate timestamps get overwritten by graphite and only the last timestamp value
+				 * is used by graphite.
+				 */
+				if(m.getValue() > threshhold){ 
+					//add metric to graphite plaintext protocol string
+					//@see: http://graphite.readthedocs.org/en/latest/feeding-carbon.html#the-plaintext-protocol
+					buffer.append(m.toString() + "\n");
+				}
+			}
+			
+			for(Metric m : realtimeMetrics){
+				if(m != null){
+					buffer.append(m.toString() + "\n");
+				}
+			}
+			
+			graphiteAdapter.send(buffer.toString());
+			graphiteAdapter.close();
+		}
+	}
+	
+	
+	/**
+	 * Round the timestamp to the nearest retention time
+	 * @param intime
+	 * @return
+	 */
+	private long roundTimestamp(long intime){
+		//get retention from config
+		long offset = (intime % retention);
+	    return intime - offset;
+	}
+
+}

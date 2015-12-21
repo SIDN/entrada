@@ -4,7 +4,7 @@ SHELL=/bin/bash
 # m h  dom mon dow   command
 
 #set path to entrada scripts
-PATH=/staging/loader/logic/idnp/passive/scripts/hadoop-name-01:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+PATH=<PATH>/scripts/run/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 #Copy pcap to incoming dir
 */1 * * * * . config.sh && run_00_copy-pcap-to-staging_bootstrap.sh >> $ENTRADA_LOG_DIR/entrada-copy-pcap.log 2>&1

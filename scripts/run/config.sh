@@ -14,7 +14,7 @@ ENTRADA_HOME="/staging/loader/logic/"
 TMP_DIR="$ENTRADA_HOME/tmp/"
 
 #Impala deamon hostname for impala-shell to connect to
-IMPALA_NODE="hadoop-data-01.sidnlabs.nl"
+IMPALA_NODE=""
 
 #hdfs locations for storing data
 HDFS_HOME="/user/hive/"
@@ -32,11 +32,11 @@ NAMESERVERS="ns1.dns.nl;ns2.dns.nl"
 
 #java
 JAVA_BIN="/usr/lib/jvm/java-7-oracle/bin/java"
-ENTRADA_JAR="pcap-to-parquet-1.0.0-jar-with-dependencies.jar"
+ENTRADA_JAR="pcap-to-parquet-0.0.1-jar-with-dependencies.jar"
 
 #security if Kerberos is enabled, otherwise keep empty
-KRB_USER=hdfs@SIDNLABS
-KEYTAB_FILE="/home/loadmaster/hdfs_keytab"
+KRB_USER=user@REALM
+KEYTAB_FILE=""
 
 #error mail recipient
-ERROR_MAIL="entrada@sidn.nl"
+ERROR_MAIL=""

@@ -26,7 +26,7 @@ export HADOOP_USER_NAME=impala
   day=$(date --date="1 days ago" +"%d")
   year=$(date --date="1 days ago" +"%Y")
   month=$(date --date="1 days ago" +"%m")
-  echo "yesterday --> day:$day month:$month year:$year"
+  echo "[$(date)] : yesterday was: $day-$month-$year"
 
 
    ####
@@ -53,38 +53,38 @@ export HADOOP_USER_NAME=impala
      dns_res_len,year,month,day,server
      from $IMPALA_DNS_STAGING_TABLE where year=$year and month=$month and day=$day;"
 
-   echo "Issue refresh for $IMPALA_DNS_DWH_TABLE"
+   echo "[$(date)] : issue refresh for $IMPALA_DNS_DWH_TABLE"
    impala-shell -k --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_DNS_DWH_TABLE;"
    if [ $? -ne 0 ]
    then
      #send mail to indicate error
-     echo "Refresh metadata $IMPALA_DNS_DWH_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
+     echo "[$(date)] : refresh metadata $IMPALA_DNS_DWH_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
      exit 1
    fi
 
    #delete partition from staging
    impala-shell --print_header -q "show partitions $IMPALA_DNS_STAGING_TABLE" -B -i $IMPALA_NODE --output_delimiter=, -o $TMP_FILE
    grep ,$day, $TMP_FILE | cut -d, -f4 | while read -r server ; do
-      echo "Drop staging partition for $server"
+      echo "[$(date)] : drop staging partition for $server"
       impala-shell -c -k --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_DNS_STAGING_TABLE drop partition (year=$year,month=$month,day=$day, server=\"$server\");"
    done
 
    #refresh impala metadata
-   echo "Issue refresh for $IMPALA_DNS_STAGING_TABLE"
+   echo "[$(date)] : issue refresh for $IMPALA_DNS_STAGING_TABLE"
    impala-shell -k --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_DNS_STAGING_TABLE;"
    if [ $? -ne 0 ]
    then
      #send mail to indicate error
-     echo "Refresh metadata $IMPALA_DNS_STAGING_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
+     echo "[$(date)] : refresh metadata $IMPALA_DNS_STAGING_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
      exit 1
    fi
 
    #get new rows count
    rows=$(impala-shell -k --quiet -i $IMPALA_NODE -q "select count(1) from $IMPALA_DNS_DWH_TABLE where year=$year and month=$month and day=$day;" --quiet -B)
-   echo "added $rows new rows to $IMPALA_DNS_DWH_TABLE"
+   echo "[$(date)] : added $rows new rows to $IMPALA_DNS_DWH_TABLE"
    
    #delete staging data from hdfs
-   echo "delete the staging parquet files from hdfs $HDFS_DNS_STAGING/year\=$year/month\=$month/day\=$day"
+   echo "[$(date)] : delete the staging parquet files from hdfs $HDFS_DNS_STAGING/year\=$year/month\=$month/day\=$day"
    hdfs dfs -rm -r -f $HDFS_DNS_STAGING/year\=$year/month\=$month/day\=$day
 
    #update the table statistics
@@ -127,12 +127,12 @@ export HADOOP_USER_NAME=impala
       orig_dns_labels,svr,time_micro,year,month,day 
      from $IMPALA_ICMP_STAGING_TABLE where year=$year and month=$month and day=$day;"
 
-   echo "Issue refresh for $IMPALA_ICMP_DWH_TABLE"
+   echo "[$(date)] : issue refresh for $IMPALA_ICMP_DWH_TABLE"
    impala-shell -k --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_ICMP_DWH_TABLE;"
    if [ $? -ne 0 ]
    then
      #send mail to indicate error
-     echo "Refresh metadata $IMPALA_ICMP_DWH_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
+     echo "[$(date)] : refresh metadata $IMPALA_ICMP_DWH_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
      exit 1
    fi
 
@@ -142,26 +142,26 @@ export HADOOP_USER_NAME=impala
    #when adding more servers, don't forget to drop partitions
 
    #refresh impala metadata
-   echo "Issue refresh for $IMPALA_ICMP_STAGING_TABLE"
+   echo "[$(date)] : issue refresh for $IMPALA_ICMP_STAGING_TABLE"
    impala-shell -k --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_ICMP_STAGING_TABLE;"
    if [ $? -ne 0 ]
    then
      #send mail to indicate error
-     echo "Refresh metadata $IMPALA_ICMP_STAGING_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
+     echo "[$(date)] : refresh metadata $IMPALA_ICMP_STAGING_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
      exit 1
    fi
 
    #get new rows count
    rows=$(impala-shell -k --quiet -i $IMPALA_NODE -q "select count(1) from $IMPALA_ICMP_DWH_TABLE where year=$year and month=$month and day=$day;" --quiet -B)
-   echo "added $rows new rows to $IMPALA_ICMP_DWH_TABLE"
+   echo "[$(date)] : added $rows new rows to $IMPALA_ICMP_DWH_TABLE"
    
    #delete staging data from hdfs
-   echo "delete the staging parquet files from hdfs $HDFS_ICMP_STAGING/year\=$year/month\=$month/day\=$day"
+   echo "[$(date)] : delete the staging parquet files from hdfs $HDFS_ICMP_STAGING/year\=$year/month\=$month/day\=$day"
    hdfs dfs -rm -r -f $HDFS_ICMP_STAGING/year\=$year/month\=$month/day\=$day
 
    #update the table statistics
    impala-shell -k --quiet -i $IMPALA_NODE -q "COMPUTE INCREMENTAL STATS $IMPALA_ICMP_DWH_TABLE;" 
    
-echo "Done"
+echo "[$(date)] : done"
 
 

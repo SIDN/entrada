@@ -22,6 +22,3 @@ PATH=<PATH>/scripts/run/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin
 
 #cleanup pcap archive, remove files older than 15 days
 0 9 * * * . config.sh && run_04_pcap_cleanup.sh >> $ENTRADA_LOG_DIR/entrada-pcap-cleanup.log 2>&1
-
-#entrada privacy module, anonymize IP addresses
-0 7 * * * . config.sh && run_05_privacy_filter.sh >> $ENTRADA_LOG_DIR/entrada-privacy-filter.log 2>&1

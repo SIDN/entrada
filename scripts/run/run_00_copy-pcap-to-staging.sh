@@ -66,7 +66,7 @@ do
     #check if it is a file
     if ! [ -f "$f" ]
     then
-      echo "Warning $f is not a valid file"
+      echo "[$(date)] : warning $f is not a valid file"
       continue
     fi
 
@@ -77,5 +77,4 @@ do
         cp $f $OUTPUT_DIR && count=$((count+1)) && echo $f >> $HISTORY_FILE
     fi
 done
-echo "done processing files, copied $count files."
 echo "[$(date)] : end, copied $count files."

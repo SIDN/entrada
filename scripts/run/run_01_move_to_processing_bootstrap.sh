@@ -9,6 +9,6 @@
 nsarray=(`echo $NAMESERVERS | tr ';' ' '`)
 
 for ns in ${nsarray[@]}; do
-  $SCRIPT_DIR/run_01_move_to_processing.sh $ns
+  run_01_move_to_processing.sh $ns
 done
 

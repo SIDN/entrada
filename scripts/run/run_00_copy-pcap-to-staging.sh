@@ -6,9 +6,6 @@
 # 
 ############################################################
 
-SCRIPT_DIR=$(dirname "$0")
-source $SCRIPT_DIR/config.sh
-
 NAMESERVER=$1
 HISTORY_FILE="$TMP_DIR/$NAMESERVER-pcap-process.hist"
 INPUT_FILTER="*.pcap.gz"

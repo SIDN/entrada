@@ -6,9 +6,6 @@
 # 
 ############################################################
 
-SCRIPT_DIR=$(dirname "$0")
-source $SCRIPT_DIR/config.sh
-
 CLASS=nl.sidn.pcap.Update
 PATH=$PATH:$SCRIPT_DIR:/usr/local/bin
 #CONFIG_FILE=$SCRIPT_DIR/../config/entrada-settings.properties

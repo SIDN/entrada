@@ -6,9 +6,6 @@
 # 
 ############################################################
 
-SCRIPT_DIR=$(dirname "$0")
-source $SCRIPT_DIR/config.sh
-
 MAXMIND_DIR=$ENTRADA_HOME/maxmind
 #database are updated on the first Tuesday of each month. 
 COUNTRY_URL=http://geolite.maxmind.com/download/geoip/database/GeoLite2-Country.mmdb.gz

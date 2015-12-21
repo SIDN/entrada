@@ -6,9 +6,6 @@
 # 
 ############################################################
 
-SCRIPT_DIR=$(dirname "$0")
-source $SCRIPT_DIR/config.sh
-
 INCOMING_DIR=$DATA_DIR/incoming
 PROCESSING_DIR=$DATA_DIR/processing
 SERVER=$1

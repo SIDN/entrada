@@ -6,9 +6,6 @@
 # 
 ############################################################
 
-SCRIPT_DIR=$(dirname "$0")
-source $SCRIPT_DIR/config.sh
-
 PATH=$PATH:$SCRIPT_DIR:/usr/local/bin
 
 #parallel will start process for each name server

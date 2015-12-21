@@ -1,8 +1,5 @@
 #!/usr/bin/env bash
 
-SCRIPT_DIR=$(dirname "$0")
-source $SCRIPT_DIR/config.sh
-
 HDFS_DNS_STAGING="$HDFS_HOME/staging"
 HDFS_ICMP_STAGING="$HDFS_HOME/icmp-staging"
 TMP_FILE=$TMP_DIR/staging-partitions.tmp.csv

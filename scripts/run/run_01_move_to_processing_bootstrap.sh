@@ -6,9 +6,6 @@
 # 
 ############################################################
 
-SCRIPT_DIR=$(dirname "$0")
-source $SCRIPT_DIR/config.sh
-
 nsarray=(`echo $NAMESERVERS | tr ';' ' '`)
 
 for ns in ${nsarray[@]}; do

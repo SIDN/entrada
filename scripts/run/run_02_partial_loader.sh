@@ -6,9 +6,6 @@
 # 
 ############################################################
 
-SCRIPT_DIR=$(dirname "$0")
-source $SCRIPT_DIR/config.sh
-
 CLASS="nl.sidn.pcap.Main"
 OUTPUT_DIR="$DATA_DIR/processed"
 HDFS_DNS_STAGING="$HDFS_HOME/staging"

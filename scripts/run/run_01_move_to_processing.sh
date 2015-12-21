@@ -10,6 +10,7 @@ INCOMING_DIR=$DATA_DIR/incoming
 PROCESSING_DIR=$DATA_DIR/processing
 SERVER=$1
 
+echo "[$(date)] : start move data for $SERVER"
 
 if [ ! -d "$PROCESSING_DIR/$SERVER" ]; then
    mkdir -p $PROCESSING_DIR/$SERVER
@@ -17,7 +18,6 @@ fi
 
 for f in $INCOMING_DIR/$SERVER/*pcap.gz
 do
-  echo "Processing $f"
   ! [ -f $f ] && continue
 
   #check if file is not opened, if not then move file
@@ -28,4 +28,4 @@ do
      mv $f $PROCESSING_DIR/$SERVER/$file
   fi
 done
-echo "done"
+echo "[$(date)] : done moving data for $SERVER"

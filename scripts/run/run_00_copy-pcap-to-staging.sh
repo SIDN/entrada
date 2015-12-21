@@ -25,7 +25,7 @@ cleanup(){
 
 # ------- main program -----------
 
-echo "[$(date)] : run_00_copy-pcap-to-staging.sh : Start"
+echo "[$(date)] : start copy data for $NAMESERVER"
 
 if [ -f $PID ];
 then
@@ -73,10 +73,9 @@ do
     #check if the file is not allready processed
     if ! [[ $( grep $f $HISTORY_FILE) ]]
     then
-        echo "[$(date)] : copy $f"
         echo "[$(date)] : cp $f -> $OUTPUT_DIR"
         cp $f $OUTPUT_DIR && count=$((count+1)) && echo $f >> $HISTORY_FILE
     fi
 done
 echo "done processing files, copied $count files."
-echo "[$(date)] : run_00_copy-pcap-to-staging.sh : End, copied $count files."
+echo "[$(date)] : end, copied $count files."

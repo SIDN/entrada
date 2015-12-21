@@ -10,6 +10,5 @@ PATH=$PATH:$SCRIPT_DIR:/usr/local/bin
 
 #parallel will start process for each name server
 nslist=$(echo $NAMESERVERS | tr ';' ' ')
-echo "copy data for: $NAMESERVERS"
 
 parallel run_00_copy-pcap-to-staging.sh  ::: $nslist

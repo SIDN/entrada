@@ -1,8 +1,6 @@
-## pcaplib4java
-This project is used to read pcap files.
-
-Based on the work of [RIPE NCC](https://github.com/RIPE-NCC/hadoop-pcap)
+## dnslib4java
+This project is used to read DNS wire format data.
 
 ## License
 
-This project is distributed under the LGPL, see [LICENSE](LICENSE).
+This project is distributed under ?, see [LICENSE](LICENSE).

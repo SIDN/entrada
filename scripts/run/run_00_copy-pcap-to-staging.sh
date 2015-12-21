@@ -11,7 +11,6 @@ source $SCRIPT_DIR/config.sh
 
 NAMESERVER=$1
 HISTORY_FILE="$TMP_DIR/$NAMESERVER-pcap-process.hist"
-LOG_FILE="$TMP_DIR/copy_pcap.log"
 INPUT_FILTER="*.pcap.gz"
 INPUT_DIR="$DATA_RSYNC_DIR/$NAMESERVER"
 OUTPUT_DIR="$DATA_DIR/incoming/$NAMESERVER"
@@ -29,7 +28,7 @@ cleanup(){
 
 # ------- main program -----------
 
-echo "[$(date)] : run_00_copy-pcap-to-staging.sh : Start" >> "$LOG_FILE"
+echo "[$(date)] : run_00_copy-pcap-to-staging.sh : Start"
 
 if [ -f $PID ];
 then
@@ -55,14 +54,14 @@ then
   mkdir -p $OUTPUT_DIR
 fi
 
-echo "History will be saved in $HISTORY_FILE"
+echo "[$(date)] : History will be saved in $HISTORY_FILE"
 
 count=0
 #loop through all *.pcap files
 #Skip the newest, it might still be written to
 files=($( ls -t $INPUT_DIR/$INPUT_FILTER |tail -n +2 ))
 fcount=${#files[@]}
-echo "found $fcount files"
+echo "[$(date)] : found $fcount files"
 
 for (( i = 0 ; i < $fcount ; i++))
 do
@@ -77,11 +76,10 @@ do
     #check if the file is not allready processed
     if ! [[ $( grep $f $HISTORY_FILE) ]]
     then
-        echo "copy $f"
-        echo "[$(date)] : run_00_copy-pcap-to-staging.sh : copy $f" >> "$LOG_FILE"
-        echo "cp $f -> $OUTPUT_DIR"
+        echo "[$(date)] : copy $f"
+        echo "[$(date)] : cp $f -> $OUTPUT_DIR"
         cp $f $OUTPUT_DIR && count=$((count+1)) && echo $f >> $HISTORY_FILE
     fi
 done
 echo "done processing files, copied $count files."
-echo "[$(date)] : run_00_copy-pcap-to-staging.sh : End, copied $count files." >> "$LOG_FILE"
+echo "[$(date)] : run_00_copy-pcap-to-staging.sh : End, copied $count files."

@@ -9,23 +9,23 @@
 ############################################################
 
 #home dir of entrada
-export ENTRADA_HOME=""
+export ENTRADA_HOME="/home/entrada/entrada-latest/"
 #tmp dir used for keep state files
 export TMP_DIR="$ENTRADA_HOME/tmp/"
 
 #decoder config file
-export CONFIG_FILE="../config/entrada-settings.properties"
+export CONFIG_FILE="$ENTRADA_HOME/scripts/config/entrada-settings.properties"
 
 #Impala deamon hostname for impala-shell to connect to
 export IMPALA_NODE=""
 
 #hdfs locations for storing data
-export HDFS_HOME=""
+export HDFS_HOME="/user/hive/entrada/"
 
 #input directories, subdirs must have same name as name server
-export DATA_RSYNC_DIR="/home/captures"
+export DATA_RSYNC_DIR="/home/entrada/captures"
 #root directory for data input/output
-export DATA_DIR=""
+export DATA_DIR="/home/entrada/pcap"
 #number of days to keep old pcap files
 export PCAP_DAYS_TO_KEEP=10
 
@@ -36,11 +36,10 @@ export ENTRADA_LOG_DIR="/var/log/entrada"
 export NAMESERVERS=""
 
 #java
-#export JAVA_BIN="/usr/lib/jvm/java-7-oracle/bin/java"
 export ENTRADA_JAR="pcap-to-parquet-0.0.1-jar-with-dependencies.jar"
 
 #security if Kerberos is enabled, otherwise keep empty
-export KRB_USER=user@REALM
+export KRB_USER=""
 export KEYTAB_FILE=""
 
 #error mail recipient

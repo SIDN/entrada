@@ -7,8 +7,13 @@
 ############################################################
 
 CLASS=nl.sidn.pcap.Update
-#PATH=$PATH:$SCRIPT_DIR:/usr/local/bin
-#CONFIG_FILE=$SCRIPT_DIR/../config/entrada-settings.properties
+
+#check if tmp dir exists, if not create
+#check if output dir exists
+if ! [ -f "$TMP_DIR" ]
+then
+  mkdir -p $TMP_DIR
+fi
 
 #run the update command first, do this here to avoid multiple processen
 #doing update parallel.

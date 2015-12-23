@@ -26,6 +26,8 @@ export HDFS_HOME=""
 export DATA_RSYNC_DIR="/home/captures"
 #root directory for data input/output
 export DATA_DIR=""
+#number of days to keep old pcap files
+export PCAP_DAYS_TO_KEEP=10
 
 #Log location
 export ENTRADA_LOG_DIR="/var/log/entrada"

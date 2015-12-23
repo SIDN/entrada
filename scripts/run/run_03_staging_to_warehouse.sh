@@ -2,7 +2,6 @@
 
 HDFS_DNS_STAGING="$HDFS_HOME/staging"
 HDFS_ICMP_STAGING="$HDFS_HOME/icmp-staging"
-TMP_FILE=$TMP_DIR/staging-partitions.tmp.csv
 
 IMPALA_DNS_STAGING_TABLE="dns.staging"
 IMPALA_ICMP_STAGING_TABLE="icmp.staging"
@@ -23,9 +22,9 @@ export HADOOP_USER_NAME=impala
 #-----------------------------
 
   #get date for yesterday
-  day=$(date --date="1 days ago" +"%d")
+  day=$(date --date="1 days ago" +"%-d")
   year=$(date --date="1 days ago" +"%Y")
-  month=$(date --date="1 days ago" +"%m")
+  month=$(date --date="1 days ago" +"%-m")
   echo "[$(date)] : yesterday was: $day-$month-$year"
 
 
@@ -35,7 +34,7 @@ export HADOOP_USER_NAME=impala
 
   #insert all the staging data for yesterday into the datawarehouse table
   #skip the duplicate "svr" column.
-  impala-shell -k -i $IMPALA_NODE -V -q  "insert into $IMPALA_DNS_DWH_TABLE partition(year, month, day, server) select 
+  impala-shell -i $IMPALA_NODE -V -q  "insert into $IMPALA_DNS_DWH_TABLE partition(year, month, day, server) select 
      id, unixtime, time, qname, domainname,
      len, frag, ttl, ipv,
      prot, src, srcp, dst,
@@ -54,7 +53,7 @@ export HADOOP_USER_NAME=impala
      from $IMPALA_DNS_STAGING_TABLE where year=$year and month=$month and day=$day;"
 
    echo "[$(date)] : issue refresh for $IMPALA_DNS_DWH_TABLE"
-   impala-shell -k --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_DNS_DWH_TABLE;"
+   impala-shell --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_DNS_DWH_TABLE;"
    if [ $? -ne 0 ]
    then
      #send mail to indicate error
@@ -62,16 +61,16 @@ export HADOOP_USER_NAME=impala
      exit 1
    fi
 
-   #delete partition from staging
-   impala-shell --print_header -q "show partitions $IMPALA_DNS_STAGING_TABLE" -B -i $IMPALA_NODE --output_delimiter=, -o $TMP_FILE
-   grep ,$day, $TMP_FILE | cut -d, -f4 | while read -r server ; do
-      echo "[$(date)] : drop staging partition for $server"
-      impala-shell -c -k --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_DNS_STAGING_TABLE drop partition (year=$year,month=$month,day=$day, server=\"$server\");"
+   #delete partitions from staging
+   for server in $(hdfs dfs -ls $HDFS_DNS_STAGING/year=$year/month=$month/day=$day/ | grep server= | cut -d= -f5)
+   do
+      echo "[$(date)] : drop table $IMPALA_DNS_STAGING_TABLE partition for $server"
+      impala-shell -c --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_DNS_STAGING_TABLE drop partition (year=$year,month=$month,day=$day, server=\"$server\");"
    done
 
    #refresh impala metadata
    echo "[$(date)] : issue refresh for $IMPALA_DNS_STAGING_TABLE"
-   impala-shell -k --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_DNS_STAGING_TABLE;"
+   impala-shell --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_DNS_STAGING_TABLE;"
    if [ $? -ne 0 ]
    then
      #send mail to indicate error
@@ -80,15 +79,15 @@ export HADOOP_USER_NAME=impala
    fi
 
    #get new rows count
-   rows=$(impala-shell -k --quiet -i $IMPALA_NODE -q "select count(1) from $IMPALA_DNS_DWH_TABLE where year=$year and month=$month and day=$day;" --quiet -B)
+   rows=$(impala-shell --quiet -i $IMPALA_NODE -q "select count(1) from $IMPALA_DNS_DWH_TABLE where year=$year and month=$month and day=$day;" --quiet -B)
    echo "[$(date)] : added $rows new rows to $IMPALA_DNS_DWH_TABLE"
    
    #delete staging data from hdfs
-   echo "[$(date)] : delete the staging parquet files from hdfs $HDFS_DNS_STAGING/year\=$year/month\=$month/day\=$day"
-   hdfs dfs -rm -r -f $HDFS_DNS_STAGING/year\=$year/month\=$month/day\=$day
+   echo "[$(date)] : delete the staging parquet files from hdfs $HDFS_DNS_STAGING/year=$year/month=$month/day=$day"
+   hdfs dfs -rm -r -f $HDFS_DNS_STAGING/year=$year/month=$month/day=$day
 
    #update the table statistics
-   impala-shell -c -k --quiet -i $IMPALA_NODE -q "COMPUTE INCREMENTAL STATS $IMPALA_DNS_DWH_TABLE;" 
+   impala-shell -c --quiet -i $IMPALA_NODE -q "COMPUTE INCREMENTAL STATS $IMPALA_DNS_DWH_TABLE;" 
  
    ####
    #### ICMP data section
@@ -99,7 +98,7 @@ export HADOOP_USER_NAME=impala
    month=$(date --date="1 days ago" +"%-m")
 
    #skip the duplicate "svr" column.
-  impala-shell -k -i $IMPALA_NODE -V -q  "insert into $IMPALA_ICMP_DWH_TABLE partition(year, month, day) select 
+  impala-shell -i $IMPALA_NODE -V -q  "insert into $IMPALA_ICMP_DWH_TABLE partition(year, month, day) select 
       unixtime,icmp_type,
       icmp_code,icmp_echo_client_type,ip_ttl,
       ip_v,ip_src,
@@ -128,7 +127,7 @@ export HADOOP_USER_NAME=impala
      from $IMPALA_ICMP_STAGING_TABLE where year=$year and month=$month and day=$day;"
 
    echo "[$(date)] : issue refresh for $IMPALA_ICMP_DWH_TABLE"
-   impala-shell -k --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_ICMP_DWH_TABLE;"
+   impala-shell --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_ICMP_DWH_TABLE;"
    if [ $? -ne 0 ]
    then
      #send mail to indicate error
@@ -138,12 +137,12 @@ export HADOOP_USER_NAME=impala
 
 
    #delete partition from staging
-   impala-shell -c -k --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_ICMP_STAGING_TABLE drop partition (year=$year,month=$month,day=$day);"
+   impala-shell -c --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_ICMP_STAGING_TABLE drop partition (year=$year,month=$month,day=$day);"
    #when adding more servers, don't forget to drop partitions
 
    #refresh impala metadata
    echo "[$(date)] : issue refresh for $IMPALA_ICMP_STAGING_TABLE"
-   impala-shell -k --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_ICMP_STAGING_TABLE;"
+   impala-shell --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_ICMP_STAGING_TABLE;"
    if [ $? -ne 0 ]
    then
      #send mail to indicate error
@@ -152,15 +151,15 @@ export HADOOP_USER_NAME=impala
    fi
 
    #get new rows count
-   rows=$(impala-shell -k --quiet -i $IMPALA_NODE -q "select count(1) from $IMPALA_ICMP_DWH_TABLE where year=$year and month=$month and day=$day;" --quiet -B)
+   rows=$(impala-shell --quiet -i $IMPALA_NODE -q "select count(1) from $IMPALA_ICMP_DWH_TABLE where year=$year and month=$month and day=$day;" --quiet -B)
    echo "[$(date)] : added $rows new rows to $IMPALA_ICMP_DWH_TABLE"
    
    #delete staging data from hdfs
-   echo "[$(date)] : delete the staging parquet files from hdfs $HDFS_ICMP_STAGING/year\=$year/month\=$month/day\=$day"
-   hdfs dfs -rm -r -f $HDFS_ICMP_STAGING/year\=$year/month\=$month/day\=$day
+   echo "[$(date)] : delete the staging parquet files from hdfs $HDFS_ICMP_STAGING/year=$year/month=$month/day=$day"
+   hdfs dfs -rm -r -f $HDFS_ICMP_STAGING/year=$year/month=$month/day=$day
 
    #update the table statistics
-   impala-shell -k --quiet -i $IMPALA_NODE -q "COMPUTE INCREMENTAL STATS $IMPALA_ICMP_DWH_TABLE;" 
+   impala-shell --quiet -i $IMPALA_NODE -q "COMPUTE INCREMENTAL STATS $IMPALA_ICMP_DWH_TABLE;" 
    
 echo "[$(date)] : done"
 

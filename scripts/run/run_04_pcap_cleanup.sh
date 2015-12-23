@@ -6,6 +6,4 @@
 # 
 ############################################################
 
-DAYS_TO_KEEP=10
-
-find $DATA_DIR/processed/archive/**/*.gz -mtime +$DAYS_TO_KEEP -exec rm {} \;
+find $DATA_DIR/processed/archive/**/*.pcap.gz -mtime +$PCAP_DAYS_TO_KEEP -exec rm {} \;

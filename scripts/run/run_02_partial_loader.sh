@@ -67,14 +67,22 @@ echo 1 > $PID
 #Make sure cleanup() is called when script is done processing or crashed.
 trap cleanup EXIT
 
+#check if hdfs data location exists
+hdfs dfs -test -d "$HDFS_DNS_STAGING" 
+if [ $? -ne "0" ]
+then
+   echo "[$(date)] : hdfs root path $HDFS_DNS_STAGING does not exist, stop"
+   exit 0
+fi
+
 #transform pcap data to parquet data
 $JAVA_BIN -Dentrada_log_dir=$ENTRADA_LOG_DIR -cp $ENTRADA_HOME/$ENTRADA_JAR $CLASS $NAMESERVER $CONFIG_FILE $DATA_DIR/processing $DATA_DIR/processed $TMP_DIR
 #if Java process exited ok, continue
 if [ $? -eq 0 ]
 then
-   DAY=$(date +"%d")
+   DAY=$(date +"%-d")
    YEAR=$(date +"%Y")
-   MONTH=$(date +"%m")
+   MONTH=$(date +"%-m")
 
    #check if parquet files were created
    if [ ! -d "$OUTPUT_DIR/$NORMALIZED_NAMESERVER/dnsdata" ];
@@ -104,7 +112,7 @@ then
    cd ../../
 
    #check if partition exists
-   isPartitioned=$(impala-shell -k -B --quiet  -i $IMPALA_NODE -q "select count(1) from $IMPALA_DNS_STAGING_TABLE where year=$YEAR and month=$MONTH and day=$DAY and server=\"$NAMESERVER\";" )
+   isPartitioned=$(impala-shell -B --quiet -i $IMPALA_NODE -q "select count(1) from $IMPALA_DNS_STAGING_TABLE where year=$YEAR and month=$MONTH and day=$DAY and server=\"$NAMESERVER\";" )
 
    echo "[$(date)] :upload the parquet files to hdfs $HDFS_DNS_STAGING"
    hdfs dfs -D dfs.block.size=268435456 -put year\=* $HDFS_DNS_STAGING
@@ -114,7 +122,7 @@ then
    if  [[ $isPartitioned -eq  0 ]]
    then
       echo "[$(date)] :Create Impala partition for year=$YEAR , month=$MONTH and day=$DAY"
-      impala-shell -c -k --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_DNS_STAGING_TABLE add partition (year=$YEAR,month=$MONTH,day=$DAY,server=\"$NAMESERVER\");"
+      impala-shell -c --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_DNS_STAGING_TABLE add partition (year=$YEAR,month=$MONTH,day=$DAY,server=\"$NAMESERVER\");"
       if [ $? -ne 0 ]
       then
         #the partition probably already exists
@@ -125,7 +133,7 @@ then
    fi
 
    echo "[$(date)] :Issue refresh"
-   impala-shell -k --quiet -i $IMPALA_NODE --quiet -q "refresh $IMPALA_DNS_STAGING_TABLE;"
+   impala-shell --quiet -i $IMPALA_NODE --quiet -q "refresh $IMPALA_DNS_STAGING_TABLE;"
    if [ $? -ne 0 ]
    then
      #send mail to indicate error
@@ -149,17 +157,17 @@ then
    cd ../../
 
    #check if partition exists
-   isPartitioned=$(impala-shell -k -B --quiet  -i $IMPALA_NODE -q "select count(1) from $IMPALA_ICMP_STAGING_TABLE where day=$DAY;" )
+   isPartitioned=$(impala-shell -B --quiet  -i $IMPALA_NODE -q "select count(1) from $IMPALA_ICMP_STAGING_TABLE where day=$DAY;" )
 
    echo "[$(date)] :upload the parquet files to hdfs $HDFS_ICMP_STAGING"
    hdfs dfs -D dfs.block.size=268435456 -put year\=* $HDFS_ICMP_STAGING
    #make sure the permissions are set ok
-   hdfs dfs -chown -R impala:hive $HDFS_ICMP_STAGING/year\=$YEAR/month\=$MONTH/day\=$DAY
+   hdfs dfs -chown -R impala:hive $HDFS_ICMP_STAGING/year=$YEAR/month=$MONTH/day=$DAY
 
    if  [[ $isPartitioned -eq  0 ]]
    then
       echo "[$(date)] :Create Impala partition for year=$YEAR , month=$MONTH and day=$DAY"
-      impala-shell -c -k --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_ICMP_STAGING_TABLE add partition (year=$YEAR,month=$MONTH,day=$DAY);"
+      impala-shell -c --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_ICMP_STAGING_TABLE add partition (year=$YEAR,month=$MONTH,day=$DAY);"
       if [ $? -ne 0 ]
       then
         #the partition probably already exists
@@ -169,7 +177,7 @@ then
      echo "[$(date)] :Partition for $YEAR/$MONTH/$DAY already exists"
    fi
    echo "[$(date)] :Issue refresh"
-   impala-shell -k --quiet -i $IMPALA_NODE --quiet -q "refresh $IMPALA_ICMP_STAGING_TABLE;"
+   impala-shell --quiet -i $IMPALA_NODE --quiet -q "refresh $IMPALA_ICMP_STAGING_TABLE;"
    if [ $? -ne 0 ]
    then
      #send mail to indicate error

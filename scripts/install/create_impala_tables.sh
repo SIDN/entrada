@@ -18,10 +18,10 @@ fi
 
 for f in ../database/*.sql
 do
-    #create dns staging table
     script=$(< $f)
+    #replace hdfs root placeholder
     script=${script/_HDFS_LOCATION_/$HDFS_HOME}
-    impala-shell -k -i $IMPALA_NODE -V -q  "$script"
+    impala-shell -i $IMPALA_NODE -V -q  "$script"
 done
 
 

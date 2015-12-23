@@ -12,7 +12,7 @@ CLASS=nl.sidn.pcap.Update
 
 #run the update command first, do this here to avoid multiple processen
 #doing update parallel.
-$JAVA_BIN -Dentrada_log_dir=$ENTRADA_LOG_DIR -cp $ENTRADA_HOME/$ENTRADA_JAR $CLASS $CONFIG_FILE $TMP_DIR
+java -Dentrada_log_dir=$ENTRADA_LOG_DIR -cp $ENTRADA_HOME/$ENTRADA_JAR $CLASS $CONFIG_FILE $TMP_DIR
 
 #Start a loader process for every name server
 #If one NS fails for some time to send data there will be a bulk upload later

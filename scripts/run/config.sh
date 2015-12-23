@@ -36,7 +36,7 @@ export ENTRADA_LOG_DIR="/var/log/entrada"
 export NAMESERVERS=""
 
 #java
-export JAVA_BIN="/usr/lib/jvm/java-7-oracle/bin/java"
+#export JAVA_BIN="/usr/lib/jvm/java-7-oracle/bin/java"
 export ENTRADA_JAR="pcap-to-parquet-0.0.1-jar-with-dependencies.jar"
 
 #security if Kerberos is enabled, otherwise keep empty

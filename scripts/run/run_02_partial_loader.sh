@@ -23,9 +23,9 @@ fi
 #run all hdfs actions as user impala
 export HADOOP_USER_NAME=impala
 
-echo "[$(date)] :Start loader for $1 with config $2"
 NAMESERVER=$1
 CONFIG_FILE=$2
+echo "[$(date)] :Start loader for $NAMESERVER with config $CONFIG_FILE"
 
 #kitesdk naming workaround
 #replace "." by an "_" because kitesdk does not support dots in the namespace
@@ -105,11 +105,15 @@ then
 
    cd dnsdata
    #fix date partition format, remove leading zero otherwize impala partions with int type will not work
-   cd year=*
-   rename 's/=0/=/g' month=*
-   cd month=*
-   rename 's/=0/=/g' day=*
-   cd ../../
+   #at the start of the new year there may be 2 distinct years in the data.
+   for dir in */
+   do
+       cd dir
+       rename 's/=0/=/g' month=*
+       cd month=*
+       rename 's/=0/=/g' day=*
+       cd ../../
+   done
 
    #check if partition exists
    isPartitioned=$(impala-shell -B --quiet -i $IMPALA_NODE -q "select count(1) from $IMPALA_DNS_STAGING_TABLE where year=$YEAR and month=$MONTH and day=$DAY and server=\"$NAMESERVER\";" )
@@ -150,11 +154,14 @@ then
    cd ../icmpdata
 
    #fix date partition format, remove leading zero otherwize impala partions with int type will not work
-   cd year=*
-   rename 's/=0/=/g' month=*
-   cd month=*
-   rename 's/=0/=/g' day=*
-   cd ../../
+   for dir in */
+   do
+       cd dir
+       rename 's/=0/=/g' month=*
+       cd month=*
+       rename 's/=0/=/g' day=*
+       cd ../../
+   done
 
    #check if partition exists
    isPartitioned=$(impala-shell -B --quiet  -i $IMPALA_NODE -q "select count(1) from $IMPALA_ICMP_STAGING_TABLE where day=$DAY;" )

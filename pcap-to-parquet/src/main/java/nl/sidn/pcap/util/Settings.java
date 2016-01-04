@@ -23,9 +23,10 @@ public class Settings {
 	public static String OUTPUT_MAX_PACKETS = "output.max.packets";
 	public static String CACHE_TIMEOUT = "cache.timeout";
 	
-	public static String MAXMIND_GEOIP_PATH = "maxmind.geo.ip.path";
-	public static String MAXMIND_ASN_V4_PATH = "maxmind.geo.asn.v4.path";
-	public static String MAXMIND_ASN_V6_PATH = "maxmind.geo.asn.v6.path";
+//	public static String MAXMIND_PATH = "maxmind.path";
+//	public static String MAXMIND_GEOIP_PATH = "maxmind.geo.ip.path";
+//	public static String MAXMIND_ASN_V4_PATH = "maxmind.geo.asn.v4.path";
+//	public static String MAXMIND_ASN_V6_PATH = "maxmind.geo.asn.v6.path";
 	
 	public static String METRICS_EXCHANGE = "metrics.exchange";
 	public static String METRICS_QUEUE = "metrics.queue";

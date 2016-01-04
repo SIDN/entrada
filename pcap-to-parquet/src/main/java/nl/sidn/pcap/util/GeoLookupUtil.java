@@ -15,13 +15,18 @@ import com.maxmind.geoip2.model.CityResponse;
 import com.maxmind.geoip2.model.CountryResponse;
 
 /**
- * Utility class to lookup IP adress informatie such as country and asn.
+ * Utility class to lookup IP adress information such as country and asn.
  * Uses the maxmind database
  */
 public class GeoLookupUtil {
 	
 	private static final Logger LOGGER = LoggerFactory.getLogger(GeoLookupUtil.class);
 	
+	private static final String MAXMIND_DIR = "maxmind";
+	private static final String MAXMIND_COUNTRY_DB = "GeoLite2-Country.mmdb";
+	private static final String MAXMIND_ASN_V4_DB = "GeoIPASNum.dat";
+	private static final String MAXMIND_ASN_V6_DB = "GeoIPASNumv6.dat";
+		
 	private DatabaseReader reader;
 	private LookupService asnService;
 	private LookupService asnV6Service;
@@ -29,17 +34,19 @@ public class GeoLookupUtil {
 	
 	public GeoLookupUtil() {
 		Settings settings = Settings.getInstance();
+		String path = settings.getSetting(Settings.STATE_LOCATION) + System.getProperty("file.separator") +
+				MAXMIND_DIR + System.getProperty("file.separator");
 		try {
 			//geo
-			File database = new File(settings.getSetting(Settings.MAXMIND_GEOIP_PATH));
+			File database = new File(path + MAXMIND_COUNTRY_DB);
 			reader = new DatabaseReader.Builder(database).build();
 			//asn
-			asnService = new LookupService(settings.getSetting(Settings.MAXMIND_ASN_V4_PATH),
-				    LookupService.GEOIP_MEMORY_CACHE | LookupService.GEOIP_CHECK_CACHE);
-			asnV6Service = new LookupService(settings.getSetting(Settings.MAXMIND_ASN_V6_PATH),
+			asnService = new LookupService(path + MAXMIND_ASN_V4_DB,
+					LookupService.GEOIP_MEMORY_CACHE | LookupService.GEOIP_CHECK_CACHE);
+			asnV6Service = new LookupService(path + MAXMIND_ASN_V6_DB,
 				    LookupService.GEOIP_MEMORY_CACHE | LookupService.GEOIP_CHECK_CACHE);
 		} catch (IOException e) {
-			throw new RuntimeException("Error initializing GEO/ASN database", e);
+			throw new RuntimeException("Error initializing Maxmind GEO/ASN database", e);
 		}
 	}
 	

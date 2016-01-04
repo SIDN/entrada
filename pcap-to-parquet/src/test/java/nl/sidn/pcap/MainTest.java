@@ -10,7 +10,7 @@ public class MainTest {
 
 		ClassLoader classLoader = getClass().getClassLoader();
 		String[] args = {"ns1.dns.nl",classLoader.getResource("test-settings.properties").getFile(),
-				"/Users/maarten/sidn/development/tmp/pcap/input","/Users/maarten/sidn/development/tmp/pcap/parquet", "/tmp"};
+				"./pcap/input",".pcap/output", "/tmp"};
 		main.run(args);
 	}
 	

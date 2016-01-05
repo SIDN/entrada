@@ -144,7 +144,6 @@ then
      echo "[$(date)] :Refresh metadata $IMPALA_DNS_STAGING_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
    fi
 
-
    ####
    #### ICMP data section
    ####

@@ -108,7 +108,7 @@ then
    #at the start of the new year there may be 2 distinct years in the data.
    for dir in */
    do
-       cd dir
+       cd $dir
        rename 's/=0/=/g' month=*
        cd month=*
        rename 's/=0/=/g' day=*
@@ -156,7 +156,7 @@ then
    #fix date partition format, remove leading zero otherwize impala partions with int type will not work
    for dir in */
    do
-       cd dir
+       cd $dir
        rename 's/=0/=/g' month=*
        cd month=*
        rename 's/=0/=/g' day=*

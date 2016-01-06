@@ -20,14 +20,14 @@ export HADOOP_USER_NAME=impala
 
 
 echo "[$(date)] : Update stats for staging"
-impala-shell --quiet -i $IMPALA_NODE --quiet -q "COMPUTE INCREMENTAL STATS $IMPALA_DNS_STAGING_TABLE;"
+impala-shell -i $IMPALA_NODE -q "COMPUTE STATS $IMPALA_DNS_STAGING_TABLE;"
 if [ $? -ne 0 ]
 then
    #send mail to indicate error
    echo "[$(date)] : Update stats $IMPALA_DNS_STAGING_TABLE failed" | mail -s "Impala error updating staging stats" $ERROR_MAIL
 fi
 
-impala-shell --quiet -i $IMPALA_NODE --quiet -q "COMPUTE INCREMENTAL STATS $IMPALA_ICMP_STAGING_TABLE;"
+impala-shell -i $IMPALA_NODE -q "COMPUTE STATS $IMPALA_ICMP_STAGING_TABLE;"
 if [ $? -ne 0 ]
 then
    #send mail to indicate error

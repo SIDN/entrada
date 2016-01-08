@@ -28,7 +28,7 @@
 ############################################################
 
 #home dir of entrada
-export ENTRADA_HOME="/home/entrada/entrada-latest/"
+export ENTRADA_HOME="/home/entrada/entrada-latest"
 #tmp dir used for keep state files
 export TMP_DIR="$ENTRADA_HOME/tmp/"
 
@@ -59,7 +59,7 @@ export ENTRADA_JAR="entrada-0.0.1-jar-with-dependencies.jar"
 
 #security if Kerberos is enabled, otherwise keep empty
 export KRB_USER=""
-export KEYTAB_FILE=""
+export KEYTAB_FILE="my.keytab"
 
 #error mail recipient
 export ERROR_MAIL=""

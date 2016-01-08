@@ -88,7 +88,7 @@ public class LoaderThread extends AbstractStoppableThread {
 	private DataInputStream dis;
 
 	private int multiCounter;
-	private String current_server = null;
+	private String current_server = Settings.getInstance().getName();
 	
 	//metrics
 	private int queryCounter;
@@ -443,16 +443,9 @@ public class LoaderThread extends AbstractStoppableThread {
 
 	public void createReader(String file) {
 		LOGGER.info("Start loading queue from file:" + file);
-		current_server = null;
 		fileCount++;
 		try {
 			File f = FileUtils.getFile(file);
-			 //files have format ns1_2015-05-13_14/23.pcap.gz
-			// the ns server name is the section before the first _
-			String[] parts = f.getName().split("_");
-			if(parts != null && parts.length > 0){
-				current_server = parts[0];
-			}
 			LOGGER.info("Load data for server: " + current_server);
 			   
 		    FileInputStream fis = FileUtils.openInputStream(f);

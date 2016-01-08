@@ -69,6 +69,24 @@ cleanup(){
   rm $PID 
 }
 
+remove_zeroes(){
+    for year_dir in */
+    do
+        #goto year
+        cd $year_dir
+        #rename months, remove leading zeros
+        for subdir in month=0*; do mv "${subdir}" "${subdir/0/}"; done 2>/dev/null
+        for month_dir in month=*/
+        do
+            #goto month dir
+            cd $month_dir
+            #rename days, remove leading zeros
+            for subdir in day=0*; do mv "${subdir}" "${subdir/0/}"; done 2>/dev/null
+            cd ..
+        done
+        cd ..
+    done
+}
 
 #-----------------------------
 # Main script
@@ -122,17 +140,10 @@ then
    #### DNS data section
    ####
 
-   cd dnsdata
    #fix date partition format, remove leading zero otherwize impala partions with int type will not work
    #at the start of the new year there may be 2 distinct years in the data.
-   for dir in */
-   do
-       cd $dir
-       rename 's/=0/=/g' month=*
-       cd month=*
-       rename 's/=0/=/g' day=*
-       cd ../../
-   done
+   cd dnsdata
+   remove_zeroes
 
    #check if partition exists
    isPartitioned=$(impala-shell -B --quiet -i $IMPALA_NODE -q "select count(1) from $IMPALA_DNS_STAGING_TABLE where year=$YEAR and month=$MONTH and day=$DAY and server=\"$NAMESERVER\";" )
@@ -169,17 +180,9 @@ then
    DAY=$(date +"%-d")
    MONTH=$(date +"%-m")
 
-   cd ../icmpdata
-
    #fix date partition format, remove leading zero otherwize impala partions with int type will not work
-   for dir in */
-   do
-       cd $dir
-       rename 's/=0/=/g' month=*
-       cd month=*
-       rename 's/=0/=/g' day=*
-       cd ../../
-   done
+   cd ../icmpdata
+   remove_zeroes
 
    #check if partition exists
    isPartitioned=$(impala-shell -B --quiet  -i $IMPALA_NODE -q "select count(1) from $IMPALA_ICMP_STAGING_TABLE where day=$DAY;" )
@@ -211,6 +214,6 @@ then
 else
    echo "[$(date)] :Converting pcap to parquet failed"
 fi
-echo "[$(date)] :Done"
+echo "[$(date)] :Done with loading data into staging"
 
 

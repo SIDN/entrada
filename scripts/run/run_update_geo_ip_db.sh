@@ -35,7 +35,7 @@ echo "[$(date)] : start update of Maxmind databases"
 if [ ! -d $MAXMIND_DIR ];
 then
     echo "[$(date)] : create directory $MAXMIND_DIR"
-    mkdir $MAXMIND_DIR
+    mkdir -p $MAXMIND_DIR
 fi
 
 #goto download location

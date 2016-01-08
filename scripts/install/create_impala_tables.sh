@@ -26,16 +26,16 @@
 ##########################################################################
 
 SCRIPT_DIR=$(dirname "$0")
-source $SCRIPT_DIR/../config.sh
+echo "SCRIPT_DIR == $SCRIPT_DIR"
+source $SCRIPT_DIR/../run/config.sh
 
-#use kerberos user "hdfs"
 if [ -f $KEYTAB_FILE ];
 then
-   echo "init kerb"
+   echo "initialize kerberos ticket"
    kinit $KRB_USER -k -t $KEYTAB_FILE
 fi
 
-for f in ../database/*.sql
+for f in $SCRIPT_DIR/../database/*.sql
 do
     script=$(< $f)
     #replace hdfs root placeholder

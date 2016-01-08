@@ -28,10 +28,10 @@ public class MainTest {
 	@Test
 	public void testRun(){
 		Main main = new Main();
-
+	
 		ClassLoader classLoader = getClass().getClassLoader();
 		String[] args = {"ns1.dns.nl",classLoader.getResource("test-settings.properties").getFile(),
-				"/tmp/","/tmp", "/tmp"};
+				"/Users/maarten/sidn/development/tmp/pcap/input","/Users/maarten/sidn/development/tmp/pcap/parquet", "/Users/maarten/sidn/development/tmp"};
 		main.run(args);
 	}
 	

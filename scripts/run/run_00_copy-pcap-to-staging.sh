@@ -44,7 +44,7 @@ cleanup(){
 
 # ------- main program -----------
 
-echo "[$(date)] : start copy data for $NAMESERVER"
+echo "[$(date)] : start copy data for $NAMESERVER in dir: $INPUT_DIR"
 
 if [ -f $PID ];
 then

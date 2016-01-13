@@ -78,7 +78,6 @@ esac
 # plain old nth day code
 minday=$[ 1 + $[ 7 * $[$1-1] ] ]
 maxday=$[ $minday + 7 ]
-echo "min: $minday max: $maxday"
 if [ $today -ge $minday  ] && [  $today -lt $maxday ]
 then
   # green light, fire at will

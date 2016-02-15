@@ -91,7 +91,6 @@ if [ $? -ne 0 ]
 then
     #send mail to indicate error
     echo "[$(date)] : refresh metadata $IMPALA_DNS_DWH_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
-    exit 1
 fi
 
 #delete partitions from staging
@@ -108,7 +107,6 @@ if [ $? -ne 0 ]
 then
      #send mail to indicate error
      echo "[$(date)] : refresh metadata $IMPALA_DNS_STAGING_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
-     exit 1
 fi
 
 #get new rows count
@@ -161,19 +159,24 @@ impala-shell -i $IMPALA_NODE -V -q  "insert into $IMPALA_ICMP_DWH_TABLE partitio
       orig_dns_labels,svr,time_micro,year,month,day 
      from $IMPALA_ICMP_STAGING_TABLE where year=$year and month=$month and day=$day;"
 
+if [ $? -ne 0 ]
+then
+    #send mail to indicate error
+    echo "[$(date)] : insert data into $IMPALA_ICMP_DWH_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
+    exit 1
+fi
+
 echo "[$(date)] : issue refresh for $IMPALA_ICMP_DWH_TABLE"
 impala-shell --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_ICMP_DWH_TABLE;"
 if [ $? -ne 0 ]
 then
      #send mail to indicate error
      echo "[$(date)] : refresh metadata $IMPALA_ICMP_DWH_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
-     exit 1
 fi
 
 
 #delete partition from staging
 impala-shell -c --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_ICMP_STAGING_TABLE drop partition (year=$year,month=$month,day=$day);"
-#when adding more servers, don't forget to drop partitions
 
 #refresh impala metadata
 echo "[$(date)] : issue refresh for $IMPALA_ICMP_STAGING_TABLE"
@@ -182,7 +185,6 @@ if [ $? -ne 0 ]
 then
      #send mail to indicate error
      echo "[$(date)] : refresh metadata $IMPALA_ICMP_STAGING_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
-     exit 1
 fi
 
 #get new rows count

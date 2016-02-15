@@ -78,6 +78,13 @@ impala-shell -i $IMPALA_NODE -V -q  "insert into $IMPALA_DNS_DWH_TABLE partition
      dns_res_len,year,month,day,server
      from $IMPALA_DNS_STAGING_TABLE where year=$year and month=$month and day=$day;"
 
+if [ $? -ne 0 ]
+then
+    #send mail to indicate error
+    echo "[$(date)] : insert data into $IMPALA_DNS_DWH_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
+    exit 1
+fi
+
 echo "[$(date)] : issue refresh for $IMPALA_DNS_DWH_TABLE"
 impala-shell --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_DNS_DWH_TABLE;"
 if [ $? -ne 0 ]

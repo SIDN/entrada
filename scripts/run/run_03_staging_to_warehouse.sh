@@ -47,11 +47,19 @@ runasSuperuser(){
 
 runasImpala
 
-#get date for yesterday
-day=$(date --date="1 days ago" +"%-d")
-year=$(date --date="1 days ago" +"%Y")
-month=$(date --date="1 days ago" +"%-m")
-echo "[$(date)] : yesterday was: $day-$month-$year"
+if [ -z "$1" ]
+then
+  #get date for yesterday
+  day=$(date -d "1 days ago" +"%-d")
+  year=$(date -d "1 days ago" +"%Y")
+  month=$(date -d "1 days ago" +"%-m")
+else
+  #get date for parameter date, fomat should be YYYY-MM-DD
+  day=$(date -d "$1" +"%-d")
+  year=$(date -d "$1" +"%Y")
+  month=$(date -d "$1" +"%-m")  
+fi
+echo "[$(date)] : process staging partition: $day-$month-$year"
 
 
 ####
@@ -125,10 +133,6 @@ impala-shell -c --quiet -i $IMPALA_NODE -q "COMPUTE INCREMENTAL STATS $IMPALA_DN
 ####
 #### ICMP data section
 ####
-
-#Get month and day without leading zero
-day=$(date --date="1 days ago" +"%-d")
-month=$(date --date="1 days ago" +"%-m")
 
 #skip the duplicate "svr" column.
 impala-shell -i $IMPALA_NODE -V -q  "insert into $IMPALA_ICMP_DWH_TABLE partition(year, month, day) select 

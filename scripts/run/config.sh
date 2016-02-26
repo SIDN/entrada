@@ -55,7 +55,7 @@ export ENTRADA_LOG_DIR="/var/log/entrada"
 export NAMESERVERS=""
 
 #java
-export ENTRADA_JAR="entrada-0.0.1-jar-with-dependencies.jar"
+export ENTRADA_JAR="entrada-0.0.2-jar-with-dependencies.jar"
 
 #security if Kerberos is enabled, otherwise keep empty
 export KRB_USER=""

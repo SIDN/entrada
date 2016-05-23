@@ -38,6 +38,6 @@ See the LICENSE file included in each project.
 We request you include the following attribution text in all advertising and documentation mentioning features of or use of ENTRADA.
 
 ```
-This product includes ENTRADA created by SIDN Labs, available from
-<a href="http://entrada.sidnlabs.nl">http://http://entrada.sidnlabs.nl</a>.
+This product includes ENTRADA created by <a href="https://www.sidnlabs.nl">SIDN Labs</a>, available from
+<a href="http://entrada.sidnlabs.nl">http://entrada.sidnlabs.nl</a>.
 ```

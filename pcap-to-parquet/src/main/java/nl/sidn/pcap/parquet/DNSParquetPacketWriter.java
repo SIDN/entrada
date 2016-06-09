@@ -186,6 +186,9 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 	    		}
 	    	}
 	    	
+	    	//EDNS0 for response
+			writeResponseOptions(respMessage, builder);
+	    	
 	    	//update metric
     		responseBytes = responseBytes + respTransport.getUdpLength();
 	    	
@@ -240,8 +243,8 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 	    //question
 	    writeQuestion(q, builder);
 		
-		//EDNS0
-		writeOptions(requestMessage, builder);
+		//EDNS0 for request
+		writeRequestOptions(requestMessage, builder);
 		 
 		//calculate the processing time
 		writeProctime(reqTransport, respTransport, builder);
@@ -331,13 +334,37 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		}
 	}
 
+	/**
+	 * Write EDNS0 option (if any are present) to file. 
+	 * @param message
+	 * @param builder
+	 */
+	private void writeResponseOptions(Message message, GenericRecordBuilder builder) {
+		if(message == null){
+			return;
+		}
+		
+		OPTResourceRecord opt = message.getPseudo();
+		if(opt != null){
+			 for (EDNS0Option option : opt.getOptions()) {
+		        if(option instanceof NSidOption){
+		        	String id = ((NSidOption)option).getId();
+		        	builder.set("edns_nsid", id!= null? id: "");
+		        	
+		        	//this is the only server edns data we support, stop processing other options
+		        	break;
+		        }
+			 }
+		}   
+		
+	}
 
 	/**
 	 * Write EDNS0 option (if any are present) to file. 
 	 * @param message
 	 * @param builder
 	 */
-	private void writeOptions(Message message, GenericRecordBuilder builder) {
+	private void writeRequestOptions(Message message, GenericRecordBuilder builder) {
 		if(message == null){
 			return;
 		}
@@ -351,10 +378,7 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 	        
 	        String other = null;
 	        for (EDNS0Option option : opt.getOptions()) {
-	        	if(option instanceof NSidOption){
-	        		String id = ((NSidOption)option).getId();
-	        		builder.set("edns_nsid", id!= null? id: "");
-	        	}else if(option instanceof PingOption){
+	        	if(option instanceof PingOption){
 	        		builder.set("edns_ping", true);
 	        	}else if(option instanceof DNSSECOption){
 	        		if(option.getCode() == DNSSECOption.OPTION_CODE_DAU){

@@ -57,6 +57,8 @@
     { "name": "proc_time", "type": ["null","int"], "default": null },
     { "name": "is_google", "type": "boolean", "default": false},
     { "name": "is_opendns", "type": "boolean", "default": false},
-    { "name": "dns_res_len", "type": ["null","int"], "default": null}
+    { "name": "dns_res_len", "type": ["null","int"], "default": null},
+    { "name": "anycast_server", "type": ["null","string"], "default": null },
+    { "name": "anycast_location", "type": ["null","string"], "default": null }
   ]
 }

@@ -154,6 +154,14 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 
 		//set the nameserver the queries are going to/coming from
 		builder.set("svr", combo.getServer());
+
+		//check if _ in server name. If yes split the name and use 2nd part as anycast location
+		String svr = combo.getServer();
+		if (svr.contains("_")) {
+			String[] parts = svr.split("_"); 
+			builder.set("anycast_server", parts[0]);
+			builder.set("anycast_location", parts[1]);
+		}
 		
 		//add meta data
 		enrich(reqTransport, respTransport, builder);

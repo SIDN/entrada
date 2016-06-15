@@ -49,7 +49,7 @@ echo "[$(date)] :Start parallel processing new pcap data"
 #replace colon with whitespace so it will work with gnu parallel
 nslist=$(echo $NAMESERVERS | tr ';' ' ')
 
-parallel run_02_partial_loader.sh ::: $nslist ::: $CONFIG_FILE
+parallel run_02_partial_loader.sh ::: $nslist ::: $CONFIG_FILE ::: $1
 
 
 

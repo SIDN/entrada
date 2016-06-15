@@ -56,8 +56,8 @@ create external table if not exists dns.staging (
  is_google boolean,
  is_opendns boolean,
  dns_res_len INT,
- anycast_server string,
- anycast_location string )
+ server_ns_name string,
+ server_location string )
  partitioned by (year INT, month INT, day INT, server string)
   STORED AS PARQUETFILE
   LOCATION '_HDFS_LOCATION_staging';

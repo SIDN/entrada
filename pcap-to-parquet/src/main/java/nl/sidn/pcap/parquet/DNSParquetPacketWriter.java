@@ -159,8 +159,10 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		String svr = combo.getServer();
 		if (svr.contains("_")) {
 			String[] parts = svr.split("_"); 
-			builder.set("anycast_server", parts[0]);
-			builder.set("anycast_location", parts[1]);
+			builder.set("server_ns_name", parts[0]);
+			builder.set("server_location", parts[1]);
+		} else {
+			builder.set("server_ns_name", combo.getServer());
 		}
 		
 		//add meta data

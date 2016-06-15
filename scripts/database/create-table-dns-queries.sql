@@ -55,8 +55,8 @@ create external table if not exists queries (
  is_google boolean,
  is_opendns boolean,
  dns_res_len INT,
- anycast_server STRING,
- anycast_location STRING
+ server_ns_name STRING,
+ server_location STRING
 ) 
  partitioned by (year INT, month INT, day INT, server string)
   STORED AS PARQUETFILE

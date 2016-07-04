@@ -9,6 +9,7 @@ cp pcap-to-parquet/target/pcap-to-parquet-$VERSION-jar-with-dependencies.jar $BA
 cp -R scripts $BASE_DIR
 cp -R grafana-dashboard $BASE_DIR
 cp VERSION $BASE_DIR
+cp UPGRADE $BASE_DIR
 
 tar -zcvf "$BASE_DIR.tar.gz" $BASE_DIR
 rm -rf $BASE_DIR

@@ -44,7 +44,21 @@ export HADOOP_USER_NAME=impala
 
 NAMESERVER=$1
 CONFIG_FILE=$2
-echo "[$(date)] :Start loader for $NAMESERVER with config $CONFIG_FILE"
+
+if [ -z "$3" ]
+then
+  #get date for today
+  DAY=$(date +"%-d")
+  YEAR=$(date +"%Y")
+  MONTH=$(date +"%-m")
+else
+  #get date for parameter date, fomat should be YYYY-MM-DD
+  DAY=$(date -d "$3" +"%-d")
+  YEAR=$(date -d "$3" +"%Y")
+  MONTH=$(date -d "$3" +"%-m")
+fi
+
+echo "[$(date)] :Start loader for $NAMESERVER with config $CONFIG_FILE with date $YEAR-$MONTH-$DAY"
 
 #kitesdk naming workaround
 #replace "." by an "_" because kitesdk does not support dots in the namespace
@@ -117,9 +131,6 @@ java -Dentrada_log_dir=$ENTRADA_LOG_DIR -cp $ENTRADA_HOME/$ENTRADA_JAR $CLASS $N
 #if Java process exited ok, continue
 if [ $? -eq 0 ]
 then
-   DAY=$(date +"%-d")
-   YEAR=$(date +"%Y")
-   MONTH=$(date +"%-m")
 
    #check if parquet files were created
    if [ ! -d "$OUTPUT_DIR/$NORMALIZED_NAMESERVER/dnsdata" ];
@@ -177,8 +188,6 @@ then
    ####
    #### ICMP data section
    ####
-   DAY=$(date +"%-d")
-   MONTH=$(date +"%-m")
 
    #fix date partition format, remove leading zero otherwize impala partions with int type will not work
    cd ../icmpdata

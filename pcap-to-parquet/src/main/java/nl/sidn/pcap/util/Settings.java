@@ -132,7 +132,7 @@ public class Settings {
 		//set the pcap input directory name.
 		serverInfo.setFullname(name);
 		if (name.contains("_")) {
-			String[] parts = StringUtils.split("_"); 
+			String[] parts = StringUtils.split(name,"_"); 
 			if(parts.length == 2){
 				serverInfo.setName(parts[0]);
 				serverInfo.setLocation(parts[1]);

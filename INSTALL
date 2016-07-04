@@ -1,0 +1,10 @@
+
+
+# Upgrading to version 0.0.5
+
+A new column (server_location) has been added in this version, this columns is used to store the anycast server location.
+Any input directory using the format <servername>_<location> will be parsed into a server and location component.
+The server component value will be used for the Parquet "server" partition, the location component value will be stored in the "server_location" column.
+
+This allows for partition pruning at the logical server level while still being able to determine the anycast location for every packet. 
+

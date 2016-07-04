@@ -45,6 +45,7 @@ export HADOOP_USER_NAME=impala
 NAMESERVER=$1
 CONFIG_FILE=$2
 
+#See what day we need to load pcap files for.
 if [ -z "$3" ]
 then
   #get date for today
@@ -174,7 +175,7 @@ then
         echo "[$(date)] :Adding partition to table $IMPALA_DNS_STAGING_TABLE failed"
       fi
    else
-     echo "[$(date)] :Partition for $YEAR/$MONTH/$DAY already exists"
+     echo "[$(date)] :Partition for $YEAR-$MONTH-$DAY already exists"
    fi
 
    echo "[$(date)] :Issue refresh"
@@ -211,7 +212,7 @@ then
         echo "[$(date)] :Adding partition to table $IMPALA_ICMP_STAGING_TABLE failed"
       fi
    else
-     echo "[$(date)] :Partition for $YEAR/$MONTH/$DAY already exists"
+     echo "[$(date)] :Partition for $YEAR-$MONTH-$DAY already exists"
    fi
    echo "[$(date)] :Issue refresh"
    impala-shell --quiet -i $IMPALA_NODE --quiet -q "refresh $IMPALA_ICMP_STAGING_TABLE;"

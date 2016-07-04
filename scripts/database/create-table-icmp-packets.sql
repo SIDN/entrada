@@ -53,7 +53,6 @@ orig_dns_edns_do BOOLEAN,
 orig_dns_labels INT,
 svr string,
 time_micro bigint,
-server_ns_name string,
 server_location string)
 partitioned by (year smallint, month smallint, day smallint)
   STORED AS PARQUETFILE

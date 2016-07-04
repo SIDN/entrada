@@ -55,9 +55,7 @@ create external table if not exists queries (
  is_google boolean,
  is_opendns boolean,
  dns_res_len INT,
- server_ns_name STRING,
- server_location STRING
-) 
+ server_location STRING) 
  partitioned by (year INT, month INT, day INT, server string)
   STORED AS PARQUETFILE
   LOCATION '_HDFS_LOCATION_queries';

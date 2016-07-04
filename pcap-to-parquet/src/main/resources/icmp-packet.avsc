@@ -56,7 +56,6 @@
     { "name": "orig_dns_labels", "type": ["null","int"], "default": null},
     { "name": "svr", "type": "string" },
     { "name": "time_micro", "type": "long" },
-    { "name": "server_ns_name", "type": ["null","string"], "default": null },
     { "name": "server_location", "type": ["null","string"], "default": null }
   ]
 }

@@ -83,7 +83,7 @@ impala-shell -i $IMPALA_NODE -V -q  "insert into $IMPALA_DNS_DWH_TABLE partition
      edns_client_subnet_asn,
      edns_client_subnet_country,
      labels,res_len,time_micro,resp_frag,proc_time,is_google,is_opendns,
-     dns_res_len,year,month,day,server
+     dns_res_len,server_ns_name, server_location, year,month,day,server
      from $IMPALA_DNS_STAGING_TABLE where year=$year and month=$month and day=$day;"
 
 if [ $? -ne 0 ]
@@ -160,7 +160,7 @@ impala-shell -i $IMPALA_NODE -V -q  "insert into $IMPALA_ICMP_DWH_TABLE partitio
       orig_dns_qtype,orig_dns_opcode,
       orig_dns_qclass,orig_dns_edns_udp,
       orig_dns_edns_version,orig_dns_edns_do,
-      orig_dns_labels,svr,time_micro,year,month,day 
+      orig_dns_labels,svr,time_micro,server_ns_name, server_location, year,month,day
      from $IMPALA_ICMP_STAGING_TABLE where year=$year and month=$month and day=$day;"
 
 if [ $? -ne 0 ]

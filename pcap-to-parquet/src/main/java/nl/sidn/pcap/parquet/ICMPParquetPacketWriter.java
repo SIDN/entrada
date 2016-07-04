@@ -123,6 +123,18 @@ public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
 		    .set("l4_srcp",  icmpPacket.getSrcPort())
 		    .set("l4_dstp",  icmpPacket.getDstPort())
 		    .set("ip_len",  icmpPacket.getTotalLength()); //size of ip packet incl headers
+
+
+                //check if _ in server name. If yes split the name and use 2nd part as anycast location
+                String svr = packetCombo.getServer();
+                if (svr.contains("_")) {
+                        String[] parts = svr.split("_");
+                        builder.set("server_ns_name", parts[0]);
+                        builder.set("server_location", parts[1]);
+                } else {
+	    		builder.set("server_ns_name", packetCombo.getServer());
+		}
+
 	    	//orig packet from payload
 		 
 	    if(originalPacket != null && originalPacket != Packet.NULL){

@@ -52,6 +52,9 @@ export PCAP_DAYS_TO_KEEP=10
 export ENTRADA_LOG_DIR="/var/log/entrada"
 
 #name servers, seperate multiple NS with a colon ;
+#or use the following line to automatically detect the name server sub directories.
+#if using auto detect make sure the data for every (new) name server is uploaded
+#in the correct temporal order.
 export NAMESERVERS=`cd ${DATA_RSYNC_DIR}; ls -dm */ | tr '\n' ' ' |  tr ',' ';' | sed 's/[\/ ]//g'`
 
 #java

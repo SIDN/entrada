@@ -54,6 +54,7 @@ import nl.sidn.pcap.support.MessageWrapper;
 import nl.sidn.pcap.support.PacketCombination;
 import nl.sidn.pcap.support.RequestKey;
 import nl.sidn.pcap.util.Settings;
+import nl.sidn.pcap.util.Settings.ServerInfo;
 import nl.sidn.stats.MetricManager;
 
 import org.apache.commons.io.FileUtils;
@@ -88,7 +89,7 @@ public class LoaderThread extends AbstractStoppableThread {
 	private DataInputStream dis;
 
 	private int multiCounter;
-	private String current_server = Settings.getInstance().getName();
+	private ServerInfo current_server = Settings.getInstance().getServer();
 	
 	//metrics
 	private int queryCounter;
@@ -174,7 +175,7 @@ public class LoaderThread extends AbstractStoppableThread {
 
 	private void archiveFile(String pcap) {
 		File file = new File(pcap);
-		File archiveDir = new File(outputDir + System.getProperty("file.separator") + "archive"  + System.getProperty("file.separator") + Settings.getInstance().getName());
+		File archiveDir = new File(outputDir + System.getProperty("file.separator") + "archive"  + System.getProperty("file.separator") + current_server.getFullname());
 		if(!archiveDir.exists()){
 			LOGGER.info(archiveDir.getName() + " does not exist, create now.");
 			if(!archiveDir.mkdirs()){
@@ -301,7 +302,7 @@ public class LoaderThread extends AbstractStoppableThread {
 	}
 
 	private String createStateFileName(){
-		return stateDir + "/" + DECODER_STATE_FILE + "-" + Settings.getInstance().getName() + ".bin";
+		return stateDir + "/" + DECODER_STATE_FILE + "-" + current_server.getFullname() + ".bin";
 	}
 	
 	/**

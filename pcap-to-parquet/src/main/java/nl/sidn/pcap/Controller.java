@@ -73,7 +73,7 @@ public class Controller {
 		 * by this separate thread. This allows for simultaneous writing
 		 * of decoded packets to parquet
 		 */
-		startLoaderThread(setting.getSetting(Settings.INPUT_LOCATION) + System.getProperty("file.separator") + Settings.getInstance().getName(),
+		startLoaderThread(setting.getSetting(Settings.INPUT_LOCATION) + System.getProperty("file.separator") + Settings.getInstance().getServer().getFullname(),
 				setting.getSetting(Settings.STATE_LOCATION),setting.getSetting(Settings.OUTPUT_LOCATION));
 		
 		if(setting.getSetting(Settings.OUTPUT_MAX_PACKETS) != null){

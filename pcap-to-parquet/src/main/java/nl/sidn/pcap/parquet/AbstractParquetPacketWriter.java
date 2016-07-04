@@ -59,7 +59,6 @@ public abstract class AbstractParquetPacketWriter {
 	protected String repoLocation;
 	protected String schema;
 	protected String repoName;
-	protected String server;
 	//meta info
 	protected GeoLookupUtil geoLookup;
 	protected Map<String, String> geo_ip_cache = new HashMap<String, String>();
@@ -70,7 +69,6 @@ public abstract class AbstractParquetPacketWriter {
 	public AbstractParquetPacketWriter(String repoName,String schema) {
 		geoLookup = new GeoLookupUtil();
 		this.repoLocation = Settings.getInstance().getSetting(Settings.OUTPUT_LOCATION); 
-		this.server = Settings.getInstance().getName(); 
 		this.schema = schema;
 		this.repoName = repoName;
 	}
@@ -126,6 +124,7 @@ public abstract class AbstractParquetPacketWriter {
 	protected abstract PartitionStrategy createPartitionStrategy();
 	
 	public void open(){
+		String server = Settings.getInstance().getServer().getFullname();
 		String path =  repoLocation + System.getProperty("file.separator") + server + System.getProperty("file.separator") + repoName;
 		//remove any dots from the path, kitesdk does not support this
 		//https://issues.cloudera.org/browse/KITE-673

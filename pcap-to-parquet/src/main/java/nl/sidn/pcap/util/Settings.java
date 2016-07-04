@@ -26,6 +26,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Properties;
 
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,7 +60,7 @@ public class Settings {
 	private static Settings _instance = null;
 	
 	private static String path = null;
-	private String name = null;
+	private ServerInfo serverInfo = null;
 	
 	private Settings(String path){
 		init(path);
@@ -118,15 +119,62 @@ public class Settings {
 		_instance = null;
 	}
 
-	public String getName() {
-		return name;
+	public ServerInfo getServer() {
+		return serverInfo;
 	}
 
-	public void setName(String name) {
-		this.name = name;
+	/**
+	 * Load the server and optional anycast server location information.
+	 * Using format <server>_<location>
+	 */
+	public void forServer(String name) {
+		this.serverInfo = new ServerInfo();
+		//set the pcap input directory name.
+		serverInfo.setFullname(name);
+		if (name.contains("_")) {
+			String[] parts = StringUtils.split("_"); 
+			if(parts.length == 2){
+				serverInfo.setName(parts[0]);
+				serverInfo.setLocation(parts[1]);
+				return;
+			}
+		}
+		//no anycast location encoded in name
+		serverInfo.setName(name);
 	}
 
 
+	public class ServerInfo{
+		private String fullname;
+		private String name;
+		private String location;
+		
+		public String getFullname() {
+			return fullname;
+		}
+		public void setFullname(String fullname) {
+			this.fullname = fullname;
+		}
+		public String getName() {
+			return name;
+		}
+		public void setName(String name) {
+			this.name = name;
+		}
+		public String getLocation() {
+			return location;
+		}
+		public void setLocation(String location) {
+			this.location = location;
+		}
+		
+		public boolean hasAnycastLocation(){
+			return StringUtils.isNotBlank(location);
+		}
+		
+	}
+	
+	
 	
 	
 }

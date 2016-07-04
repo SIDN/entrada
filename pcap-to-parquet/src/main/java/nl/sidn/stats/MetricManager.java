@@ -121,7 +121,7 @@ public class MetricManager {
 
 	private String createMetricName(String metric){
 		//replace dot in the server name with underscore otherwise graphite will assume nesting
-		String cleanServer =  StringUtils.trimToEmpty(StringUtils.replace(Settings.getInstance().getName(),".","_"));
+		String cleanServer =  StringUtils.trimToEmpty(StringUtils.replace(Settings.getInstance().getServer().getFullname(),".","_"));
 		return graphitePrefix + "." + cleanServer + metric;
 	}
 

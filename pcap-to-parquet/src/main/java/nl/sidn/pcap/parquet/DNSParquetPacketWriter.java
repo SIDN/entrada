@@ -153,18 +153,16 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 	    int rcode = -1;  //default no reply, use non standard rcode value -1
 
 		//set the nameserver the queries are going to/coming from
-		builder.set("svr", combo.getServer());
+		builder.set("svr", combo.getServer().getFullname());
 
-		//check if _ in server name. If yes split the name and use 2nd part as anycast location
-		String svr = combo.getServer();
-		if (svr.contains("_")) {
-			String[] parts = svr.split("_"); 
-			builder.set("server_ns_name", parts[0]);
-			builder.set("server_location", parts[1]);
-		} else {
-			builder.set("server_ns_name", combo.getServer());
-		}
-		
+		//if no anycast location is encoded in the name then the anycast servername and location will be null
+	    if(combo.getServer().hasAnycastLocation()){
+	    	//only store these columns in case of anycast, to save storage space.
+	    	//the non-anycast name can be determined with the "server" partition key
+		    builder.set("server_ns_name", combo.getServer().getName());
+		    builder.set("server_location", combo.getServer().getLocation());
+	    }
+
 		//add meta data
 		enrich(reqTransport, respTransport, builder);
 		

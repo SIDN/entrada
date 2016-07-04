@@ -46,7 +46,7 @@ public class Main {
 		//path to config file
 		Settings.setPath(args[1]);
 		//name server name
-		Settings.getInstance().setName(args[0]);
+		Settings.getInstance().forServer(args[0]);
 		//set paths to input dir
 		Settings.getInstance().setSetting(Settings.INPUT_LOCATION, args[2]);
 		//set paths to output dir
@@ -55,12 +55,11 @@ public class Main {
 		Settings.getInstance().setSetting(Settings.STATE_LOCATION, args[4]);
 		
 		//do sanity check to see if files are present
-		if (FileUtil.countFiles(Settings.getInstance().getSetting(Settings.INPUT_LOCATION) + System.getProperty("file.separator") + Settings.getInstance().getName()) == 0 ){
+		if (FileUtil.countFiles(Settings.getInstance().getSetting(Settings.INPUT_LOCATION) + System.getProperty("file.separator") + Settings.getInstance().getServer().getFullname()) == 0 ){
 			LOGGER.info("No new PCAP files found, stop.");
 			return;
 		}
-		//start en close the metric manager from this thread, otherwise closing
-		//the connection to rabbitmq might cause hanging threads
+
 		MetricManager mm = MetricManager.getInstance();
 		Controller controller = null;
 		try{

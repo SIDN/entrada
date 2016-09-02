@@ -58,7 +58,7 @@ export ENTRADA_LOG_DIR="/var/log/entrada"
 export NAMESERVERS=`cd ${DATA_RSYNC_DIR}; ls -dm */ | tr '\n' ' ' |  tr ',' ';' | sed 's/[\/ ]//g'`
 
 #java
-export ENTRADA_JAR="pcap-to-parquet-0.0.3-jar-with-dependencies.jar"
+export ENTRADA_JAR="pcap-to-parquet-0.0.5-jar-with-dependencies.jar"
 
 #security if Kerberos is enabled, otherwise keep empty
 export KRB_USER=""

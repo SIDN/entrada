@@ -57,8 +57,10 @@ export ENTRADA_LOG_DIR="/var/log/entrada"
 #in the correct temporal order.
 export NAMESERVERS=`cd ${DATA_RSYNC_DIR}; ls -dm */ | tr '\n' ' ' |  tr ',' ';' | sed 's/[\/ ]//g'`
 
-#java
+#java lib jar
 export ENTRADA_JAR="pcap-to-parquet-0.0.3-jar-with-dependencies.jar"
+#start and max heap size for entrada pcap convertor
+export ENTRADA_HEAP_SIZE=4096m
 
 #security if Kerberos is enabled, otherwise keep empty
 export KRB_USER=""

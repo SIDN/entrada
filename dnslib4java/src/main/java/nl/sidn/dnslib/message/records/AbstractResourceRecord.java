@@ -89,8 +89,8 @@ public abstract class AbstractResourceRecord implements ResourceRecord, Serializ
 		rdLength = buffer.readUnsignedChar();
 	
 		rdata = readRdata(rdLength, buffer);
-		
 	}
+	
 	@Override
 	public void encode(NetworkData buffer) {
 		DNSStringUtil.writeName(getName(), buffer);

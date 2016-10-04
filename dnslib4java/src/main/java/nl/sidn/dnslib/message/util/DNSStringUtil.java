@@ -58,6 +58,7 @@ public class DNSStringUtil {
 	//max length of a rfc1035 character-string (excluding length byte)
 	private static int MAX_CHARACTER_STRING_LENGTH = 255;
 	
+	private static int MAX_POINTER_CHAIN_LENGTH = 10; //TODO: what is the optimal value?
 	/*
 	 
 	 	4.1.4. Message compression
@@ -129,7 +130,6 @@ public class DNSStringUtil {
 		}
 		
 		//TODO: return not support error
-		
 		return null;
 	}
 	
@@ -160,39 +160,53 @@ public class DNSStringUtil {
 				break;
 			}
 		}
-		
 		return qnameBuffer.toString();
 	}
 	
 	
 	public static String readCompressedName(NetworkData buffer) {
 
-		// go back one byte
-		buffer.setReaderIndex(buffer.getReaderIndex() - 1);
+		// save location in the stream (after reading the 2 (offset) bytes)
+		int currentPosition = buffer.getReaderIndex() + 1;
+		short length;
 
-		//read 16 bits
-		char offset = buffer.readUnsignedChar();
+		//protected against infinite loop (attack)
+		int maxLoop = 0;
+		do{
+			maxLoop++;
+			// go back one byte to read the 16bit offset as a char
+			buffer.setReaderIndex(buffer.getReaderIndex() - 1);
+						
+			if(maxLoop == MAX_POINTER_CHAIN_LENGTH ){
+				//protection against infinite loops
+				throw new DnsDecodeException("Illegal pointer chain size: " + maxLoop);
+			}
 
-		offset = (char) (offset ^ (1 << 14)); // flip bit 14 to 0
-		offset = (char) (offset ^ (1 << 15)); // flip bit 15 to 0
-
-		// save current location in the stream
-		int currentPosition = buffer.getReaderIndex();
+			//read 16 bits
+			char offset = buffer.readUnsignedChar();
 	
-		// goto the pointer location in the buffer
-		buffer.setReaderIndex(offset);
-		
-		/* read the uncompressed name at the offset this
-		 * name can also end with a compressed part.
-		 * this will cause the current method to be called again
-		 * which must therefore be reentrant.
-		 */
-		short length = buffer.readUnsignedByte();
-		String qName = readUncompressedName(length, buffer);
+			offset = (char) (offset ^ (1 << 14)); // flip bit 14 to 0
+			offset = (char) (offset ^ (1 << 15)); // flip bit 15 to 0
+	
+			// goto the pointer location in the buffer
+			buffer.setReaderIndex(offset);
+			
+			/* read the uncompressed name at the offset this
+			 * name can also end with a compressed part.
+			 * this will cause the current method to be called again
+			 * which must therefore be reentrant.
+			 */
+			length = buffer.readUnsignedByte();
+		}
+		while(isCompressedName((byte)length));
+	
+		//read the label
+		byte[] bytes =new byte[length];
+	    buffer.readBytes(bytes);
+	    String qName = new String(bytes);
 		
 		//go back to the location after the first pointer
         buffer.setReaderIndex(currentPosition);
-		
 		return qName;
 	}
 	

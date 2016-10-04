@@ -233,13 +233,10 @@ public class Message {
 
 		//skip 16bits with name
 		buffer.markReaderIndex();
-
-		//read the name so we kan get to the type bytes after the name
+		//read the name to get to the type bytes after the name
 		DNSStringUtil.readName(buffer);
 		
-		
 		//read 16 bits with type
-		
 		int type = buffer.readUnsignedChar();
 		
 		//go back bits to the start of the RR

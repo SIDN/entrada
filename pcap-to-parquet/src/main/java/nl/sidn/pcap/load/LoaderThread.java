@@ -213,8 +213,8 @@ public class LoaderThread extends AbstractStoppableThread {
 		long counter = 0;
 		for (Packet currentPacket : pcapReader) {
 			counter++;
-			if(counter % 10000 == 0){
-				LOGGER.debug("Loaded " + counter + " packets");
+			if(counter % 100000 == 0){
+				LOGGER.info("Loaded " + counter + " packets");
 			}
 			if(currentPacket != null && currentPacket.getIpVersion() != 0){
 				
@@ -447,7 +447,7 @@ public class LoaderThread extends AbstractStoppableThread {
 		fileCount++;
 		try {
 			File f = FileUtils.getFile(file);
-			LOGGER.info("Load data for server: " + current_server);
+			LOGGER.info("Load data for server: " + current_server.getFullname());
 			   
 		    FileInputStream fis = FileUtils.openInputStream(f);
 			GZIPInputStream gzip = new GZIPInputStream(fis);

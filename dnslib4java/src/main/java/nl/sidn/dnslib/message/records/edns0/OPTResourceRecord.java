@@ -110,14 +110,13 @@ public class OPTResourceRecord extends AbstractResourceRecord {
 	
 	private void loadOptions(NetworkData buffer){
 		if(rdLeng != buffer.bytesAvailable()){
-			LOGGER.info("******************** Incorrect edns rdata size");
+			LOGGER.info("Incorrect edns rdata size");
 			LOGGER.info("rdlength=" + (int)rdLeng + " and bytesavail:" + buffer.bytesAvailable());	
 			return;
 		}
 				
 		byte[] optionBytes = new byte[rdLeng];
 		buffer.readBytes(optionBytes);
-		//NetworkData opt = new NetworkData(readRdata(rdLeng, buffer));
 			
 		NetworkData opt = new NetworkData(optionBytes);
 		while(opt.isBytesAvailable()){

@@ -59,9 +59,10 @@ public class NameUtil {
 
 		if(parts != null && parts.length > 0){
 			if( parts.length == 1){
-				return new Domaininfo(parts[parts.length-1],parts.length);
+				//only 1 label present
+				return new Domaininfo(parts[0],1);
 			}
-			//all other
+			//all others have more than 1 label, get last 2
 			return new Domaininfo(parts[parts.length-2] + "." + parts[parts.length-1],parts.length);
 		}
 		

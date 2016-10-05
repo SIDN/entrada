@@ -184,10 +184,14 @@ public class DNSStringUtil {
 
 			//read 16 bits
 			char offset = buffer.readUnsignedChar();
-	
+			//clear the first 2 bits used to indicate compressen vs uncompressed label
 			offset = (char) (offset ^ (1 << 14)); // flip bit 14 to 0
 			offset = (char) (offset ^ (1 << 15)); // flip bit 15 to 0
 	
+			if((byte)offset >= (buffer.getReaderIndex() - 2)){
+				throw new DnsDecodeException("Message compression pointer offset higher than current index");
+			}
+			
 			// goto the pointer location in the buffer
 			buffer.setReaderIndex(offset);
 			

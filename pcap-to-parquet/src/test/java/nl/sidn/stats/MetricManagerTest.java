@@ -33,6 +33,7 @@ public class MetricManagerTest {
 	public void setup(){
 		ClassLoader classLoader = getClass().getClassLoader();
 		Settings.setPath(classLoader.getResource("test-settings.properties").getFile() );
+		Settings.getInstance().forServer("test-server");
 	}
 	
 	@Test

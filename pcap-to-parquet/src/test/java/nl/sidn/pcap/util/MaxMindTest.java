@@ -38,6 +38,7 @@ public class MaxMindTest {
 	public void setup(){
 		ClassLoader classLoader = getClass().getClassLoader();
 		Settings.setPath(classLoader.getResource("test-settings.properties").getFile() );
+		Settings.getInstance().setSetting(Settings.STATE_LOCATION, "/tmp/");
 		geo = new GeoLookupUtil();
 	}
 	

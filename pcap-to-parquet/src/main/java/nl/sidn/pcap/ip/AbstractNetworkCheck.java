@@ -91,13 +91,13 @@ public abstract class AbstractNetworkCheck{
 	}
 	
 	private void PreInit(File file){
-	//	try{
+		try{
 			init();
-//		}catch(Exception e){
-//			LOGGER.error("Error while processing resolver addresses",e);
-//			//stop here, do not write new file with partial data
-//			return;
-//		}
+		}catch(Exception e){
+			LOGGER.error("Error while processing resolver addresses",e);
+			//stop here, do not write new file with partial data
+			return;
+		}
 		if(subnets.size() > 0){
 			try {
 				writeToFile(file);

@@ -51,7 +51,8 @@ public final class OpenDNSResolverCheck extends AbstractNetworkCheck{
 		try {
 			doc = Jsoup.connect(url).get();
 		} catch (Exception e) {
-			throw new RuntimeException("Problem while getting OpenDNS resolvers url: " + url);
+			LOGGER.error("Problem while getting OpenDNS resolvers url: " + url);
+			return;
 		}
 
 		Element networktable = doc.getElementById("networks");
@@ -72,15 +73,12 @@ public final class OpenDNSResolverCheck extends AbstractNetworkCheck{
 						} catch (UnknownHostException e) {
 							LOGGER.error("Problem while adding OpenDNS resolver IP range: " + row.children() + e);
 						}
-					}else{
-						throw new RuntimeException("Invalid table layout OpenDNS resolvers url: " + url);
 					}
 				}
-			}else{
-				throw new RuntimeException("No OpenDNS resolvers found at url: " + url);
 			}
-		}else{
-			throw new RuntimeException("No OpenDNS resolvers found at url: " + url);
+		}
+		if(subnets.size() == 0){
+			LOGGER.error("No OpenDNS resolvers found at url: " + url);
 		}
 	}
 

@@ -55,7 +55,8 @@ public final class GoogleResolverCheck extends AbstractNetworkCheck {
 		try {
 			doc = Jsoup.connect(url).get();
 		} catch (Exception e) {
-			throw new RuntimeException("Problem while getting Google resolvers url: " + url);
+			LOGGER.error("Problem while getting Google resolvers url: " + url);
+			return;
 		}
 
 		Elements tags = doc.getElementsByTag("pre");
@@ -80,10 +81,10 @@ public final class GoogleResolverCheck extends AbstractNetworkCheck {
 			}
 			
 			if(subnets.size() == 0){
-				throw new RuntimeException("No Google resolvers found at url: " + url);
+				LOGGER.error("No Google resolvers found at url: " + url);
 			}
 		}else{
-			throw new RuntimeException("No Google resolvers found at url: " + url);
+			LOGGER.error("No Google resolvers found at url: " + url);
 		}
 	}
 

@@ -21,7 +21,6 @@
  */	
 package nl.sidn.pcap.ip;
 
-import java.io.IOException;
 import java.net.UnknownHostException;
 
 import nl.sidn.pcap.util.Settings;
@@ -51,9 +50,8 @@ public final class OpenDNSResolverCheck extends AbstractNetworkCheck{
 		Document doc = null;
 		try {
 			doc = Jsoup.connect(url).get();
-		} catch (IOException e) {
-			LOGGER.error("Problem while getting OpenDNS resolvers url: " + url);
-			return;
+		} catch (Exception e) {
+			throw new RuntimeException("Problem while getting OpenDNS resolvers url: " + url);
 		}
 
 		Element networktable = doc.getElementById("networks");
@@ -75,13 +73,14 @@ public final class OpenDNSResolverCheck extends AbstractNetworkCheck{
 							LOGGER.error("Problem while adding OpenDNS resolver IP range: " + row.children() + e);
 						}
 					}else{
-						LOGGER.error("Invalid table layout OpenDNS resolvers url: " + url);
-						return;
+						throw new RuntimeException("Invalid table layout OpenDNS resolvers url: " + url);
 					}
 				}
+			}else{
+				throw new RuntimeException("No OpenDNS resolvers found at url: " + url);
 			}
 		}else{
-			LOGGER.error("No OpenDNS resolvers found at url: " + url);
+			throw new RuntimeException("No OpenDNS resolvers found at url: " + url);
 		}
 	}
 

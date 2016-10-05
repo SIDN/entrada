@@ -66,8 +66,11 @@ public class DNSDecoder {
 			dnsMessage = new Message(nd, allowFaill);
 		} catch (Exception e) {
 			if(LOG.isDebugEnabled()){
-				LOG.debug("error decoding maybe corrupt packet: " + packet);
+				LOG.info("error decoding maybe corrupt packet: " + packet, e);
+			}else{
+				LOG.info("error decoding maybe corrupt packet: " + packet + " message: " + e.getMessage());
 			}
+				
 			dnsDecodeError++;
 		}
 		dnsMessage.setBytes(payload.length);

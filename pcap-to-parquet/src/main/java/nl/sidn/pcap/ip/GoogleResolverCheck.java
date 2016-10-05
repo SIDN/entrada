@@ -21,7 +21,6 @@
  */	
 package nl.sidn.pcap.ip;
 
-import java.io.IOException;
 import java.net.UnknownHostException;
 
 import nl.sidn.pcap.util.Settings;
@@ -55,15 +54,15 @@ public final class GoogleResolverCheck extends AbstractNetworkCheck {
 		Document doc = null;
 		try {
 			doc = Jsoup.connect(url).get();
-		} catch (IOException e) {
-			LOGGER.error("Problem while getting Google resolvers url: " + url);
-			return;
+		} catch (Exception e) {
+			throw new RuntimeException("Problem while getting Google resolvers url: " + url);
 		}
 
-		Elements codes = doc.getElementsByTag("code");
-		if(codes.size() > 0){
-			Element resolver = codes.get(0);
-			String[] ips = StringUtils.split(resolver.text(), '\n');
+		Elements tags = doc.getElementsByTag("pre");
+		if(tags.size() == 2){
+			Element resolvers = tags.get(0);
+			//Element resolver = codes.get(0);
+			String[] ips = StringUtils.split(resolvers.text(), '\n');
 			for(String ip: ips){
 				String[] parts = StringUtils.split(ip, ' ');
 				if(parts.length == 2){
@@ -79,8 +78,12 @@ public final class GoogleResolverCheck extends AbstractNetworkCheck {
 					}
 				}
 			}
+			
+			if(subnets.size() == 0){
+				throw new RuntimeException("No Google resolvers found at url: " + url);
+			}
 		}else{
-			LOGGER.error("No Google resolvers found at url: " + url);
+			throw new RuntimeException("No Google resolvers found at url: " + url);
 		}
 	}
 

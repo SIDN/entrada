@@ -129,8 +129,7 @@ public class LoaderThread extends AbstractStoppableThread {
 		//get the state from the previous run
 		loadState();
 		for (String file : inputFiles) {
-			createReader(file);
-			read();
+			read(file);
 			//flush expired packets after very file, avoid huge cache
 			purgeCache();
 			waitForEmptyQueue();
@@ -208,7 +207,8 @@ public class LoaderThread extends AbstractStoppableThread {
 		
 	}
 
-	protected void read() {
+	public void read(String file) {
+		createReader(file);
 		LOGGER.info("Start loading queue");
 		long counter = 0;
 		for (Packet currentPacket : pcapReader) {

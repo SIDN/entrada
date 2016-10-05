@@ -29,7 +29,6 @@ import nl.sidn.dnslib.exception.DnsDecodeException;
 import nl.sidn.dnslib.exception.DnsEncodeException;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.log4j.Logger;
 
 /**
  * DNS Label Types
@@ -100,9 +99,7 @@ public class DNSStringUtil {
 	 
 	 
 	 */
-	
-	private static final Logger LOGGER = Logger.getLogger(DNSStringUtil.class);
-	
+
 	private static byte UNCOMPRESSED_NAME_BIT_MASK = (byte)0x3f;         //0011 1111
 	private static byte COMPRESSED_NAME_BIT_MASK = (byte)0xc0;   		//1100 0000
 	
@@ -114,7 +111,6 @@ public class DNSStringUtil {
 	public static boolean isCompressedName(byte namePrefix){
 		return (namePrefix & COMPRESSED_NAME_BIT_MASK) == COMPRESSED_NAME_BIT_MASK;
 	}
-	
 	
 	public static String readName(NetworkData buffer){
 		short length = buffer.readUnsignedByte();
@@ -129,38 +125,37 @@ public class DNSStringUtil {
 			return readCompressedName(buffer) + ".";
 		}
 		
-		//TODO: return not support error
-		return null;
+		throw new DnsDecodeException("Unsupported label found");
 	}
 	
 
 	public static String readUncompressedName(short length, NetworkData buffer){
-		StringBuffer qnameBuffer = new StringBuffer();
+		StringBuilder qnameBuilder = new StringBuilder();
 		
 		//read the length of the first label
 		
 		while(length > 0){
-			if(qnameBuffer.length() > 0){
+			if(qnameBuilder.length() > 0){
 				//add the "." between labels
-				qnameBuffer.append(".");
+				qnameBuilder.append(".");
 			}
 			//read the label
 			byte[] bytes =new byte[length];
 	        buffer.readBytes(bytes);
-	        qnameBuffer.append(new String(bytes));
+	        qnameBuilder.append(new String(bytes));
 			
 			//read the length of the next label
 			length = buffer.readUnsignedByte();
 			
 			//check if the last label is a pointer
 			if(isCompressedName((byte)length)){
-				qnameBuffer.append(".");
-				qnameBuffer.append(readCompressedName(buffer));
+				qnameBuilder.append(".");
+				qnameBuilder.append(readCompressedName(buffer));
 				//the pointer is the last label, quit the loop
 				break;
 			}
 		}
-		return qnameBuffer.toString();
+		return qnameBuilder.toString();
 	}
 	
 	

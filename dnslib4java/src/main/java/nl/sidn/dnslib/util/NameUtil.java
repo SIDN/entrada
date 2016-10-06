@@ -21,6 +21,7 @@
  */	
 package nl.sidn.dnslib.util;
 
+import java.util.List;
 import java.util.regex.Pattern;
 
 import org.apache.commons.lang3.StringUtils;
@@ -47,6 +48,7 @@ public class NameUtil {
 		return null;
 	}
 	
+	
 	public static Domaininfo getDomain(String name){
 		if(name == null || name.length() == 0){
 			return new Domaininfo(null,0);
@@ -70,6 +72,47 @@ public class NameUtil {
 		
 	}
 	
+	public static Domaininfo getDomain(String name, List<DomainParent> parents){
+		//check if tld suffixes are loaded, if so use these
+		if(parents != null && parents.size() > 0){
+			return getDomainWithSuffixList(name, parents);
+		}
+		//no suffixes use, simple old method of assuming tld is 1st level
+		return getDomain(name);
+	}
+	
+	public static Domaininfo getDomainWithSuffixList(String name, List<DomainParent> parents){
+		if(name == null || name.length() == 0){
+			return new Domaininfo(null,0);
+		}
+		if(StringUtils.equals(name, ".")){
+			return new Domaininfo(name,0);
+		}
+		
+		String[] parts = StringUtils.split(name, ".");
+
+		if(parts != null && parts.length > 0){
+			if( parts.length == 1){
+				//only 1 label present
+				return new Domaininfo(parts[0],1);
+			}
+			//try to find a matching tld suffix
+			for(DomainParent parent : parents){
+				if(StringUtils.endsWith(name, parent.getMatch())){
+					//get the label before the tld which is the registred name.
+					return new Domaininfo(parts[parts.length-(parent.getLabels()+1)] + parent.getParent(),parts.length);
+				}
+			}
+
+			//unknown tld, assume 2nd level tld
+			return new Domaininfo(parts[parts.length-2] + "." + parts[parts.length-1],parts.length);
+		}
+		
+		return new Domaininfo(name,0);
+	}
+	
+
+	
 	public static boolean isFqdn(String domain){
 		return FQDN.matcher(domain).find();
 	}
@@ -90,6 +133,4 @@ public class NameUtil {
 		
 	}
 	
-
-
 }

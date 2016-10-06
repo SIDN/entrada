@@ -21,13 +21,16 @@
  */	
 package nl.sidn.dnslib.util;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.junit.Assert;
 import org.junit.Test;
 
 public class NameUtilTest {
 
 	@Test
-	public void get2ndLevel() {
+	public void tldIs2ndLevelTest() {
 		Assert.assertEquals("sidn.nl",NameUtil.getDomain("test.www.sidn.nl.").name);
 		Assert.assertEquals("sidn.nl", NameUtil.getDomain("www.sidn.nl.").name);
 		Assert.assertEquals("sidn.nl", NameUtil.getDomain(".sidn.nl.").name);
@@ -42,8 +45,20 @@ public class NameUtilTest {
 	}
 
 	@Test
-	public void get2ndLevelFromEmail() {
-		// email address
+	public void tldIs3rdLevelTest(){
+		List<DomainParent> parents = new ArrayList<>();
+		parents.add(new DomainParent(".sidn.test.nl.",".sidn.test.nl", 3));
+		
+		Assert.assertEquals("name.sidn.test.nl",NameUtil.getDomain("www.name.sidn.test.nl.",parents).name);
+		Assert.assertEquals("nu.nl",NameUtil.getDomain("www.nu.nl.",parents).name);
+		Assert.assertEquals("datumprikker.nl",NameUtil.getDomain("datumprikker.nl.",parents).name);
+		Assert.assertEquals("test.net",NameUtil.getDomain("www.test.net.",parents).name);
+		Assert.assertEquals("stroebarg.nl",NameUtil.getDomain("stroebarg.nl.",parents).name);
+	}
+	
+	@Test
+	public void emailAddress2ndLevelTest() {
+		// email address should not happen, but sometimes we do see these in the qname.
 		Assert.assertEquals("wullink@sidn.nl",NameUtil.getDomain("maarten.wullink@sidn.nl.").name);
 	}
 

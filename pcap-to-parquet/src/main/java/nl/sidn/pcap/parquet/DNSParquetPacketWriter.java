@@ -24,6 +24,7 @@ package nl.sidn.pcap.parquet;
 import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -39,6 +40,7 @@ import nl.sidn.dnslib.message.records.edns0.PingOption;
 import nl.sidn.dnslib.types.OpcodeType;
 import nl.sidn.dnslib.types.RcodeType;
 import nl.sidn.dnslib.types.ResourceRecordType;
+import nl.sidn.dnslib.util.DomainParent;
 import nl.sidn.dnslib.util.Domaininfo;
 import nl.sidn.dnslib.util.IPUtil;
 import nl.sidn.dnslib.util.NameUtil;
@@ -47,6 +49,7 @@ import nl.sidn.pcap.ip.GoogleResolverCheck;
 import nl.sidn.pcap.ip.OpenDNSResolverCheck;
 import nl.sidn.pcap.packet.Packet;
 import nl.sidn.pcap.support.PacketCombination;
+import nl.sidn.pcap.util.Settings;
 import nl.sidn.stats.MetricManager;
 
 import org.apache.avro.generic.GenericRecord;
@@ -80,10 +83,9 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 	
 	public DNSParquetPacketWriter(String repoName, String schema) {
 		super(repoName,schema);
-		 metricManager = MetricManager.getInstance();
+		metricManager = MetricManager.getInstance();
 	}
 
-	
 	private Question lookupQuestion(Message reqMessage, Message respMessage){
 		if(reqMessage != null && reqMessage.getQuestions().size() > 0){
 			return reqMessage.getQuestions().get(0);
@@ -146,7 +148,7 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 
 	    String normalizedQname =  q == null? "": filter(q.getqName());
 	    normalizedQname = StringUtils.lowerCase(normalizedQname);	    
-	    Domaininfo domaininfo = NameUtil.getDomain(normalizedQname);
+	    Domaininfo domaininfo = NameUtil.getDomain(normalizedQname, Settings.getTldSuffixes());
 	    //check to see it a response was found, if not then save -1 value
 	    //otherwise use the rcode returned by the server in the response.
 	    //no response might be caused by rate limiting

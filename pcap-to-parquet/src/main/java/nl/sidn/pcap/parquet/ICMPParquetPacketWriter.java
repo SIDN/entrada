@@ -35,6 +35,7 @@ import nl.sidn.pcap.packet.DNSPacket;
 import nl.sidn.pcap.packet.ICMPPacket;
 import nl.sidn.pcap.packet.Packet;
 import nl.sidn.pcap.support.PacketCombination;
+import nl.sidn.pcap.util.Settings;
 import nl.sidn.stats.MetricManager;
 
 import org.apache.avro.generic.GenericRecord;
@@ -102,7 +103,7 @@ public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
 			dnsResponseHdr = dnsResponseMessage.getHeader();
 		    normalizedQname =  q == null? "": filter(q.getqName());
 		    normalizedQname = StringUtils.lowerCase(normalizedQname);    
-		    domaininfo = NameUtil.getDomain(normalizedQname);
+		    domaininfo = NameUtil.getDomain(normalizedQname, Settings.getTldSuffixes());
 		}
 
 	    //values from query now.

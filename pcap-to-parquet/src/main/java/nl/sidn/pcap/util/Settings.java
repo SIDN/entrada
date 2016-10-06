@@ -24,7 +24,11 @@ package nl.sidn.pcap.util;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
+
+import nl.sidn.dnslib.util.DomainParent;
 
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -56,11 +60,16 @@ public class Settings {
 	public static String RESOLVER_LIST_GOOGLE = "resolver.list.google";
 	public static String RESOLVER_LIST_OPENDNS = "resolver.list.opendns";
 	
+	public static String TLD_SUFFIX = "tld.suffix";
+	
+	
 	private static Properties props = null;
 	private static Settings _instance = null;
 	
 	private static String path = null;
 	private ServerInfo serverInfo = null;
+	
+	private static List<DomainParent> tldSuffixes = new ArrayList<>();
 	
 	private Settings(String path){
 		init(path);
@@ -95,7 +104,8 @@ public class Settings {
 				}
 			}
 		}
-	 
+		//do other init work
+		createTldSuffixes();
 	  }
 	
 	public String getSetting(String key){
@@ -174,7 +184,41 @@ public class Settings {
 		
 	}
 	
-	
+	private static void createTldSuffixes() {
+		//determine tld suffixes to use
+		String value = props.getProperty(Settings.TLD_SUFFIX);
+		if(StringUtils.isEmpty(value)){
+			//no value found, do nothing
+			return;
+		}
+		
+		String[] tlds = StringUtils.split(value, ",");
+		//create list of DomainParents
+		for (int i = 0; i < tlds.length; i++) {
+			String parent = tlds[i];
+			if(parent == null){
+				//skip nulls
+				continue;
+			}
+			//start and end with a dot.
+			if(!StringUtils.startsWith(parent, ".")){
+				parent = "." + parent;
+			}
+			
+			int labelCount = StringUtils.split(parent).length;
+			if(StringUtils.endsWith(parent, ".")){
+				//remove last dot (will become the used tld suffix
+				tldSuffixes.add(new DomainParent(parent,StringUtils.removeEnd(parent, "."), labelCount));
+			}else{
+				tldSuffixes.add(new DomainParent(parent + ".",parent,labelCount));
+			}
+		}
+		
+	}
+
+	public static List<DomainParent> getTldSuffixes() {
+		return tldSuffixes;
+	}
 	
 	
 }

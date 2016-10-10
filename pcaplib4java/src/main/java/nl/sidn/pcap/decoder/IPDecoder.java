@@ -165,12 +165,18 @@ public class IPDecoder{
 						nl.sidn.pcap.packet.DatagramPayload prev = null;
 						for (nl.sidn.pcap.packet.DatagramPayload datagramPayload : datagramPayloads) {
 							if (prev == null && datagramPayload.getOffset() != 0) {
-								LOG.warn("Datagram chain not starting at 0. Probably received packets out-of-order. Can't reassemble this packet.");
-								break;
+								if(LOG.isDebugEnabled()){
+									LOG.debug("Datagram chain not starting at 0. Probably received packets out-of-order. Can't reassemble this packet.");
+								}
+								//do not even try to reasemble the data, probably corrupt packets.
+								return new byte[0];
 							}
 							if (prev != null && !datagramPayload.linked(prev)) {
-								LOG.warn("Broken datagram chain between " + datagramPayload + " and " + prev + ". Can't reassemble this packet.");
-								break;
+								if(LOG.isDebugEnabled()){
+									LOG.debug("Broken datagram chain between " + datagramPayload + " and " + prev + ". Can't reassemble this packet.");
+								}
+								//do not even try to reasemble the data, probably corrupt packets.
+								return new byte[0];
 							}
 							reassmbledPacketData = Bytes.concat(reassmbledPacketData, datagramPayload.getPayload());
 							reassembledFragments++;

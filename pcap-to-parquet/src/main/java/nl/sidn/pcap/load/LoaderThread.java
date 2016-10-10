@@ -99,11 +99,7 @@ public class LoaderThread extends AbstractStoppableThread {
 	//counter when no request query can be found for a response
 	private int noQueryFoundCounter = 0;
 	
-	//max lifetime for packets
-	//NOTE: the packets are processed in batches 1 batch (pcap file) per 5 minutes
-	//this will cause the the packets to timeout every 2nd pcap file.
-	//this should not be a problem as it is not expected that a
-	//packet from pcap 1 will get a response in pcap 3
+	//max lifetime for cached packets, in milliseconds (configured in minutes)
 	private int cacheTimeout;
 
 	public LoaderThread(BlockingQueue<PacketCombination> sharedQueue, String inputDir, String outputDir, String stateDir){
@@ -130,7 +126,7 @@ public class LoaderThread extends AbstractStoppableThread {
 		loadState();
 		for (String file : inputFiles) {
 			read(file);
-			//flush expired packets after very file, avoid huge cache
+			//flush expired packets after every file, to avoid a cache explosion
 			purgeCache();
 			waitForEmptyQueue();
 			archiveFile(file);
@@ -418,7 +414,8 @@ public class LoaderThread extends AbstractStoppableThread {
 		
 		while(iter.hasNext()){
 			RequestKey key = iter.next();
-			if(key.getTime() < now-cacheTimeout){
+			//add the expiration time to the key and see if this leads to a time which is after the current time.
+			if((key.getTime() + cacheTimeout) <= now){
 				//remove expired request;
 				MessageWrapper mw =_requestCache.get(key);
 				iter.remove();				

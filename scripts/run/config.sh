@@ -47,6 +47,9 @@ export DATA_RSYNC_DIR="/home/entrada/captures"
 export DATA_DIR="/home/entrada/pcap"
 #number of days to keep old pcap files
 export PCAP_DAYS_TO_KEEP=10
+#remove input pcap files from original location after they are processed 
+#if you are not using rsync to remove them then set this option to true.
+export DELETE_INPUT_PCAP_FILES=false
 
 #Log location
 export ENTRADA_LOG_DIR="/var/log/entrada"

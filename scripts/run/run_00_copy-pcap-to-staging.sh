@@ -94,6 +94,10 @@ do
     then
         echo "[$(date)] : cp $f -> $OUTPUT_DIR"
         cp $f $OUTPUT_DIR && count=$((count+1)) && echo $f >> $HISTORY_FILE
+        if [ "$DELETE_INPUT_PCAP_FILES" = true ] ; then
+            echo "[$(date)] : rm $f"
+            rm $f
+        fi
     fi
 done
 echo "[$(date)] : end, copied $count files."

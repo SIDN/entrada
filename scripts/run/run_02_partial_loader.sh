@@ -230,7 +230,7 @@ then
         fi
      done 
 
-     echo "[$(date)] :detected partition: $p_year/p_month/p_day" 
+     echo "[$(date)] :detected partition: $p_year/$p_month/$p_day" 
 
      if [ -z "$p_year" ] || [ -z "$p_month" ] || [ -z "$p_day" ]
      then

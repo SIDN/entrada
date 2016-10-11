@@ -31,8 +31,6 @@ import javax.json.JsonObjectBuilder;
 import nl.sidn.dnslib.exception.DnsDecodeException;
 import nl.sidn.dnslib.message.util.NetworkData;
 
-import org.apache.log4j.Logger;
-
 /**
  * http://tools.ietf.org/html/rfc1876
  * 
@@ -41,8 +39,6 @@ import org.apache.log4j.Logger;
  */
 
 public class LOCResourceRecord extends AbstractResourceRecord {
-
-	private static final Logger LOGGER = Logger.getLogger(LOCResourceRecord.class);
 
 	private static NumberFormat w2, w3;
 

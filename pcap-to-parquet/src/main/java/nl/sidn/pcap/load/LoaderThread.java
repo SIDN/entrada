@@ -72,6 +72,7 @@ public class LoaderThread extends AbstractStoppableThread {
 	private static final Logger LOGGER = LoggerFactory.getLogger(LoaderThread.class);
 	
 	private static String DECODER_STATE_FILE = "pcap-decoder-state";
+	private static int DEFAULT_PCAP_READER_BUFFER_SIZE = 65536;
 	
 	private PcapReader pcapReader;
 	
@@ -205,6 +206,7 @@ public class LoaderThread extends AbstractStoppableThread {
 
 	public void read(String file) {
 		createReader(file);
+		long readStart = System.currentTimeMillis();
 		LOGGER.info("Start loading queue");
 		long counter = 0;
 		for (Packet currentPacket : pcapReader) {
@@ -289,6 +291,7 @@ public class LoaderThread extends AbstractStoppableThread {
 				} //end of dns packet
 			}
 		}
+		LOGGER.info("Processing time: " + (System.currentTimeMillis()-readStart) + "ms" );
 		if(LOGGER.isDebugEnabled()){
 			LOGGER.debug("Done with decoding, start cleanup");
 		}
@@ -360,6 +363,7 @@ public class LoaderThread extends AbstractStoppableThread {
 		
 	}
 	
+	@SuppressWarnings("unchecked")
 	private void loadState(){
 		Kryo kryo = new Kryo();
 		String file = createStateFileName();
@@ -447,7 +451,13 @@ public class LoaderThread extends AbstractStoppableThread {
 			LOGGER.info("Load data for server: " + current_server.getFullname());
 			   
 		    FileInputStream fis = FileUtils.openInputStream(f);
-			GZIPInputStream gzip = new GZIPInputStream(fis);
+		    int bufSize = Settings.getInstance().getIntSetting(Settings.BUFFER_PCAP_READER);
+		    //sanity check
+		    if(bufSize <= 512){
+		    	//use default
+		    	bufSize = DEFAULT_PCAP_READER_BUFFER_SIZE; 
+		    }
+			GZIPInputStream gzip = new GZIPInputStream(fis,bufSize);
 		    dis = new DataInputStream(gzip);
 			pcapReader.init(dis);
 		} catch (IOException e) {

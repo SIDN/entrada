@@ -61,6 +61,7 @@ public class Settings {
 	public static String RESOLVER_LIST_OPENDNS = "resolver.list.opendns";
 	
 	public static String TLD_SUFFIX = "tld.suffix";
+	public static String BUFFER_PCAP_READER = "buffer.pcap.reader";
 	
 	
 	private static Properties props = null;

@@ -24,7 +24,6 @@ package nl.sidn.pcap.parquet;
 import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -40,7 +39,6 @@ import nl.sidn.dnslib.message.records.edns0.PingOption;
 import nl.sidn.dnslib.types.OpcodeType;
 import nl.sidn.dnslib.types.RcodeType;
 import nl.sidn.dnslib.types.ResourceRecordType;
-import nl.sidn.dnslib.util.DomainParent;
 import nl.sidn.dnslib.util.Domaininfo;
 import nl.sidn.dnslib.util.IPUtil;
 import nl.sidn.dnslib.util.NameUtil;

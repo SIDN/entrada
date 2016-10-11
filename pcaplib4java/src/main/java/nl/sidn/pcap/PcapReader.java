@@ -67,7 +67,6 @@ public class PcapReader implements Iterable<Packet> {
 	public static final int DNS_PORT = 53;
 	public static final long MAGIC_NUMBER = 0xA1B2C3D4;
 	public static final int HEADER_SIZE = 24;
-	public static final int PCAP_HEADER_SNAPLEN_OFFSET = 16;
 	public static final int PCAP_HEADER_LINKTYPE_OFFSET = 20;
 	public static final int PACKET_HEADER_SIZE = 16;
 	public static final int TIMESTAMP_OFFSET = 0;
@@ -92,7 +91,6 @@ public class PcapReader implements Iterable<Packet> {
 	private DataInputStream is;
 	private Iterator<Packet> iterator;
 	private LinkType linkType;
-	private long snapLen;
 	private boolean caughtEOF = false;
     // MathContext for BigDecimal to preserve only 16 decimal digits
     private MathContext ts_mc = new MathContext(16);
@@ -130,8 +128,6 @@ public class PcapReader implements Iterable<Packet> {
 
 		if (!validateMagicNumber(pcapHeader))
 			throw new IOException("Not a PCAP file (Couldn't find magic number)");
-
-		snapLen = PcapReaderUtil.convertInt(pcapHeader, PCAP_HEADER_SNAPLEN_OFFSET, reverseHeaderByteOrder);
 
 		long linkTypeVal = PcapReaderUtil.convertInt(pcapHeader, PCAP_HEADER_LINKTYPE_OFFSET, reverseHeaderByteOrder);
 		if ((linkType = getLinkType(linkTypeVal)) == null)

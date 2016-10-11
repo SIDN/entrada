@@ -36,5 +36,6 @@ public class MainTest {
 				"/Users/maarten/sidn/development/tmp/pcap/input","/Users/maarten/sidn/development/tmp/pcap/parquet", "/Users/maarten/sidn/development/tmp"};
 		main.run(args);
 	}
+
 	
 }

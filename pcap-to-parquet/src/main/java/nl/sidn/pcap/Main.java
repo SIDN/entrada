@@ -38,7 +38,6 @@ public class Main {
 	
 	public void run(String[] args){
 		long start = System.currentTimeMillis();
-		
 		debug(args);
 		if(args == null || args.length < 5){
 			throw new RuntimeException("Incorrect number of parameters found.");

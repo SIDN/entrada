@@ -34,8 +34,6 @@ import nl.sidn.dnslib.message.util.DNSStringUtil;
 import nl.sidn.dnslib.message.util.NetworkData;
 import nl.sidn.dnslib.types.TypeMap;
 
-import org.apache.log4j.Logger;
-
 public class NSECResourceRecord extends AbstractResourceRecord {
 	
 	private static final long serialVersionUID = 1L;

@@ -178,7 +178,7 @@ public abstract class AbstractParquetPacketWriter {
 	}
 	
 	protected void showStatus(){
-		LOGGER.info("---------- " + this.getClass().getSimpleName() +" Parquet writer status --------------------");
+		LOGGER.info("---------- " + this.getClass().getSuperclass().getSimpleName() +" Parquet writer status --------------------");
 		LOGGER.info(packetCounter + " packets written to parquet file.");
 		LOGGER.info("-----------------------------------------------------");
 	}

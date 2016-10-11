@@ -37,12 +37,9 @@ import nl.sidn.dnslib.message.util.DNSStringUtil;
 import nl.sidn.dnslib.message.util.NetworkData;
 import nl.sidn.dnslib.types.ResourceRecordType;
 
-import org.apache.log4j.Logger;
-
 
 public class Message {
 	
-	private static final Logger LOGGER = Logger.getLogger(Message.class);
 	//size of msg in bytes
 	private int bytes;
 	private Header header;

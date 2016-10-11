@@ -33,7 +33,6 @@ import nl.sidn.dnslib.types.AlgorithmType;
 import nl.sidn.dnslib.types.DigestType;
 
 import org.apache.commons.codec.binary.Hex;
-import org.apache.log4j.Logger;
 
 
 public class DSResourceRecord extends AbstractResourceRecord {

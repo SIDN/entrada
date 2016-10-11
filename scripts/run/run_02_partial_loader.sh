@@ -45,21 +45,7 @@ export HADOOP_USER_NAME=impala
 NAMESERVER=$1
 CONFIG_FILE=$2
 
-#See what day we need to load pcap files for.
-if [ -z "$3" ]
-then
-  #get date for today
-  DAY=$(date +"%-d")
-  YEAR=$(date +"%Y")
-  MONTH=$(date +"%-m")
-else
-  #get date for parameter date, fomat should be YYYY-MM-DD
-  DAY=$(date -d "$3" +"%-d")
-  YEAR=$(date -d "$3" +"%Y")
-  MONTH=$(date -d "$3" +"%-m")
-fi
-
-echo "[$(date)] :Start loader for $NAMESERVER with config $CONFIG_FILE with date $YEAR-$MONTH-$DAY"
+echo "[$(date)] :Start loader for $NAMESERVER with config $CONFIG_FILE"
 
 #kitesdk naming workaround
 #replace "." by an "_" because kitesdk does not support dots in the namespace
@@ -180,10 +166,7 @@ then
         fi
      done 
 
-     echo "found year -> $p_year" 
-     echo "found month -> $p_month" 
-     echo "found day -> $p_day" 
-     echo "found server -> $p_server" 
+     echo "[$(date)] :detected partition: $p_year/$p_month/$p_day/$p_server" 
 
      if [ -z "$p_year" ] || [ -z "$p_month" ] || [ -z "$p_day" ] || [ -z "$p_server" ]
      then
@@ -199,7 +182,7 @@ then
 
         if  [[ $isPartitioned -eq  0 ]]
         then
-          echo "[$(date)] :Create Impala partition for year=$p_year , month=$p_month and day=$p_day ans server=p_server"
+          echo "[$(date)] :Create Impala partition for year=$p_year,month=$p_month,day=$p_day,server=$p_server"
           impala-shell -c --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_DNS_STAGING_TABLE add partition (year=$p_year,month=$p_month,day=$p_day,server=\"$p_server\");"
           if [ $? -ne 0 ]
           then
@@ -247,9 +230,7 @@ then
         fi
      done 
 
-     echo "found year -> $p_year" 
-     echo "found month -> $p_month" 
-     echo "found day -> $p_day" 
+     echo "[$(date)] :detected partition: $p_year/p_month/p_day" 
 
      if [ -z "$p_year" ] || [ -z "$p_month" ] || [ -z "$p_day" ]
      then
@@ -257,14 +238,14 @@ then
      else
         #make sure the permissions are set ok
         hdfs dfs -chown -R impala:hive $HDFS_ICMP_STAGING/year=$p_year/month=$p_month/day=$p_day
-        
+
         echo "create new impala partition"
         #check if partition exists
         isPartitioned=$(impala-shell -B --quiet  -i $IMPALA_NODE -q "select count(1) from $IMPALA_ICMP_STAGING_TABLE WHERE year=$p_year and month=$p_month and day=$p_day;" )
         #create new impala partition.
         if  [[ $isPartitioned -eq  0 ]]
         then
-           echo "[$(date)] :Create Impala partition for year=$p_year , month=$p_month and day=$p_day"
+           echo "[$(date)] :Create Impala partition for year=$p_year,month=$p_month,day=$p_day"
            impala-shell -c --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_ICMP_STAGING_TABLE add partition (year=$p_year,month=$p_month,day=$p_day);"
            if [ $? -ne 0 ]
            then

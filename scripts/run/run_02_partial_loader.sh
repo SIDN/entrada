@@ -157,26 +157,60 @@ then
    cd dnsdata
    remove_zeroes
 
-   #check if partition exists
-   isPartitioned=$(impala-shell -B --quiet -i $IMPALA_NODE -q "select count(1) from $IMPALA_DNS_STAGING_TABLE where year=$YEAR and month=$MONTH and day=$DAY and server=\"$NAMESERVER\";" )
-
    echo "[$(date)] :upload the parquet files to hdfs $HDFS_DNS_STAGING"
+   #set the hdfs blocksize to 256mb
    hdfs dfs -D dfs.block.size=268435456 -put year\=* $HDFS_DNS_STAGING
-   #make sure the permissions are set ok
-   hdfs dfs -chown -R impala:hive $HDFS_DNS_STAGING/year\=$YEAR/month\=$MONTH/day\=$DAY
+  
+   for f in $( find . -type d | grep server ); do
+     echo "process partition: $f"
+     p_year=
+     p_month=
+     p_day=
+     p_server=
 
-   if  [[ $isPartitioned -eq  0 ]]
-   then
-      echo "[$(date)] :Create Impala partition for year=$YEAR , month=$MONTH and day=$DAY"
-      impala-shell -c --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_DNS_STAGING_TABLE add partition (year=$YEAR,month=$MONTH,day=$DAY,server=\"$NAMESERVER\");"
-      if [ $? -ne 0 ]
-      then
-        #the partition probably already exists
-        echo "[$(date)] :Adding partition to table $IMPALA_DNS_STAGING_TABLE failed"
-      fi
-   else
-     echo "[$(date)] :Partition for $YEAR-$MONTH-$DAY already exists"
-   fi
+     for part in $(echo $f | tr "/" " ") ; do
+        if [[ $part == year=* ]]; then
+           p_year=$(echo $part | cut -d= -f 2)
+        elif [[ $part == month=* ]]; then
+           p_month=$(echo $part | cut -d= -f 2)
+        elif [[ $part == day=* ]]; then
+           p_day=$(echo $part | cut -d= -f 2)
+        elif [[ $part == server=* ]]; then
+           p_server=$(echo $part | cut -d= -f 2)
+        fi
+     done 
+
+     echo "found year -> $p_year" 
+     echo "found month -> $p_month" 
+     echo "found day -> $p_day" 
+     echo "found server -> $p_server" 
+
+     if [ -z "$p_year" ] || [ -z "$p_month" ] || [ -z "$p_day" ] || [ -z "$p_server" ]
+     then
+       echo "1 or more var null, do not create partition"
+     else
+        #make sure the permissions are set ok
+        hdfs dfs -chown -R impala:hive $HDFS_DNS_STAGING/year\=$p_year/month\=$p_month/day\=$p_day
+
+        echo "create new impala partition"
+        #create new impala partition.
+        #check if partition exists
+        isPartitioned=$(impala-shell -B --quiet -i $IMPALA_NODE -q "select count(1) from $IMPALA_DNS_STAGING_TABLE where year=$p_year and month=$p_month and day=$p_day and server=\"$p_server\";" )
+
+        if  [[ $isPartitioned -eq  0 ]]
+        then
+          echo "[$(date)] :Create Impala partition for year=$p_year , month=$p_month and day=$p_day ans server=p_server"
+          impala-shell -c --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_DNS_STAGING_TABLE add partition (year=$p_year,month=$p_month,day=$p_day,server=\"$p_server\");"
+          if [ $? -ne 0 ]
+          then
+            #the partition probably already exists
+            echo "[$(date)] :Adding partition to table $IMPALA_DNS_STAGING_TABLE failed"
+          fi
+       else
+         echo "[$(date)] :Partition for $p_year/$p_month/$p_day/$p_server already exists"
+       fi
+    fi
+   done
 
    echo "[$(date)] :Issue refresh"
    impala-shell --quiet -i $IMPALA_NODE --quiet -q "refresh $IMPALA_DNS_STAGING_TABLE;"
@@ -194,26 +228,56 @@ then
    cd ../icmpdata
    remove_zeroes
 
-   #check if partition exists
-   isPartitioned=$(impala-shell -B --quiet  -i $IMPALA_NODE -q "select count(1) from $IMPALA_ICMP_STAGING_TABLE where day=$DAY;" )
-
    echo "[$(date)] :upload the parquet files to hdfs $HDFS_ICMP_STAGING"
    hdfs dfs -D dfs.block.size=268435456 -put year\=* $HDFS_ICMP_STAGING
-   #make sure the permissions are set ok
-   hdfs dfs -chown -R impala:hive $HDFS_ICMP_STAGING/year=$YEAR/month=$MONTH/day=$DAY
+   
+   for f in $( find . -type d | grep server ); do
+     echo "process partition: $f"
+     p_year=
+     p_month=
+     p_day=
 
-   if  [[ $isPartitioned -eq  0 ]]
-   then
-      echo "[$(date)] :Create Impala partition for year=$YEAR , month=$MONTH and day=$DAY"
-      impala-shell -c --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_ICMP_STAGING_TABLE add partition (year=$YEAR,month=$MONTH,day=$DAY);"
-      if [ $? -ne 0 ]
-      then
-        #the partition probably already exists
-        echo "[$(date)] :Adding partition to table $IMPALA_ICMP_STAGING_TABLE failed"
-      fi
-   else
-     echo "[$(date)] :Partition for $YEAR-$MONTH-$DAY already exists"
-   fi
+     for part in $(echo $f | tr "/" " ") ; do
+        if [[ $part == year=* ]]; then
+           p_year=$(echo $part | cut -d= -f 2)
+        elif [[ $part == month=* ]]; then
+           p_month=$(echo $part | cut -d= -f 2)
+        elif [[ $part == day=* ]]; then
+           p_day=$(echo $part | cut -d= -f 2)
+        fi
+     done 
+
+     echo "found year -> $p_year" 
+     echo "found month -> $p_month" 
+     echo "found day -> $p_day" 
+
+     if [ -z "$p_year" ] || [ -z "$p_month" ] || [ -z "$p_day" ]
+     then
+       echo "1 or more var null, do not create partition"
+     else
+        #make sure the permissions are set ok
+        hdfs dfs -chown -R impala:hive $HDFS_ICMP_STAGING/year=$p_year/month=$p_month/day=$p_day
+        
+        echo "create new impala partition"
+        #check if partition exists
+        isPartitioned=$(impala-shell -B --quiet  -i $IMPALA_NODE -q "select count(1) from $IMPALA_ICMP_STAGING_TABLE WHERE year=$p_year and month=$p_month and day=$p_day;" )
+        #create new impala partition.
+        if  [[ $isPartitioned -eq  0 ]]
+        then
+           echo "[$(date)] :Create Impala partition for year=$p_year , month=$p_month and day=$p_day"
+           impala-shell -c --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_ICMP_STAGING_TABLE add partition (year=$p_year,month=$p_month,day=$p_day);"
+           if [ $? -ne 0 ]
+           then
+             #the partition probably already exists
+             echo "[$(date)] :Adding partition to table $IMPALA_ICMP_STAGING_TABLE failed"
+           fi
+        else
+           echo "[$(date)] :Partition for $p_year/$p_month/$p_day already exists"
+        fi   
+     fi
+   done
+
+   
    echo "[$(date)] :Issue refresh"
    impala-shell --quiet -i $IMPALA_NODE --quiet -q "refresh $IMPALA_ICMP_STAGING_TABLE;"
    if [ $? -ne 0 ]

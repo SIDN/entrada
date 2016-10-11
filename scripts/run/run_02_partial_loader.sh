@@ -214,7 +214,7 @@ then
    echo "[$(date)] :upload the parquet files to hdfs $HDFS_ICMP_STAGING"
    hdfs dfs -D dfs.block.size=268435456 -put year\=* $HDFS_ICMP_STAGING
    
-   for f in $( find . -type d | grep server ); do
+   for f in $( find . -type d | grep day ); do
      echo "process partition: $f"
      p_year=
      p_month=

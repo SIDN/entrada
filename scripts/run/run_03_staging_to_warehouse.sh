@@ -78,7 +78,7 @@ do
          edns_client_subnet_country,
          labels,res_len,time_micro,resp_frag,proc_time,is_google,is_opendns,
          dns_res_len,server_location, year,month,day,server
-         from $IMPALA_DNS_STAGING_TABLE where year=$year and month=$month and day=$day and server=$server;"
+         from $IMPALA_DNS_STAGING_TABLE where year=$year and month=$month and day=$day and server=\"$server\";"
 
     if [ $? -ne 0 ]
     then

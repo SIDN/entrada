@@ -146,6 +146,8 @@ then
    echo "[$(date)] :upload the parquet files to hdfs $HDFS_DNS_STAGING"
    #set the hdfs blocksize to 256mb
    hdfs dfs -D dfs.block.size=268435456 -put year\=* $HDFS_DNS_STAGING
+   #make sure the permissions are set ok
+   hdfs dfs -chown -R impala:hive $HDFS_DNS_STAGING/
   
    for f in $( find . -type d | grep server ); do
      echo "process partition: $f"
@@ -172,11 +174,6 @@ then
      then
        echo "1 or more var null, do not create partition"
      else
-        #make sure the permissions are set ok
-        hdfs dfs -chown -R impala:hive $HDFS_DNS_STAGING/year\=$p_year/month\=$p_month/day\=$p_day
-
-        echo "create new impala partition"
-        #create new impala partition.
         #check if partition exists
         isPartitioned=$(impala-shell -B --quiet -i $IMPALA_NODE -q "select count(1) from $IMPALA_DNS_STAGING_TABLE where year=$p_year and month=$p_month and day=$p_day and server=\"$p_server\";" )
 
@@ -213,6 +210,8 @@ then
 
    echo "[$(date)] :upload the parquet files to hdfs $HDFS_ICMP_STAGING"
    hdfs dfs -D dfs.block.size=268435456 -put year\=* $HDFS_ICMP_STAGING
+   #make sure the permissions are set ok
+   hdfs dfs -chown -R impala:hive $HDFS_ICMP_STAGING/
    
    for f in $( find . -type d | grep day ); do
      echo "process partition: $f"
@@ -236,10 +235,6 @@ then
      then
        echo "1 or more var null, do not create partition"
      else
-        #make sure the permissions are set ok
-        hdfs dfs -chown -R impala:hive $HDFS_ICMP_STAGING/year=$p_year/month=$p_month/day=$p_day
-
-        echo "create new impala partition"
         #check if partition exists
         isPartitioned=$(impala-shell -B --quiet  -i $IMPALA_NODE -q "select count(1) from $IMPALA_ICMP_STAGING_TABLE WHERE year=$p_year and month=$p_month and day=$p_day;" )
         #create new impala partition.

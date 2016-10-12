@@ -51,7 +51,15 @@ runasImpala
 #### DNS data section
 ####
 
-for partition in $(impala-shell -i $IMPALA_NODE -q "select year,month,day,server from $IMPALA_DNS_STAGING_TABLE group by year,month,day,server order by year,month,day,server desc;" --output_delimiter=, --quiet -k --delimited)
+#get date in utc
+current_date=$(date -u "+%Y%m%d")
+
+#Data is beeing appended to the partition of this day, only process older partitions 
+for partition in $(impala-shell -i $IMPALA_NODE -q "select year,month,day,server 
+                    from $IMPALA_DNS_STAGING_TABLE 
+                    where (concat(cast(year as string),lpad(cast(month as string),2,\"0\"),lpad(cast(day as string),2,\"0\"))) < \"$current_date\"
+                    group by year,month,day,server
+                    order by year,month,day,server desc;" --output_delimiter=, --quiet -k --delimited)
 do
     year=$(echo $partition | cut -d, -f 1)
     month=$(echo $partition | cut -d, -f 2)
@@ -114,7 +122,12 @@ impala-shell -c --quiet -i $IMPALA_NODE -q "COMPUTE INCREMENTAL STATS $IMPALA_DN
 #### ICMP data section
 ####
 
-for partition in $(impala-shell -i $IMPALA_NODE -q "select year,month,day from $IMPALA_ICMP_STAGING_TABLE group by year,month,day order by year,month,day desc;" --output_delimiter=, --quiet -k --delimited)
+#Data is beeing appended to the partition of this day, only process older partitions 
+for partition in $(impala-shell -i $IMPALA_NODE -q "select year,month,day
+                   from $IMPALA_ICMP_STAGING_TABLE
+                   where (concat(cast(year as string),lpad(cast(month as string),2,\"0\"),lpad(cast(day as string),2,\"0\"))) < \"$current_date\"
+                   group by year,month,day
+                   order by year,month,day desc;" --output_delimiter=, --quiet -k --delimited)
 do
     year=$(echo $partition | cut -d, -f 1)
     month=$(echo $partition | cut -d, -f 2)

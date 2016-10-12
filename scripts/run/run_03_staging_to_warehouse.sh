@@ -87,10 +87,6 @@ do
         exit 1
     fi
 
-    #get new rows count
-    rows=$(impala-shell --quiet -i $IMPALA_NODE -q "select count(1) from $IMPALA_DNS_DWH_TABLE where year=$year and month=$month and day=$day and server=$server;" --quiet -B)
-    echo "[$(date)] : added $rows new rows to $IMPALA_DNS_DWH_TABLE"
-
     #drop partition from the staging table (unlink parquet files)
     echo "[$(date)] : drop $IMPALA_DNS_STAGING_TABLE partition (year=$year,month=$month,day=$day,server=$server)"
     impala-shell -c --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_DNS_STAGING_TABLE drop partition (year=$year,month=$month,day=$day, server=\"$server\");"
@@ -99,9 +95,8 @@ do
     runasSuperuser
     echo "[$(date)] : delete the staging parquet files from hdfs $HDFS_DNS_STAGING/year=$year/month=$month/day=$day/server=$server"
     hdfs dfs -rm -r -f $HDFS_DNS_STAGING/year=$year/month=$month/day=$day/server=$server  
+    runasImpala
 done
-
-runasImpala
 
 #refresh impala metadata for staging table
 echo "[$(date)] : issue refresh for $IMPALA_DNS_STAGING_TABLE"
@@ -163,10 +158,6 @@ do
         exit 1
     fi
 
-    #get new rows count
-    rows=$(impala-shell --quiet -i $IMPALA_NODE -q "select count(1) from $IMPALA_ICMP_DWH_TABLE where year=$year and month=$month and day=$day;" --quiet -B)
-    echo "[$(date)] : added $rows new rows to $IMPALA_ICMP_DWH_TABLE"
-
     #delete partition from staging
     echo "[$(date)] : drop $IMPALA_ICMP_STAGING_TABLE partition (year=$year,month=$month,day=$day)"
     impala-shell -c --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_ICMP_STAGING_TABLE drop partition (year=$year,month=$month,day=$day);"
@@ -175,9 +166,8 @@ do
     runasSuperuser
     echo "[$(date)] : delete the staging parquet files from hdfs $HDFS_ICMP_STAGING/year=$year/month=$month/day=$day"
     hdfs dfs -rm -r -f $HDFS_ICMP_STAGING/year=$year/month=$month/day=$day
+    runasImpala
 done
-
-runasImpala
 
 #refresh impala metadata
 echo "[$(date)] : issue refresh for $IMPALA_ICMP_STAGING_TABLE"

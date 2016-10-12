@@ -125,6 +125,14 @@ public class Settings {
 		}
 	}
 	
+	public int getIntSetting(String key, int defaultValue){
+		try {
+			return Integer.parseInt(props.getProperty(key));
+		} catch (Exception e) {
+			return defaultValue;
+		}
+	}
+	
 	public static void setPath(String settingFilePath){
 		path = settingFilePath;
 		_instance = null;

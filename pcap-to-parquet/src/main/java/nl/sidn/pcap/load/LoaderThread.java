@@ -451,7 +451,7 @@ public class LoaderThread extends AbstractStoppableThread {
 			LOGGER.info("Load data for server: " + current_server.getFullname());
 			   
 		    FileInputStream fis = FileUtils.openInputStream(f);
-		    int bufSize = Settings.getInstance().getIntSetting(Settings.BUFFER_PCAP_READER);
+		    int bufSize = Settings.getInstance().getIntSetting(Settings.BUFFER_PCAP_READER,DEFAULT_PCAP_READER_BUFFER_SIZE);
 		    //sanity check
 		    if(bufSize <= 512){
 		    	//use default

@@ -27,10 +27,13 @@ IMPALA_ICMP_STAGING_TABLE="icmp.staging"
 IMPALA_DNS_DWH_TABLE="dns.queries"
 IMPALA_ICMP_DWH_TABLE="icmp.packets"
 
+IMPALA_OPTS=
+
 #use kerberos user "hdfs"
 if [ -f $KEYTAB_FILE ];
 then
    kinit $KRB_USER -k -t $KEYTAB_FILE
+   IMPALA_OPTS=-k
 fi
 
 runasImpala(){
@@ -55,7 +58,7 @@ runasImpala
 current_date=$(date -u "+%Y%m%d")
 
 #Data is beeing appended to the partition of this day, only process older partitions 
-for partition in $(impala-shell -i $IMPALA_NODE -q "select year,month,day,server 
+for partition in $(impala-shell $IMPALA_OPTS -i $IMPALA_NODE -q "select year,month,day,server 
                     from $IMPALA_DNS_STAGING_TABLE 
                     where (concat(cast(year as string),lpad(cast(month as string),2,\"0\"),lpad(cast(day as string),2,\"0\"))) < \"$current_date\"
                     group by year,month,day,server
@@ -70,7 +73,7 @@ do
 
     #insert all the staging data for yesterday into the datawarehouse table
     #skip the duplicate "svr" column.
-    impala-shell -i $IMPALA_NODE -V -q  "insert into $IMPALA_DNS_DWH_TABLE partition(year, month, day, server) select 
+    impala-shell $IMPALA_OPTS -i $IMPALA_NODE -V -q  "insert into $IMPALA_DNS_DWH_TABLE partition(year, month, day, server) select 
          id, unixtime, time, qname, domainname,
          len, frag, ttl, ipv,
          prot, src, srcp, dst,
@@ -97,7 +100,7 @@ do
 
     #drop partition from the staging table (unlink parquet files)
     echo "[$(date)] : drop $IMPALA_DNS_STAGING_TABLE partition (year=$year,month=$month,day=$day,server=$server)"
-    impala-shell -c --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_DNS_STAGING_TABLE drop partition (year=$year,month=$month,day=$day, server=\"$server\");"
+    impala-shell $IMPALA_OPTS -c --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_DNS_STAGING_TABLE drop partition (year=$year,month=$month,day=$day, server=\"$server\");"
 
     #delete staging parquet data from hdfs
     runasSuperuser
@@ -108,7 +111,7 @@ done
 
 #refresh impala metadata for staging table
 echo "[$(date)] : issue refresh for $IMPALA_DNS_STAGING_TABLE"
-impala-shell --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_DNS_STAGING_TABLE;"
+impala-shell $IMPALA_OPTS --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_DNS_STAGING_TABLE;"
 if [ $? -ne 0 ]
 then
      #send mail to indicate error
@@ -116,14 +119,14 @@ then
 fi
 
 #update the table statistics
-impala-shell -c --quiet -i $IMPALA_NODE -q "COMPUTE INCREMENTAL STATS $IMPALA_DNS_DWH_TABLE;" 
+impala-shell $IMPALA_OPTS -c --quiet -i $IMPALA_NODE -q "COMPUTE INCREMENTAL STATS $IMPALA_DNS_DWH_TABLE;" 
  
 ####
 #### ICMP data section
 ####
 
 #Data is beeing appended to the partition of this day, only process older partitions 
-for partition in $(impala-shell -i $IMPALA_NODE -q "select year,month,day
+for partition in $(impala-shell $IMPALA_OPTS -i $IMPALA_NODE -q "select year,month,day
                    from $IMPALA_ICMP_STAGING_TABLE
                    where (concat(cast(year as string),lpad(cast(month as string),2,\"0\"),lpad(cast(day as string),2,\"0\"))) < \"$current_date\"
                    group by year,month,day
@@ -136,7 +139,7 @@ do
     echo "[$(date)] : Move $IMPALA_ICMP_STAGING_TABLE table partition year=$year, month=$month, day=$day to $IMPALA_ICMP_DWH_TABLE"
 
     #skip the duplicate "svr" column.
-    impala-shell -i $IMPALA_NODE -V -q  "insert into $IMPALA_ICMP_DWH_TABLE partition(year, month, day) select 
+    impala-shell $IMPALA_OPTS -i $IMPALA_NODE -V -q  "insert into $IMPALA_ICMP_DWH_TABLE partition(year, month, day) select 
           unixtime,icmp_type,
           icmp_code,icmp_echo_client_type,ip_ttl,
           ip_v,ip_src,
@@ -173,7 +176,7 @@ do
 
     #delete partition from staging
     echo "[$(date)] : drop $IMPALA_ICMP_STAGING_TABLE partition (year=$year,month=$month,day=$day)"
-    impala-shell -c --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_ICMP_STAGING_TABLE drop partition (year=$year,month=$month,day=$day);"
+    impala-shell $IMPALA_OPTS -c --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_ICMP_STAGING_TABLE drop partition (year=$year,month=$month,day=$day);"
 
     #delete staging data from hdfs
     runasSuperuser
@@ -184,7 +187,7 @@ done
 
 #refresh impala metadata
 echo "[$(date)] : issue refresh for $IMPALA_ICMP_STAGING_TABLE"
-impala-shell --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_ICMP_STAGING_TABLE;"
+impala-shell $IMPALA_OPTS --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_ICMP_STAGING_TABLE;"
 if [ $? -ne 0 ]
 then
      #send mail to indicate error
@@ -192,7 +195,7 @@ then
 fi
 
 #update the table statistics
-impala-shell --quiet -i $IMPALA_NODE -q "COMPUTE INCREMENTAL STATS $IMPALA_ICMP_DWH_TABLE;" 
+impala-shell $IMPALA_OPTS --quiet -i $IMPALA_NODE -q "COMPUTE INCREMENTAL STATS $IMPALA_ICMP_DWH_TABLE;" 
    
 echo "[$(date)] : done moving data to warehouse"
 

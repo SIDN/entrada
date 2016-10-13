@@ -77,7 +77,7 @@ count=0
 #Skip the newest, it might still be written to
 files=($( ls -t $INPUT_DIR/$INPUT_FILTER |tail -n +2 ))
 fcount=${#files[@]}
-echo "[$(date)] : found $fcount files"
+echo "[$(date)] : found $fcount files to check"
 
 for (( i = 0 ; i < $fcount ; i++))
 do

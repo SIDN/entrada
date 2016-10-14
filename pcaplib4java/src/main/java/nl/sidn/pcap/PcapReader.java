@@ -265,16 +265,23 @@ public class PcapReader implements Iterable<Packet> {
 				//found tcp protocol
 				tcpOrUdpPayload = tcpDecoder.reassemble(packet, packet.getIpHeaderLen(), packetData.length, ipStart, packetData);
 				/*
-				 * TCP connections can receive multiple dns messages
-				 * break the TCP stream into the individual dns mesg blocks, every dns msg has a 2 byte msg prefix
-				 * need at least the 2 byte len prefix
+				 * TCP flow may contain multiple dns messages
+				 * break the TCP flow into the individual dns msg blocks, every dns msg has a 2 byte msg prefix
+				 * need at least the 2 byte len prefix to start.
 				 */
-				while(tcpOrUdpPayload.length > TCP_DNS_LENGTH_PREFIX){
-					int msgLen = PcapReaderUtil.convertShort(tcpOrUdpPayload);
-					if((msgLen +2) <= tcpOrUdpPayload.length ){
-						byte[] msgBytes = Arrays.copyOfRange(tcpOrUdpPayload, 2, msgLen + 2); 
+				int tcpOrUdpPayloadIndex = 0;
+				while((tcpOrUdpPayload.length > TCP_DNS_LENGTH_PREFIX) && (tcpOrUdpPayloadIndex < tcpOrUdpPayload.length) ){
+					byte[] lenBytes = new byte[2];
+					System.arraycopy(tcpOrUdpPayload,tcpOrUdpPayloadIndex, lenBytes, 0, 2);	
+					int msgLen = PcapReaderUtil.convertShort(lenBytes);
+					//add the 2byte msg len
+					tcpOrUdpPayloadIndex += 2;
+					if((tcpOrUdpPayloadIndex + msgLen) <= tcpOrUdpPayload.length ){
+						byte[] msgBytes = new byte[msgLen];
+						System.arraycopy(tcpOrUdpPayload,tcpOrUdpPayloadIndex, msgBytes, 0, msgLen);	
 						dnsBytes.add(msgBytes);
-						tcpOrUdpPayload  = Arrays.copyOfRange(tcpOrUdpPayload, msgLen + 2, tcpOrUdpPayload.length); 
+						//add the msg len to the index
+						tcpOrUdpPayloadIndex += msgLen;
 					}else{
 						//invalid msg len
 						if(LOG.isDebugEnabled()){
@@ -305,7 +312,7 @@ public class PcapReader implements Iterable<Packet> {
 				return Packet.NULL;
 			}
 			
-			//only dnspackets make it to here.
+			//only dns packets make it to here.
 			packetCounter++;
 			DNSPacket dnsPacket = (DNSPacket)packet;
 			try {
@@ -324,7 +331,7 @@ public class PcapReader implements Iterable<Packet> {
 			}
 				
 			if(dnsPacket.getMessages() == null || dnsPacket.getMessageCount() == 0){
-				//no dns packet(s) found
+				//no dns message(s) found
 				return Packet.NULL;
 			}
 		}

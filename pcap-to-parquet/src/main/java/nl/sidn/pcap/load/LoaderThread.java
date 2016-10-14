@@ -41,6 +41,7 @@ import java.util.zip.GZIPInputStream;
 
 import nl.sidn.dnslib.message.Message;
 import nl.sidn.dnslib.types.MessageType;
+import nl.sidn.dnslib.types.ResourceRecordType;
 import nl.sidn.pcap.PcapReader;
 import nl.sidn.pcap.SequencePayload;
 import nl.sidn.pcap.decoder.ICMPDecoder;
@@ -102,6 +103,9 @@ public class LoaderThread extends AbstractStoppableThread {
 	
 	//max lifetime for cached packets, in milliseconds (configured in minutes)
 	private int cacheTimeout;
+	
+	//keep list of active zone transfers
+	private Map<RequestKey, Integer> activeZoneTransfers = new HashMap<>();
 
 	public LoaderThread(BlockingQueue<PacketCombination> sharedQueue, String inputDir, String outputDir, String stateDir){
 		this.sharedQueue = sharedQueue;
@@ -207,12 +211,13 @@ public class LoaderThread extends AbstractStoppableThread {
 	public void read(String file) {
 		createReader(file);
 		long readStart = System.currentTimeMillis();
-		LOGGER.info("Start loading queue");
+		LOGGER.info("Start reading packet queue");
+		
 		long counter = 0;
 		for (Packet currentPacket : pcapReader) {
 			counter++;
 			if(counter % 100000 == 0){
-				LOGGER.info("Loaded " + counter + " packets");
+				LOGGER.info("Read " + counter + " packets");
 			}
 			if(currentPacket != null && currentPacket.getIpVersion() != 0){
 				
@@ -233,7 +238,7 @@ public class LoaderThread extends AbstractStoppableThread {
 					DNSPacket dnsPacket = (DNSPacket)currentPacket;
 					if(dnsPacket.getMessage() == null){
 						//skip malformed packets
-						LOGGER.debug("loader skipping packet with no dns message");
+						LOGGER.debug("Drop packet with no dns message");
 						continue;
 					}
 					
@@ -251,16 +256,43 @@ public class LoaderThread extends AbstractStoppableThread {
 						//add time for possible timeout eviction
 						if(msg.getHeader().getQr() == MessageType.QUERY){  
 							queryCounter++;
+							
+							//check for ixfr/axfr request
+							if( msg.getQuestions().get(0).getqType() == ResourceRecordType.AXFR ||
+									msg.getQuestions().get(0).getqType() == ResourceRecordType.IXFR){
+									
+								if(LOG.isDebugEnabled()){
+									LOG.debug("Detected zonetransfer for: " + dnsPacket.getFlow());
+								}
+								//keep track of ongoing zone transfer, we do not want to store all the response packets for an ixfr/axfr.
+								activeZoneTransfers.put(new RequestKey(msg.getHeader().getId(), null, dnsPacket.getSrc(), dnsPacket.getSrcPort()),0);
+							}
+							
 							RequestKey key = new RequestKey(msg.getHeader().getId(), qname, dnsPacket.getSrc(), dnsPacket.getSrcPort(), System.currentTimeMillis());
 							_requestCache.put(key, new MessageWrapper(msg,dnsPacket));
 						}else{
 							//try to find the request
 							responseCounter++;
-							RequestKey key = null;
+														
+							//check for ixfr/axfr response, the query might be missing from the response
+							//so we cannot use the qname for matching.
+							RequestKey key = new RequestKey(msg.getHeader().getId(),null, dnsPacket.getDst(), dnsPacket.getDstPort());
+							if(activeZoneTransfers.containsKey(key)){
+								//this response is part of an active zonetransfer.
+								//only let the first response continue, reuse the "time" field of the RequestKey to keep track of this.
+								Integer ztResponseCounter = activeZoneTransfers.get(key);
+								if(ztResponseCounter.intValue() > 0){
+									//do not save this msg, drop it here, continue with next msg.
+									continue;
+								}else{
+									//1st response msg let it continue, add 1 to the map the indicate 1st resp msg has been processed
+									activeZoneTransfers.put(key, 1);
+								}
+							}
 		
 							key = new RequestKey(msg.getHeader().getId(),qname, dnsPacket.getDst(), dnsPacket.getDstPort());
 							MessageWrapper request = _requestCache.remove(key);
-							//check to see if the request packet exists, at the start of the pcap there may be missing querys
+							//check to see if the request msg exists, at the start of the pcap there may be missing querys
 											
 							if(request != null &&  request.getPacket() != null && request.getMessage() != null){
 								try {
@@ -276,7 +308,6 @@ public class LoaderThread extends AbstractStoppableThread {
 								//could send a response.
 								LOGGER.debug("Found no request for response");
 								noQueryFoundCounter++;
-								
 								try {
 									if(!sharedQueue.offer(new PacketCombination(null, null, current_server, dnsPacket,msg ), 5, TimeUnit.SECONDS)){
 										LOGGER.error("timeout adding items to queue");

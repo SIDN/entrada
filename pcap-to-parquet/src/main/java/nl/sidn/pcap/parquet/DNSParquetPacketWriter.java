@@ -127,17 +127,12 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		if(packetCounter % STATUS_COUNT == 0){
 			showStatus();
 		}
-
 		Packet reqTransport = combo.getRequest();
 		Message requestMessage = combo.getRequestMessage();
 		Packet respTransport = combo.getResponse();
 		Message respMessage = combo.getResponseMessage();
 		
 		Question q = lookupQuestion(requestMessage, respMessage);
-		if(q == null){
-			LOGGER.error("Found packet without dns question, request: " + reqTransport + " response: " + respTransport);
-		}
-
 		Header header = lookupHeader(requestMessage, respMessage);
 		
 		//get the time in milliseconds

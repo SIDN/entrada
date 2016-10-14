@@ -34,7 +34,6 @@ import org.apache.commons.logging.LogFactory;
 
 import com.google.common.collect.Multimap;
 import com.google.common.collect.TreeMultimap;
-import com.google.common.primitives.Bytes;
 
 public class TCPDecoder {
 	
@@ -44,6 +43,8 @@ public class TCPDecoder {
 	public static final int PROTOCOL_HEADER_TCP_ACK_OFFSET = 8;
 	public static final int TCP_HEADER_DATA_OFFSET = 12;
 	public static final int PROTOCOL_HEADER_WINDOW_SIZE_OFFSET = 14;
+	
+	public static final byte[] EMPTY_PAYLOAD = new byte[0];
 
 	protected Multimap<TCPFlow, SequencePayload> flows = TreeMultimap.create();
 	protected Multimap<TCPFlow, Long> flowseq = TreeMultimap.create();
@@ -104,36 +105,54 @@ public class TCPDecoder {
 		byte[] packetPayload = decode(packet, packetData, ipStart, ipHeaderLen, totalLength);
 		
 		if (packet.getSrcPort() != PcapReader.DNS_PORT && packet.getDstPort() != PcapReader.DNS_PORT){
-			//not a dns packet
-			return new byte[0];
+			//not a dns packet, ignore
+			return EMPTY_PAYLOAD;
 		}
 		//get the flow details for this packet
 		TCPFlow flow = (TCPFlow)packet.getFlow();
 
+		//keep all tcp data until we get a signal to push the data up the stack
 		if (packetPayload.length > 0) {
 			SequencePayload sequencePayload = new SequencePayload(packet.getTcpSeq(), packetPayload,System.currentTimeMillis());
 			flows.put(flow, sequencePayload);
 		}
 
 		if (packet.isTcpFlagFin() || packet.isTcpFlagPsh()) {
+			//received signal to push the data received for this flow up the stack.
 			Collection<SequencePayload> fragments = flows.removeAll(flow);
 			if (fragments != null && fragments.size() > 0) {
 				packet.setReassembledTCPFragments(fragments.size());
-				packetPayload = new byte[0];
 				SequencePayload prev = null;
+				
+				//calc toal size of payload
+				int totalSize = 0;
+				for (SequencePayload seqPayload : fragments) {
+					totalSize += seqPayload.getPayload().length;
+				}
+				packetPayload = new byte[totalSize];
+				int destPos = 0;
+				
+				//copy all the payload bytes
 				for (SequencePayload seqPayload : fragments) {
 					if (prev != null && !seqPayload.linked(prev)) {
 						LOG.warn("Broken sequence chain between " + seqPayload + " and " + prev + ". Returning empty payload.");
-						packetPayload = new byte[0];
+						packetPayload = EMPTY_PAYLOAD;
 						tcpPrefixError++;
+						//got chain linkage error, ignore all flow data return nothing. (these bytes will be ubnparseble)
 						break;
 					}
-					packetPayload = Bytes.concat(packetPayload, seqPayload.getPayload());
+					System.arraycopy(seqPayload.getPayload(), 0, packetPayload, destPos, seqPayload.getPayload().length);
+					destPos += seqPayload.getPayload().length;
+					
 					prev = seqPayload;
 				}
+				//return the combined payload data for processing up the stack
+				return packetPayload;
 			}
 		}
-		return packetPayload;	
+		
+		//no fin or push flag signal detected, do not return any bytes yet to upper protocol decoder.
+		return EMPTY_PAYLOAD;
 	}
 	
 	private int getTcpHeaderLength(byte[] packet, int tcpStart) {

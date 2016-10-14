@@ -258,8 +258,9 @@ public class LoaderThread extends AbstractStoppableThread {
 							queryCounter++;
 							
 							//check for ixfr/axfr request
-							if( msg.getQuestions().get(0).getqType() == ResourceRecordType.AXFR ||
-									msg.getQuestions().get(0).getqType() == ResourceRecordType.IXFR){
+							if( msg.getQuestions().size() > 0 &&
+									(msg.getQuestions().get(0).getqType() == ResourceRecordType.AXFR ||
+									msg.getQuestions().get(0).getqType() == ResourceRecordType.IXFR)){
 									
 								if(LOG.isDebugEnabled()){
 									LOG.debug("Detected zonetransfer for: " + dnsPacket.getFlow());

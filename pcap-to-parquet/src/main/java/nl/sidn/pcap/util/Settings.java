@@ -48,6 +48,8 @@ public class Settings {
 	public static String STATE_LOCATION = "state.location";
 	public static String OUTPUT_MAX_PACKETS = "output.max.packets";
 	public static String CACHE_TIMEOUT = "cache.timeout";
+	public static String CACHE_TIMEOUT_TCP_FLOW = "cache.timeout.tcp.flows";
+	public static String CACHE_TIMEOUT_FRAG_IP = "cache.timeout.ip.fragmented";
 	
 	public static String METRICS_EXCHANGE = "metrics.exchange";
 	public static String METRICS_QUEUE = "metrics.queue";

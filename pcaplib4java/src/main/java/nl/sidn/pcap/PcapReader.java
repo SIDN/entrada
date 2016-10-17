@@ -56,13 +56,6 @@ import com.google.common.collect.Multimap;
 public class PcapReader implements Iterable<Packet> {
 	public static final Log LOG = LogFactory.getLog(PcapReader.class);
 	
-	/* max time to keep packets in cache
-	 * 60 minutes for tcp
-	 * TCP sessions may span a long time
-	 */
-	private static int TCP_PACKET_CACHE_MAX_ALIVE = 1000 * 60 * 60;
-	//max 30 minutes for IP
-	private static int IP_PACKET_CACHE_MAX_ALIVE = 1000 * 60 * 30;	
 	//needs no explanation
 	public static final int DNS_PORT = 53;
 	public static final long MAGIC_NUMBER = 0xA1B2C3D4;
@@ -137,7 +130,7 @@ public class PcapReader implements Iterable<Packet> {
 	/**
 	 * Clear expired cache entries in order to avoid memory problems 
 	 */
-	public void clearCache() {
+	public void clearCache(int tcpFlowCacheTimeout, int fragmentedIPcacheTimeout) {
 		//clear tcp flows with expired packets
 		List<TCPFlow> expiredList = new ArrayList<>();
 		long now = System.currentTimeMillis();
@@ -145,7 +138,7 @@ public class PcapReader implements Iterable<Packet> {
 		for (TCPFlow flow : flows.keySet()) {
 			Collection<SequencePayload> payloads = flows.get(flow);
 			for (SequencePayload sequencePayload : payloads) {
-				if(sequencePayload.getTime() < now-TCP_PACKET_CACHE_MAX_ALIVE){
+				if((sequencePayload.getTime() + tcpFlowCacheTimeout) <= now){
 					expiredList.add(flow);
 					break;
 				}
@@ -156,7 +149,7 @@ public class PcapReader implements Iterable<Packet> {
 		List<Datagram> dgExpiredList = new ArrayList<>();
 		
 		for (Datagram dg : ipDecoder.getDatagrams().keySet()) {
-			if(dg.getTime() < now-IP_PACKET_CACHE_MAX_ALIVE){
+			if((dg.getTime() + fragmentedIPcacheTimeout) <= now){
 				dgExpiredList.add(dg);
 			}
 		}

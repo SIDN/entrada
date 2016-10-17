@@ -112,8 +112,8 @@ public class LoaderThread extends AbstractStoppableThread {
 		this.inputDir = inputDir;
 		this.outputDir = outputDir;
 		this.stateDir = stateDir;
-		cacheTimeout = 1000 * 60 * Integer.parseInt(Settings.getInstance().getSetting(Settings.CACHE_TIMEOUT));
-		pcapReader = new PcapReader();
+		this.cacheTimeout = 1000 * 60 * Integer.parseInt(Settings.getInstance().getSetting(Settings.CACHE_TIMEOUT));
+		this.pcapReader = new PcapReader();
 	}
 
 	@Override
@@ -328,7 +328,8 @@ public class LoaderThread extends AbstractStoppableThread {
 			LOGGER.debug("Done with decoding, start cleanup");
 		}
 		//clear expired cache entries
-		pcapReader.clearCache();
+		pcapReader.clearCache(Settings.getInstance().getIntSetting(Settings.CACHE_TIMEOUT_TCP_FLOW,1) * 60 * 1000,
+				Settings.getInstance().getIntSetting(Settings.CACHE_TIMEOUT_FRAG_IP,1) * 60 * 1000);
 		pcapReader.close();
 	}
 

@@ -27,11 +27,6 @@
 
 CLASS="nl.sidn.pcap.Main"
 OUTPUT_DIR="$DATA_DIR/processed"
-HDFS_DNS_STAGING="$HDFS_HOME/staging"
-HDFS_ICMP_STAGING="$HDFS_HOME/icmp-staging"
-
-IMPALA_DNS_STAGING_TABLE="dns.staging"
-IMPALA_ICMP_STAGING_TABLE="icmp.staging"
 
 #use kerberos user "hdfs"
 IMPALA_OPTS=

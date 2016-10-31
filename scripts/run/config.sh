@@ -71,3 +71,15 @@ export KEYTAB_FILE="my.keytab"
 
 #error mail recipient
 export ERROR_MAIL=""
+
+
+#HDFS directories for table files
+HDFS_DNS_STAGING="$HDFS_HOME/staging"
+HDFS_ICMP_STAGING="$HDFS_HOME/icmp-staging"
+
+# table names
+IMPALA_DNS_STAGING_TABLE="dns.staging"
+IMPALA_ICMP_STAGING_TABLE="icmp.staging"
+IMPALA_DNS_DWH_TABLE="dns.queries"
+IMPALA_ICMP_DWH_TABLE="icmp.packets"
+

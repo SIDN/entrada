@@ -40,9 +40,21 @@ do
     script=$(< $f)
     #replace hdfs root placeholder
     script=${script/_HDFS_LOCATION_/$HDFS_HOME}
+
+    # split the table name into db and table names and replace the placeholders
+    for TABLE in IMPALA_DNS_STAGING_TABLE IMPALA_ICMP_STAGING_TABLE IMPALA_DNS_DWH_TABLE IMPALA_ICMP_DWH_TABLE
+    do
+        IFS='.';
+        array=(${!TABLE})
+        unset IFS;
+        DB=${array[0]}
+        TAB=${array[1]}
+
+        script=${script//_${TABLE}_DB_/$DB}
+        script=${script//_${TABLE}_TAB_/$TAB}
+    done
     impala-shell -i $IMPALA_NODE -V -q  "$script"
 done
-
 
 #invalidate metadata
 impala-shell -k -i $IMPALA_NODE -V -q  "invalidate metadata;"

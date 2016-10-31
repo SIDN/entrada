@@ -19,14 +19,6 @@
 # You should have received a copy of the GNU General Public License
 # along with ENTRADA.  If not, see [<http://www.gnu.org/licenses/].
 
-HDFS_DNS_STAGING="$HDFS_HOME/staging"
-HDFS_ICMP_STAGING="$HDFS_HOME/icmp-staging"
-
-IMPALA_DNS_STAGING_TABLE="dns.staging"
-IMPALA_ICMP_STAGING_TABLE="icmp.staging"
-IMPALA_DNS_DWH_TABLE="dns.queries"
-IMPALA_ICMP_DWH_TABLE="icmp.packets"
-
 IMPALA_OPTS=
 
 #use kerberos user "hdfs"

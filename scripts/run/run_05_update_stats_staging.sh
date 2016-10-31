@@ -25,9 +25,6 @@
 # 
 ############################################################
 
-IMPALA_DNS_STAGING_TABLE="dns.staging"
-IMPALA_ICMP_STAGING_TABLE="icmp.staging"
-
 #use kerberos user "hdfs"
 if [ -f $KEYTAB_FILE ];
 then

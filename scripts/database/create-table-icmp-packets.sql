@@ -1,7 +1,7 @@
-CREATE DATABASE IF NOT EXISTS icmp;
-use icmp;
+CREATE DATABASE IF NOT EXISTS _IMPALA_ICMP_DWH_TABLE_DB_;
+use _IMPALA_ICMP_DWH_TABLE_DB_;
 
-create external table if not exists icmp.packets (
+create external table if not exists _IMPALA_ICMP_DWH_TABLE_TAB_ (
 unixtime BIGINT,
 icmp_type SMALLINT,
 icmp_code SMALLINT,

@@ -1,7 +1,7 @@
-CREATE DATABASE IF NOT EXISTS dns;
-use dns;
+CREATE DATABASE IF NOT EXISTS _IMPALA_DNS_DWH_TABLE_DB_;
+use _IMPALA_DNS_DWH_TABLE_DB_;
 
-create external table if not exists queries (
+create external table if not exists _IMPALA_DNS_DWH_TABLE_TAB_ (
  id INT,
  unixtime BIGINT,
  time BIGINT,

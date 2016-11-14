@@ -216,7 +216,7 @@ public class Settings {
 				parent = "." + parent;
 			}
 			
-			int labelCount = StringUtils.split(parent).length;
+			int labelCount = StringUtils.split(parent,'.').length;
 			if(StringUtils.endsWith(parent, ".")){
 				//remove last dot (will become the used tld suffix
 				tldSuffixes.add(new DomainParent(parent,StringUtils.removeEnd(parent, "."), labelCount));

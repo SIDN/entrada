@@ -21,9 +21,13 @@
  */	
 package nl.sidn.pcap.util;
 
+import java.util.List;
+
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import nl.sidn.dnslib.util.DomainParent;
 
 public class SettingTest {
 
@@ -36,5 +40,18 @@ public class SettingTest {
 	public void readSettings(){
 		String val = Settings.getInstance().getSetting(Settings.RESOLVER_LIST_GOOGLE);
 		Assert.assertEquals("https://developers.google.com/speed/public-dns/faq", val);
+	}
+	
+	@Test
+	public void createTldSuffix(){
+		 Settings.createTldSuffixes("foo.test.co.example");
+		 Assert.assertNotNull(Settings.getTldSuffixes());
+		 Assert.assertTrue(Settings.getTldSuffixes().size() == 1);
+		 
+		 List<DomainParent> parents = Settings.getTldSuffixes();
+		 DomainParent parent = parents.get(0);
+		  
+		 Assert.assertEquals(".foo.test.co.example", parent.getParent());
+		 Assert.assertTrue(parent.getLabels() == 4);
 	}
 }

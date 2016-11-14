@@ -195,9 +195,11 @@ public class Settings {
 		
 	}
 	
-	private static void createTldSuffixes() {
-		//determine tld suffixes to use
-		String value = props.getProperty(Settings.TLD_SUFFIX);
+	public static void createTldSuffixes() {
+		createTldSuffixes(props.getProperty(Settings.TLD_SUFFIX));
+	}
+	
+	public static void createTldSuffixes(String value) {
 		if(StringUtils.isEmpty(value)){
 			//no value found, do nothing
 			return;
@@ -216,7 +218,7 @@ public class Settings {
 				parent = "." + parent;
 			}
 			
-			int labelCount = StringUtils.split(parent).length;
+			int labelCount = StringUtils.split(parent,'.').length;
 			if(StringUtils.endsWith(parent, ".")){
 				//remove last dot (will become the used tld suffix
 				tldSuffixes.add(new DomainParent(parent,StringUtils.removeEnd(parent, "."), labelCount));

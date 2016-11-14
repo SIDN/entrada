@@ -59,7 +59,24 @@ public class NameUtilTest {
 	@Test
 	public void emailAddress2ndLevelTest() {
 		// email address should not happen, but sometimes we do see these in the qname.
-		Assert.assertEquals("wullink@sidn.nl",NameUtil.getDomain("maarten.wullink@sidn.nl.").name);
+		Assert.assertEquals("test@example.com",NameUtil.getDomain("email.test@example.com.").name);
+	}
+	
+	@Test
+	public void domainWith5thLevelAndTldSuffix() {
+		//get the parent
+		DomainParent dp = new DomainParent(".test.co.example.", ".test.co.example", 3);
+		List<DomainParent> dps = new ArrayList<>();
+		dps.add(dp);
+		
+		//test fqdn (including final dot)
+		Domaininfo info = NameUtil.getDomainWithSuffixList("name.foo.test.co.example.", dps);
+		
+		Assert.assertNotNull(info);
+		Assert.assertNotNull(info.name);
+		Assert.assertEquals("foo.test.co.example", info.name);
+		Assert.assertTrue(info.labels == 5);
+		
 	}
 
 }

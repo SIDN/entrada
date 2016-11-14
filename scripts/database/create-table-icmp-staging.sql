@@ -57,6 +57,6 @@ time_micro bigint,
 server_location string)
 partitioned by (year smallint, month smallint, day smallint)
   STORED AS PARQUETFILE
-  LOCATION '_HDFS_LOCATION_icmp-staging';
+  LOCATION '_HDFS_ICMP_STAGING_';
   
  

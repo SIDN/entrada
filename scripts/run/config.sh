@@ -39,7 +39,7 @@ export CONFIG_FILE="$ENTRADA_HOME/scripts/config/entrada-settings.properties"
 export IMPALA_NODE=""
 
 #hdfs locations for storing data
-export HDFS_HOME="/user/hive/entrada/"
+export HDFS_HOME="/user/hive/entrada"
 
 #input directories, subdirs must have same name as name server
 export DATA_RSYNC_DIR="/home/entrada/captures"
@@ -76,6 +76,8 @@ export ERROR_MAIL=""
 #HDFS directories for table files
 HDFS_DNS_STAGING="$HDFS_HOME/staging"
 HDFS_ICMP_STAGING="$HDFS_HOME/icmp-staging"
+HDFS_DNS_QUERIES="$HDFS_HOME/queries"
+HDFS_ICMP_PACKETS="$HDFS_HOME/icmp"
 
 # table names
 IMPALA_DNS_STAGING_TABLE="dns.staging"

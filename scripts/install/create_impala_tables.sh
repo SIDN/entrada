@@ -53,6 +53,10 @@ do
         script=${script//_${TABLE}_DB_/$DB}
         script=${script//_${TABLE}_TAB_/$TAB}
     done
+    for LOC in HDFS_DNS_STAGING HDFS_ICMP_STAGING HDFS_DNS_QUERIES HDFS_ICMP_PACKETS
+    do 
+        script=${script//_${LOC}_/${!LOC}}
+    done
     impala-shell -i $IMPALA_NODE -V -q  "$script"
 done
 

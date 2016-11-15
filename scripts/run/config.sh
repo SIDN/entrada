@@ -74,14 +74,14 @@ export ERROR_MAIL=""
 
 
 #HDFS directories for table files
-HDFS_DNS_STAGING="$HDFS_HOME/staging"
-HDFS_ICMP_STAGING="$HDFS_HOME/icmp-staging"
-HDFS_DNS_QUERIES="$HDFS_HOME/queries"
-HDFS_ICMP_PACKETS="$HDFS_HOME/icmp"
+export HDFS_DNS_STAGING="$HDFS_HOME/staging"
+export HDFS_ICMP_STAGING="$HDFS_HOME/icmp-staging"
+export HDFS_DNS_QUERIES="$HDFS_HOME/queries"
+export HDFS_ICMP_PACKETS="$HDFS_HOME/icmp"
 
 # table names
-IMPALA_DNS_STAGING_TABLE="dns.staging"
-IMPALA_ICMP_STAGING_TABLE="icmp.staging"
-IMPALA_DNS_DWH_TABLE="dns.queries"
-IMPALA_ICMP_DWH_TABLE="icmp.packets"
+export IMPALA_DNS_STAGING_TABLE="dns.staging"
+export IMPALA_ICMP_STAGING_TABLE="icmp.staging"
+export IMPALA_DNS_DWH_TABLE="dns.queries"
+export IMPALA_ICMP_DWH_TABLE="icmp.packets"
 

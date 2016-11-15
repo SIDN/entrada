@@ -78,5 +78,22 @@ public class NameUtilTest {
 		Assert.assertTrue(info.labels == 5);
 		
 	}
+	
+	@Test
+	public void domainWith2ndLevelAndTldSuffix() {
+		//get the parent
+		DomainParent dp = new DomainParent(".example.", ".example", 1);
+		List<DomainParent> dps = new ArrayList<>();
+		dps.add(dp);
+		
+		//test fqdn (including final dot)
+		Domaininfo info = NameUtil.getDomainWithSuffixList("name.example.", dps);
+		
+		Assert.assertNotNull(info);
+		Assert.assertNotNull(info.name);
+		Assert.assertEquals("name.example", info.name);
+		Assert.assertTrue(info.labels == 2);
+		
+	}
 
 }

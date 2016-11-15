@@ -44,14 +44,19 @@ public class SettingTest {
 	
 	@Test
 	public void createTldSuffix(){
-		 Settings.createTldSuffixes("foo.test.co.example");
+		 Settings.createTldSuffixes("foo.test.co.example,foo.bar.entrada");
 		 Assert.assertNotNull(Settings.getTldSuffixes());
-		 Assert.assertTrue(Settings.getTldSuffixes().size() == 1);
+		 Assert.assertTrue(Settings.getTldSuffixes().size() == 2);
 		 
 		 List<DomainParent> parents = Settings.getTldSuffixes();
 		 DomainParent parent = parents.get(0);
 		  
 		 Assert.assertEquals(".foo.test.co.example", parent.getParent());
 		 Assert.assertTrue(parent.getLabels() == 4);
+		 
+		 parent = parents.get(1);
+		  
+		 Assert.assertEquals(".foo.bar.entrada", parent.getParent());
+		 Assert.assertTrue(parent.getLabels() == 3);
 	}
 }

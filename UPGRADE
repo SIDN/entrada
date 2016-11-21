@@ -1,3 +1,8 @@
+# Upgrading to version 0.0.8
+
+Added new column: query_ts, execute database/upgrade/to_0.0.8.sql
+to add this this column.
+
 # Upgrading to version 0.0.7
 
 No action required when upgrading from 0.0.6

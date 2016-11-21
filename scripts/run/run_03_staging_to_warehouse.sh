@@ -80,7 +80,7 @@ do
          edns_client_subnet_asn,
          edns_client_subnet_country,
          labels,res_len,time_micro,resp_frag,proc_time,is_google,is_opendns,
-         dns_res_len,server_location, year,month,day,server
+         dns_res_len,server_location,cast(unixtime as timestamp), year,month,day,server
          from $IMPALA_DNS_STAGING_TABLE where year=$year and month=$month and day=$day and server=\"$server\";"
 
     if [ $? -ne 0 ]

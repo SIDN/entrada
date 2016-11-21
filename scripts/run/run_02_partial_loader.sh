@@ -71,18 +71,22 @@ remove_zeroes(){
     for year_dir in */
     do
         #goto year
-        cd $year_dir
-        #rename months, remove leading zeros
-        for subdir in month=0*; do mv "${subdir}" "${subdir/0/}"; done 2>/dev/null
-        for month_dir in month=*/
-        do
-            #goto month dir
-            cd $month_dir
-            #rename days, remove leading zeros
-            for subdir in day=0*; do mv "${subdir}" "${subdir/0/}"; done 2>/dev/null
-            cd ..
-        done
-        cd ..
+        if [ -d "$year_dir" ]; then
+          cd $year_dir
+          #rename months, remove leading zeros
+          for subdir in month=0*; do mv "${subdir}" "${subdir/0/}"; done 2>/dev/null
+          for month_dir in month=*/
+          do
+              #goto month dir
+              if [ -d "$month_dir" ]; then
+                cd $month_dir
+                #rename days, remove leading zeros
+                for subdir in day=0*; do mv "${subdir}" "${subdir/0/}"; done 2>/dev/null
+                cd ..
+              fi
+          done
+          cd ..
+        fi
     done
 }
 

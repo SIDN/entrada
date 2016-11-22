@@ -99,19 +99,17 @@ do
     echo "[$(date)] : delete the staging parquet files from hdfs $HDFS_DNS_STAGING/year=$year/month=$month/day=$day/server=$server"
     hdfs dfs -rm -r -f $HDFS_DNS_STAGING/year=$year/month=$month/day=$day/server=$server  
     runasImpala
+
+    #refresh impala metadata for staging table
+    echo "[$(date)] : issue refresh for $IMPALA_DNS_STAGING_TABLE"
+    impala-shell $IMPALA_OPTS --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_DNS_STAGING_TABLE;"
+
+    #update the table statistics
+    #use the partion spec here, if we don't then Impala we analyze the entire table after adding
+    #a new column, this might take very long in case of a large table. 
+    impala-shell $IMPALA_OPTS -c --quiet -i $IMPALA_NODE -q "COMPUTE INCREMENTAL STATS $IMPALA_DNS_DWH_TABLE PARTITION (year=$year,month=$month,day=$day, server=\"$server\");" 
+
 done
-
-#refresh impala metadata for staging table
-echo "[$(date)] : issue refresh for $IMPALA_DNS_STAGING_TABLE"
-impala-shell $IMPALA_OPTS --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_DNS_STAGING_TABLE;"
-if [ $? -ne 0 ]
-then
-     #send mail to indicate error
-     echo "[$(date)] : refresh metadata $IMPALA_DNS_STAGING_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
-fi
-
-#update the table statistics
-impala-shell $IMPALA_OPTS -c --quiet -i $IMPALA_NODE -q "COMPUTE INCREMENTAL STATS $IMPALA_DNS_DWH_TABLE;" 
  
 ####
 #### ICMP data section
@@ -175,20 +173,16 @@ do
     echo "[$(date)] : delete the staging parquet files from hdfs $HDFS_ICMP_STAGING/year=$year/month=$month/day=$day"
     hdfs dfs -rm -r -f $HDFS_ICMP_STAGING/year=$year/month=$month/day=$day
     runasImpala
+
+    #refresh impala metadata
+    echo "[$(date)] : issue refresh for $IMPALA_ICMP_STAGING_TABLE"
+    impala-shell $IMPALA_OPTS --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_ICMP_STAGING_TABLE;"
+
+    #update the table statistics 
+    impala-shell $IMPALA_OPTS --quiet -i $IMPALA_NODE -q "COMPUTE INCREMENTAL STATS $IMPALA_ICMP_DWH_TABLE PARTITION (year=$year,month=$month,day=$day);" 
 done
 
-#refresh impala metadata
-echo "[$(date)] : issue refresh for $IMPALA_ICMP_STAGING_TABLE"
-impala-shell $IMPALA_OPTS --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_ICMP_STAGING_TABLE;"
-if [ $? -ne 0 ]
-then
-     #send mail to indicate error
-     echo "[$(date)] : refresh metadata $IMPALA_ICMP_STAGING_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
-fi
-
-#update the table statistics
-impala-shell $IMPALA_OPTS --quiet -i $IMPALA_NODE -q "COMPUTE INCREMENTAL STATS $IMPALA_ICMP_DWH_TABLE;" 
    
-echo "[$(date)] : done moving data to warehouse"
+echo "[$(date)] : done moving data from staging to queries table"
 
 

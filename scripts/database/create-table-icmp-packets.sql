@@ -53,7 +53,8 @@ orig_dns_edns_do BOOLEAN,
 orig_dns_labels INT,
 svr string,
 time_micro bigint,
-server_location string)
+server_location string,
+query_ts TIMESTAMP)
 partitioned by (year smallint, month smallint, day smallint)
   STORED AS PARQUETFILE
   LOCATION '_HDFS_ICMP_PACKETS_';

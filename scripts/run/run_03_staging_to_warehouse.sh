@@ -154,7 +154,7 @@ do
           orig_dns_qtype,orig_dns_opcode,
           orig_dns_qclass,orig_dns_edns_udp,
           orig_dns_edns_version,orig_dns_edns_do,
-          orig_dns_labels,svr,time_micro, server_location, year,month,day
+          orig_dns_labels,svr,time_micro, server_location,cast(unixtime as timestamp),year,month,day
          from $IMPALA_ICMP_STAGING_TABLE where year=$year and month=$month and day=$day;"
 
     if [ $? -ne 0 ]

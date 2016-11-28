@@ -196,9 +196,9 @@ public class LoaderThread extends AbstractStoppableThread {
 	 */
 	private void waitForEmptyQueue() {
 		while(sharedQueue.size() > 0){
-			LOGGER.info("Shared queue not empty sleep for 5s");
+			LOGGER.info("Shared queue not empty sleep for 100ms");
 			try {
-				Thread.sleep(5*1000);
+				Thread.sleep(100);
 			} catch (InterruptedException e) {
 				LOGGER.info("Interrupted while sleeping");
 			}

@@ -195,17 +195,15 @@ public class LoaderThread extends AbstractStoppableThread {
 	 * endless GC
 	 */
 	private void waitForEmptyQueue() {
+		LOGGER.info("Wait until the shared queue is empty before processing the next file");
 		while(sharedQueue.size() > 0){
-			LOGGER.info("Shared queue not empty sleep for 100ms");
 			try {
 				Thread.sleep(100);
 			} catch (InterruptedException e) {
 				LOGGER.info("Interrupted while sleeping");
 			}
 		}
-		
 		LOGGER.info("Shared queue is empty continue with next file");
-		
 	}
 
 	public void read(String file) {

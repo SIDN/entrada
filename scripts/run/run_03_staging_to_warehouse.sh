@@ -22,7 +22,7 @@
 IMPALA_OPTS=
 
 #use kerberos user "hdfs"
-if [ -f $KEYTAB_FILE ];
+if [ -f "$KEYTAB_FILE" ];
 then
    kinit $KRB_USER -k -t $KEYTAB_FILE
    IMPALA_OPTS=-k

@@ -54,7 +54,7 @@ export DELETE_INPUT_PCAP_FILES=false
 #Log location
 export ENTRADA_LOG_DIR="/var/log/entrada"
 
-#name servers, seperate multiple NS with a colon ;
+#name servers, seperate multiple NS with a semicolon ;
 #or use the following line to automatically detect the name server sub directories.
 #if using auto detect make sure the data for every (new) name server is uploaded
 #in the correct temporal order.

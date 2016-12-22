@@ -29,7 +29,7 @@ SCRIPT_DIR=$(dirname "$0")
 echo "SCRIPT_DIR == $SCRIPT_DIR"
 source $SCRIPT_DIR/../run/config.sh
 
-if [ -f $KEYTAB_FILE ];
+if [ -f "$KEYTAB_FILE" ];
 then
    echo "initialize kerberos ticket"
    kinit $KRB_USER -k -t $KEYTAB_FILE

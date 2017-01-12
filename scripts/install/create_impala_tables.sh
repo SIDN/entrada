@@ -29,10 +29,13 @@ SCRIPT_DIR=$(dirname "$0")
 echo "SCRIPT_DIR == $SCRIPT_DIR"
 source $SCRIPT_DIR/../run/config.sh
 
-if [ -f $KEYTAB_FILE ];
+IMPALA_OPTS=
+
+if [ -f "$KEYTAB_FILE" ];
 then
    echo "initialize kerberos ticket"
    kinit $KRB_USER -k -t $KEYTAB_FILE
+   IMPALA_OPTS=-k
 fi
 
 for f in $SCRIPT_DIR/../database/*.sql
@@ -57,10 +60,10 @@ do
     do 
         script=${script//_${LOC}_/${!LOC}}
     done
-    impala-shell -i $IMPALA_NODE -V -q  "$script"
+    impala-shell $IMPALA_OPTS -i $IMPALA_NODE -V -q  "$script"
 done
 
 #invalidate metadata
-impala-shell -k -i $IMPALA_NODE -V -q  "invalidate metadata;"
+impala-shell $IMPALA_OPTS -i $IMPALA_NODE -V -q  "invalidate metadata;"
 
 

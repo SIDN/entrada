@@ -30,7 +30,7 @@ OUTPUT_DIR="$DATA_DIR/processed"
 
 #use kerberos user "hdfs"
 IMPALA_OPTS=
-if [ -f $KEYTAB_FILE ];
+if [ -f "$KEYTAB_FILE" ];
 then
    kinit $KRB_USER -k -t $KEYTAB_FILE
    IMPALA_OPTS=-k

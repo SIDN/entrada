@@ -22,7 +22,7 @@
 IMPALA_OPTS=
 
 #use kerberos user "hdfs"
-if [ -f $KEYTAB_FILE ];
+if [ -f "$KEYTAB_FILE" ];
 then
    kinit $KRB_USER -k -t $KEYTAB_FILE
    IMPALA_OPTS=-k
@@ -54,7 +54,7 @@ for partition in $(impala-shell $IMPALA_OPTS -i $IMPALA_NODE -q "select year,mon
                     from $IMPALA_DNS_STAGING_TABLE 
                     where (concat(cast(year as string),lpad(cast(month as string),2,\"0\"),lpad(cast(day as string),2,\"0\"))) < \"$current_date\"
                     group by year,month,day,server
-                    order by year,month,day,server desc;" --output_delimiter=, --quiet -k --delimited)
+                    order by year,month,day,server desc;" --output_delimiter=, --quiet --delimited)
 do
     year=$(echo $partition | cut -d, -f 1)
     month=$(echo $partition | cut -d, -f 2)
@@ -120,7 +120,7 @@ for partition in $(impala-shell $IMPALA_OPTS -i $IMPALA_NODE -q "select year,mon
                    from $IMPALA_ICMP_STAGING_TABLE
                    where (concat(cast(year as string),lpad(cast(month as string),2,\"0\"),lpad(cast(day as string),2,\"0\"))) < \"$current_date\"
                    group by year,month,day
-                   order by year,month,day desc;" --output_delimiter=, --quiet -k --delimited)
+                   order by year,month,day desc;" --output_delimiter=, --quiet --delimited)
 do
     year=$(echo $partition | cut -d, -f 1)
     month=$(echo $partition | cut -d, -f 2)

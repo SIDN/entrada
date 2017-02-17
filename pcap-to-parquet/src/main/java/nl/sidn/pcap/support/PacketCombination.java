@@ -27,24 +27,27 @@ import nl.sidn.pcap.util.Settings.ServerInfo;
 
 public class PacketCombination {
 
-	public static final PacketCombination NULL = new PacketCombination(null,null, null);
+	public static final PacketCombination NULL = new PacketCombination(null,null, null, false);
 
 	private ServerInfo server;
 	private Packet request;
 	private Message requestMessage;
 	private Packet response;
 	private Message responseMessage;
+	//true if this packet has expired from cache
+	private boolean expired;
 
-	public PacketCombination(Packet request, Message requestMessage, ServerInfo server) {
-		this(request, requestMessage, server, null, null);
+	public PacketCombination(Packet request, Message requestMessage, ServerInfo server, boolean expired) {
+		this(request, requestMessage, server, null, null, expired);
 	}
 
-	public PacketCombination(Packet request, Message requestMessage, ServerInfo server, Packet response, Message responseMessage) {
+	public PacketCombination(Packet request, Message requestMessage, ServerInfo server, Packet response, Message responseMessage, boolean expired) {
 		this.request = request;
 		this.response = response;
 		this.requestMessage = requestMessage;
 		this.responseMessage = responseMessage;
 		this.server = server;
+		this.expired = expired;
 	}
 
 	public Packet getRequest() {
@@ -65,6 +68,10 @@ public class PacketCombination {
 
 	public ServerInfo getServer() {
 		return server;
+	}
+	
+	public boolean isExpired(){
+		return expired;
 	}
 
 }

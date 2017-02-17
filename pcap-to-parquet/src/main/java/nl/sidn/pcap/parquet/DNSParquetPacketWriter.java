@@ -189,8 +189,11 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 	    	
 	    	//update metric
     		responseBytes = responseBytes + respTransport.getUdpLength();
-	    	
-	    	metricManager.sendAggregated(MetricManager.METRIC_IMPORT_DNS_RESPONSE_COUNT, 1, time);
+	    	if(!combo.isExpired()){
+	    		//do not send expired queries, this will cause duplicate timestamps with low values
+	    		//this looks like dips in the grafana graph
+	    		metricManager.sendAggregated(MetricManager.METRIC_IMPORT_DNS_RESPONSE_COUNT, 1, time);
+	    	}
 	    }
 	    
 	    //values from request now, if no request found then use parts of the response.
@@ -235,7 +238,11 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 			
 			//update metrics
 	    	requestBytes = requestBytes + reqTransport.getUdpLength();
-			metricManager.sendAggregated(MetricManager.METRIC_IMPORT_DNS_QUERY_COUNT, 1, time);
+	    	if(!combo.isExpired()){
+	    		//do not send expired queries, this will cause duplicate timestamps with low values
+	    		//this looks like dips in the grafana graph
+	    		metricManager.sendAggregated(MetricManager.METRIC_IMPORT_DNS_QUERY_COUNT, 1, time);
+	    	}
 		}
 	    
 	    //question
@@ -258,6 +265,11 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		
 		//ip version stats
 		updateIpVersionMetrics(reqTransport, respTransport);
+		
+		//if packet was expired and dropped from cache then increase stats for this
+		if(combo.isExpired()){
+			metricManager.sendAggregated(MetricManager.METRIC_IMPORT_CACHE_EXPPIRED_DNS_QUERY_COUNT, 1, time, false);
+		}
 	}
 	
 	private void enrich(Packet reqPacket,Packet respPacket, GenericRecordBuilder builder){

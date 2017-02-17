@@ -21,18 +21,26 @@
  */	
 package nl.sidn.stats;
 
-public class Metric {
+public class Metric implements Comparable<Metric> {
 	
 	private String name;
 	private long value;
 	private long time;
+	private boolean useThreshHold;
+	private boolean alive;
 	
-	public Metric(){}
-	
+	private Metric(){}
+
 	public Metric(String name, long value, long time) {
+		this(name, value, time, true);
+	}
+	
+	public Metric(String name, long value, long time, boolean useThreshHold) {
 		this.name = name;
 		this.value = value;
 		this.time = time;
+		this.useThreshHold = useThreshHold;
+		this.alive = true;
 	}
 
 	public String getName() {
@@ -45,15 +53,36 @@ public class Metric {
 	
 	public void update(long value){
 		this.value += value;
+		this.alive = true;
 	}
 
 	public long getTime() {
 		return time;
 	}
 
+	public boolean isUseThreshHold() {
+		return useThreshHold;
+	}
+
+	/**
+	 * @return pickle format, which can be sent to graphite.
+	 */
 	@Override
 	public String toString() {
 		return name + " " + value + " " + time;
+	}
+
+	public boolean isAlive() {
+		return alive;
+	}
+
+	public void setAlive(boolean alive) {
+		this.alive = alive;
+	}
+
+	@Override
+	public int compareTo(Metric o) {
+		return Integer.compare((int)this.time, (int)o.getTime());
 	}
 
 }

@@ -76,6 +76,7 @@ public class Settings {
 	
 	private Settings(String path){
 		init(path);
+		debug();
 	}
 	
 	public static Settings getInstance(){
@@ -233,5 +234,11 @@ public class Settings {
 		return tldSuffixes;
 	}
 	
-	
+	private void debug(){
+		LOGGER.info("************** entrada-setting.properties ******************");
+		for( String pn : props.stringPropertyNames()){
+			LOGGER.info(pn + ": " + props.getProperty(pn));
+		}
+		LOGGER.info("*************************************************************");
+	}
 }

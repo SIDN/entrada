@@ -88,9 +88,11 @@ public class MetricManager {
 	public static String METRIC_ICMP_ERROR = ".icmp.error";
 	public static String METRIC_ICMP_INFO = ".icmp.info";
 	
+	//cache stats
+	public static String METRIC_IMPORT_CACHE_EXPPIRED_DNS_QUERY_COUNT = ".cache.expired.dns.request.count";
+	
 	private static MetricManager _metricManager = null;
 	
-	//private Map<String, Metric> oldMetricCache = null;
 	private Map<String, Metric> metricCache = new HashMap<String, Metric>();
 	private List<Metric> realtimeMetrics = new ArrayList<>();
 	
@@ -125,6 +127,19 @@ public class MetricManager {
 		return graphitePrefix + "." + cleanServer + metric;
 	}
 
+	
+	public void sendAggregated(String metric, int value, long timestamp, boolean useThreshHold){
+		long metricTime = roundTimestamp(timestamp);
+		String metricName = createMetricName(metric);
+		String lookup = metricName + "." + metricTime;
+		Metric m = metricCache.get(lookup);
+		if(m != null){
+			m.update(value);
+		}else{
+			metricCache.put(lookup, new Metric(metricName, value,metricTime, useThreshHold));
+		}
+	}
+	
 	/**
 	 * send aggregated counts (per server) aggregate by 10s bucket
 	 * @param metric
@@ -133,15 +148,7 @@ public class MetricManager {
 	 * @param server
 	 */
 	public void sendAggregated(String metric, int value, long timestamp){
-		long metricTime = roundTimestamp(timestamp);
-		String metricName = createMetricName(metric);
-		String lookup = metricName + "." + metricTime;
-		Metric m = metricCache.get(lookup);
-		if(m != null){
-			m.update(value);
-		}else{
-			metricCache.put(lookup, new Metric(metricName, value,metricTime));
-		}
+		sendAggregated(metric, value, timestamp, true);
 	}
 	
 	public void flush(){
@@ -160,13 +167,17 @@ public class MetricManager {
 		if(graphiteAdapter.isConnected()){
 			for(String key : metricCache.keySet()){
 				Metric m = metricCache.get(key);
+				
 				/**
 				 * Use a threshhold to determine if the value should be sent to graphite
 				 * low values may indicate trailing queries in later pcap files.
 				 * duplicate timestamps get overwritten by graphite and only the last timestamp value
 				 * is used by graphite.
 				 */
-				if(m.getValue() > threshhold){ 
+				if(m.isUseThreshHold() && m.getValue() < threshhold){ 
+					LOGGER.debug("Metric " + m.getName() + " is below threshold min of " + threshhold
+							+ " with actual value of " + m.getValue());
+				}else{
 					//add metric to graphite plaintext protocol string
 					//@see: http://graphite.readthedocs.org/en/latest/feeding-carbon.html#the-plaintext-protocol
 					buffer.append(m.toString() + "\n");
@@ -178,7 +189,7 @@ public class MetricManager {
 					buffer.append(m.toString() + "\n");
 				}
 			}
-			
+			LOGGER.info("Send metrics: " + buffer.toString());
 			graphiteAdapter.send(buffer.toString());
 			graphiteAdapter.close();
 		}
@@ -195,5 +206,31 @@ public class MetricManager {
 		long offset = (intime % retention);
 	    return intime - offset;
 	}
+	
+	
+	public Map<String, Metric> persist(){
+		//only keep newly created or updatet stats
+		Map<String, Metric> newMap = new HashMap<>();
+		for(String key : metricCache.keySet()){
+			Metric m = metricCache.get(key);
+			if(m != null && m.isAlive()){
+				newMap.put(key, m);
+			}
+		}
+		//contains only the "live" metrics
+		return newMap;
+	}
+
+	public void loadMetricCache(Map<String, Metric> metricCache) {
+		for(String key : metricCache.keySet()){
+			Metric m = metricCache.get(key);
+			if(m != null){
+				//mark metric as non-alive, so if not updated this run, then it will not be persisted again
+				m.setAlive(false);
+			}
+		}
+		this.metricCache = metricCache;
+	}
+
 
 }

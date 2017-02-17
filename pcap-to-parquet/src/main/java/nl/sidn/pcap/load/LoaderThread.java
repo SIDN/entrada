@@ -56,6 +56,7 @@ import nl.sidn.pcap.support.PacketCombination;
 import nl.sidn.pcap.support.RequestKey;
 import nl.sidn.pcap.util.Settings;
 import nl.sidn.pcap.util.Settings.ServerInfo;
+import nl.sidn.stats.Metric;
 import nl.sidn.stats.MetricManager;
 
 import org.apache.commons.io.FileUtils;
@@ -222,7 +223,7 @@ public class LoaderThread extends AbstractStoppableThread {
 				if((currentPacket.getProtocol() == ICMPDecoder.PROTOCOL_ICMP_V4) ||
 						(currentPacket.getProtocol() == ICMPDecoder.PROTOCOL_ICMP_V6)){
 					//handle icmp
-					PacketCombination pc = new PacketCombination(currentPacket, null, current_server);
+					PacketCombination pc = new PacketCombination(currentPacket, null, current_server, false);
 					
 					try {
 						if(!sharedQueue.offer(pc , 5, TimeUnit.SECONDS)){
@@ -295,7 +296,7 @@ public class LoaderThread extends AbstractStoppableThread {
 											
 							if(request != null &&  request.getPacket() != null && request.getMessage() != null){
 								try {
-									if(!sharedQueue.offer(new PacketCombination(request.getPacket(), request.getMessage(), current_server, dnsPacket, msg) , 5, TimeUnit.SECONDS)){
+									if(!sharedQueue.offer(new PacketCombination(request.getPacket(), request.getMessage(), current_server, dnsPacket, msg, false) , 5, TimeUnit.SECONDS)){
 										LOGGER.error("timeout adding items to queue");
 									}
 								} catch (InterruptedException e) {
@@ -308,7 +309,7 @@ public class LoaderThread extends AbstractStoppableThread {
 								LOGGER.debug("Found no request for response");
 								noQueryFoundCounter++;
 								try {
-									if(!sharedQueue.offer(new PacketCombination(null, null, current_server, dnsPacket,msg ), 5, TimeUnit.SECONDS)){
+									if(!sharedQueue.offer(new PacketCombination(null, null, current_server, dnsPacket,msg, false ), 5, TimeUnit.SECONDS)){
 										LOGGER.error("timeout adding items to queue");
 									}
 									purgeCounter++;
@@ -380,12 +381,17 @@ public class LoaderThread extends AbstractStoppableThread {
 			//persist request cache
 			kryo.writeObject(output, _requestCache);
 			
+			//persist running statistics
+			Map<String, Metric> metricsCache = MetricManager.getInstance().persist();
+			kryo.writeObject(output, metricsCache);
+			
 			output.close();
 			LOGGER.info("------------- State persistence stats --------------");
 			LOGGER.info("Data is persisted to " + file);
 			LOGGER.info("Persist " + pmap.size() + " TCP flows");
 			LOGGER.info("Persist " + pcapReader.getDatagrams().size() + " Datagrams");
 		    LOGGER.info("Persist request cache " + _requestCache.size() + " DNS requests");
+		    LOGGER.info("Persist statistics cache " + metricsCache.size() + " metrics");
 		    LOGGER.info("----------------------------------------------------");
 			
 		} catch (Exception e) {
@@ -429,11 +435,22 @@ public class LoaderThread extends AbstractStoppableThread {
 
 			 //read in previous request cache
 			 _requestCache = kryo.readObject(input, HashMap.class);
+			 
+			//read running statistics
+			 Map<String, Metric> metricsCache = kryo.readObject(input, HashMap.class);
+//			 Multimap<String, Metric> metrics = TreeMultimap.create();
+//			 for (String key : metricsCache.keySet()) {
+//				 metrics.put(key, metricsCache.get(key));
+//			 }		
+			 
+			 MetricManager.getInstance().loadMetricCache(metricsCache);
+			 
 		     input.close();
 		     LOGGER.info("------------- Loader state stats ------------------");
 		     LOGGER.info("Loaded TCP state " + pcapReader.getFlows().size() + " TCP flows");
 		     LOGGER.info("Loaded Datagram state " + pcapReader.getDatagrams().size() + " Datagrams");
 		     LOGGER.info("Loaded Request cache " + _requestCache.size() + " DNS requests");
+		     LOGGER.info("Loaded statistics cache " + metricsCache.size() + " metrics");
 		     LOGGER.info("----------------------------------------------------");
 		} catch (Exception e) {
 			LOGGER.error("Error opening state file, continue without loading state: " + file, e);
@@ -457,7 +474,7 @@ public class LoaderThread extends AbstractStoppableThread {
 				  
 				if(mw.getMessage() != null && mw.getMessage().getHeader().getQr() == MessageType.QUERY){
 					try {
-						if(!sharedQueue.offer(new PacketCombination(mw.getPacket(), mw.getMessage(), current_server), 5, TimeUnit.SECONDS)){
+						if(!sharedQueue.offer(new PacketCombination(mw.getPacket(), mw.getMessage(), current_server, true), 5, TimeUnit.SECONDS)){
 							LOGGER.error("timeout adding items to queue");
 						}
 						purgeCounter++;

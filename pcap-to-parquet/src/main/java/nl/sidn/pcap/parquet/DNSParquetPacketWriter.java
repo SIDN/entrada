@@ -61,6 +61,8 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 
 	private static final Logger LOGGER = LoggerFactory.getLogger(DNSParquetPacketWriter.class);
 	
+	private static final int RCODE_QUERY_WITHOUT_RESPONSE = -1;
+	
 	//metrics
 	private Set<String> domainnames = new HashSet<>();
 	private long responseBytes = 0;
@@ -145,7 +147,7 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 	    //check to see it a response was found, if not then save -1 value
 	    //otherwise use the rcode returned by the server in the response.
 	    //no response might be caused by rate limiting
-	    int rcode = -1;  //default no reply, use non standard rcode value -1
+	    int rcode = RCODE_QUERY_WITHOUT_RESPONSE;  //default no reply, use non standard rcode value -1
 
 		//set the nameserver the queries are going to/coming from
 		builder.set("svr", combo.getServer().getName());
@@ -244,6 +246,11 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 	    		metricManager.sendAggregated(MetricManager.METRIC_IMPORT_DNS_QUERY_COUNT, 1, time);
 	    	}
 		}
+	    
+	    if(rcode == RCODE_QUERY_WITHOUT_RESPONSE){
+	    	//no response found for query, update stats
+	    	metricManager.sendAggregated(MetricManager.METRIC_IMPORT_DNS_NO_RESPONSE_COUNT, 1, time);
+	    }
 	    
 	    //question
 	    writeQuestion(q, builder);

@@ -183,22 +183,22 @@ public abstract class AbstractParquetPacketWriter {
 		LOGGER.info("-----------------------------------------------------");
 	}
 
-	@Deprecated
-	public String filterExtreme(String str) {
-	    StringBuilder filtered = new StringBuilder(str.length());
-	    for (int i = 0; i < str.length(); i++) {
-	        char current = str.charAt(i);
-	        if ((current >= 0x30 && current <= 0x39) ||
-	        		(current >= 0x41 && current <= 0x5a) ||
-	        		(current >= 0x61 && current <= 0x7a)){
-	            filtered.append(current);
-	        }else{
-	        	 filtered.append("?");
-	        }
-	    }
-
-	    return filtered.toString();
-	}
+//	@Deprecated
+//	public String filterExtreme(String str) {
+//	    StringBuilder filtered = new StringBuilder(str.length());
+//	    for (int i = 0; i < str.length(); i++) {
+//	        char current = str.charAt(i);
+//	        if ((current >= 0x30 && current <= 0x39) ||
+//	        		(current >= 0x41 && current <= 0x5a) ||
+//	        		(current >= 0x61 && current <= 0x7a)){
+//	            filtered.append(current);
+//	        }else{
+//	        	 filtered.append("?");
+//	        }
+//	    }
+//
+//	    return filtered.toString();
+//	}
 	
 	/**
 	 * replace all non printable ascii chars with the hex value of the char.

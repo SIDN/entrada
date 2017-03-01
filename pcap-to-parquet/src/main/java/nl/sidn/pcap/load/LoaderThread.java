@@ -58,6 +58,7 @@ import nl.sidn.pcap.util.Settings;
 import nl.sidn.pcap.util.Settings.ServerInfo;
 import nl.sidn.stats.Metric;
 import nl.sidn.stats.MetricManager;
+import nl.sidn.stats.PersistenceManager;
 
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
@@ -382,8 +383,7 @@ public class LoaderThread extends AbstractStoppableThread {
 			kryo.writeObject(output, _requestCache);
 			
 			//persist running statistics
-			Map<String, Metric> metricsCache = MetricManager.getInstance().persist();
-			kryo.writeObject(output, metricsCache);
+			MetricManager.getInstance().getMetricPersistenceManager().persist(kryo, output);
 			
 			output.close();
 			LOGGER.info("------------- State persistence stats --------------");
@@ -391,9 +391,7 @@ public class LoaderThread extends AbstractStoppableThread {
 			LOGGER.info("Persist " + pmap.size() + " TCP flows");
 			LOGGER.info("Persist " + pcapReader.getDatagrams().size() + " Datagrams");
 		    LOGGER.info("Persist request cache " + _requestCache.size() + " DNS requests");
-		    LOGGER.info("Persist statistics cache " + metricsCache.size() + " metrics");
 		    LOGGER.info("----------------------------------------------------");
-			
 		} catch (Exception e) {
 			LOGGER.error("Error saving decoder state to file: " + file, e);
 		}
@@ -436,21 +434,14 @@ public class LoaderThread extends AbstractStoppableThread {
 			 //read in previous request cache
 			 _requestCache = kryo.readObject(input, HashMap.class);
 			 
-			//read running statistics
-			 Map<String, Metric> metricsCache = kryo.readObject(input, HashMap.class);
-//			 Multimap<String, Metric> metrics = TreeMultimap.create();
-//			 for (String key : metricsCache.keySet()) {
-//				 metrics.put(key, metricsCache.get(key));
-//			 }		
-			 
-			 MetricManager.getInstance().loadMetricCache(metricsCache);
+			 //read running statistics
+			 MetricManager.getInstance().getMetricPersistenceManager().load(kryo, input);
 			 
 		     input.close();
 		     LOGGER.info("------------- Loader state stats ------------------");
 		     LOGGER.info("Loaded TCP state " + pcapReader.getFlows().size() + " TCP flows");
 		     LOGGER.info("Loaded Datagram state " + pcapReader.getDatagrams().size() + " Datagrams");
 		     LOGGER.info("Loaded Request cache " + _requestCache.size() + " DNS requests");
-		     LOGGER.info("Loaded statistics cache " + metricsCache.size() + " metrics");
 		     LOGGER.info("----------------------------------------------------");
 		} catch (Exception e) {
 			LOGGER.error("Error opening state file, continue without loading state: " + file, e);

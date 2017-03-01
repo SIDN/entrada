@@ -92,6 +92,7 @@ public class MetricManager {
 	public static String METRIC_IMPORT_CACHE_EXPPIRED_DNS_QUERY_COUNT = ".cache.expired.dns.request.count";
 	
 	private static MetricManager _metricManager = null;
+	private PersistenceManager metricPersistenceManager = null;
 	
 	private Map<String, Metric> metricCache = new HashMap<String, Metric>();
 	private List<Metric> realtimeMetrics = new ArrayList<>();
@@ -107,7 +108,9 @@ public class MetricManager {
 		return _metricManager;
 	}
 
-	private MetricManager(){}
+	private MetricManager(){
+		metricPersistenceManager = new PersistenceManager(this);
+	}
 	
 	/**
 	 * send overall metrics, use current system time
@@ -208,28 +211,20 @@ public class MetricManager {
 	}
 	
 	
-	public Map<String, Metric> persist(){
-		//only keep newly created or updatet stats
-		Map<String, Metric> newMap = new HashMap<>();
-		for(String key : metricCache.keySet()){
-			Metric m = metricCache.get(key);
-			if(m != null && m.isAlive()){
-				newMap.put(key, m);
-			}
-		}
-		//contains only the "live" metrics
-		return newMap;
+	protected Map<String, Metric> getMetricCache() {
+		return metricCache;
 	}
 
-	public void loadMetricCache(Map<String, Metric> metricCache) {
-		for(String key : metricCache.keySet()){
-			Metric m = metricCache.get(key);
-			if(m != null){
-				//mark metric as non-alive, so if not updated this run, then it will not be persisted again
-				m.setAlive(false);
-			}
-		}
+	protected void setMetricCache(Map<String, Metric> metricCache) {
 		this.metricCache = metricCache;
+	}
+
+	public PersistenceManager getMetricPersistenceManager() {
+		return metricPersistenceManager;
+	}
+
+	public void setMetricPersistenceManager(PersistenceManager metricPersistenceManager) {
+		this.metricPersistenceManager = metricPersistenceManager;
 	}
 
 

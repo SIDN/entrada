@@ -119,6 +119,14 @@ public class DNSStringUtil {
 			/* zero lentgh label means "." root */ 
 			return ".";
 		}
+		
+		if(length > 5000){
+			//large value chosen to allow decoding illegal long labels (>63)
+			//but have some protection against running out of memmory for 
+			//huge erroneous huge label sizes.
+			throw new DnsDecodeException("Unsupported label length found, value: " + (int)length);
+		}
+		
 		if(isUncompressedName((byte)length)){
 			return readUncompressedName(length, buffer) + ".";
 		}else if(isCompressedName((byte)length)){

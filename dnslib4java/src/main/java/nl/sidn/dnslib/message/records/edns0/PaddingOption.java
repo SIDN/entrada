@@ -19,23 +19,31 @@
  * along with ENTRADA.  If not, see [<http://www.gnu.org/licenses/].
  *
  */	
-package nl.sidn.pcap;
+package nl.sidn.dnslib.message.records.edns0;
 
-import org.junit.Test;
-
-
-
-public class MainTest {
+/**
+ * @see https://tools.ietf.org/html/rfc7830
+ * 
+ *
+ */
+public class PaddingOption extends EDNS0Option{
 	
-	@Test
-	public void testRun(){
-		Main main = new Main();
+	private int length;
 	
-		ClassLoader classLoader = getClass().getClassLoader();
-		String[] args = {"paddingtest",classLoader.getResource("test-settings.properties").getFile(),
-				"/Users/maarten/sidn/development/tmp/pcap/input","/Users/maarten/sidn/development/tmp/pcap/parquet", "/Users/maarten/sidn/development/tmp"};
-		main.run(args);
+	public PaddingOption(){}
+
+	public PaddingOption(int code, int len) {
+		super(code, len);
+		this.length = len;
 	}
 
-	
+	public int getLength() {
+		return length;
+	}
+
+	@Override
+	public String toString() {
+		return "PaddingOption [length=" + length + "]";
+	}
+
 }

@@ -35,6 +35,7 @@ import nl.sidn.dnslib.message.records.edns0.DNSSECOption;
 import nl.sidn.dnslib.message.records.edns0.EDNS0Option;
 import nl.sidn.dnslib.message.records.edns0.NSidOption;
 import nl.sidn.dnslib.message.records.edns0.OPTResourceRecord;
+import nl.sidn.dnslib.message.records.edns0.PaddingOption;
 import nl.sidn.dnslib.message.records.edns0.PingOption;
 import nl.sidn.dnslib.types.OpcodeType;
 import nl.sidn.dnslib.types.RcodeType;
@@ -391,7 +392,8 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 	        builder
 	        .set("edns_udp", (int)opt.getUdpPlayloadSize())
 	        .set("edns_version", (int)opt.getVersion())
-	        .set("edns_do", opt.getDnssecDo());
+	        .set("edns_do", opt.getDnssecDo())
+	        .set("edns_padding", -1); //use default no padding found
 	        
 	        String other = null;
 	        for (EDNS0Option option : opt.getOptions()) {
@@ -433,7 +435,10 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
  		    			.set("edns_client_subnet_asn", clientASN)
  		    			.set("edns_client_subnet_country", clientCountry);
 	        		
-	        	}else{
+	        	}else if(option instanceof PaddingOption){
+	        		builder.set("edns_padding", ((PaddingOption)option).getLength());
+	        	}
+	        	else{
 	        		//other
 	        		if(StringUtils.length(other) > 0){
 	        			other = other + "," + option.getCode();

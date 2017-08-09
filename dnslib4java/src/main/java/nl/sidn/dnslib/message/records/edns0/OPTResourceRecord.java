@@ -120,7 +120,10 @@ public class OPTResourceRecord extends AbstractResourceRecord {
 			
 		NetworkData opt = new NetworkData(optionBytes);
 		while(opt.isBytesAvailable()){
-			options.add(decodeOption(opt));
+			EDNS0Option option = decodeOption(opt);
+			if(option != null){
+				options.add(option);
+			}
 		}
 
 	}
@@ -213,11 +216,22 @@ public class OPTResourceRecord extends AbstractResourceRecord {
 				}
 			}
 			return option;
+		}else if(optioncode == 12){ //Padding
+			
+			PaddingOption po = new PaddingOption(optioncode, optionlen);
+			//get the actual padding data, to move pointer to end of packet.
+			//ignore data read.
+			if(optionlen > 0){
+				byte[] data = new byte[optionlen];
+				opt.readBytes(data);
+			}
+			return po;
 		}else{
 			//catch all, for experimental edns options
 			//read data, but ignore values
 			byte[] data = new byte[optionlen];
 			opt.readBytes(data);
+
 			EDNS0Option ednsOption = new EDNS0Option(optioncode, optionlen);
 			return ednsOption;
 		}

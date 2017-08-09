@@ -54,7 +54,8 @@ orig_dns_labels INT,
 svr string,
 time_micro bigint,
 server_location string,
-query_ts TIMESTAMP)
+query_ts TIMESTAMP,
+pcap_file STRING)
 partitioned by (year smallint, month smallint, day smallint)
   STORED AS PARQUETFILE
   LOCATION '_HDFS_ICMP_PACKETS_';

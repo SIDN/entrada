@@ -175,6 +175,9 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 	    	  	.set("res_len", respTransport.getTotalLength())
 	    	    .set("dns_res_len", respMessage.getBytes());
 	    	
+	    	//add file name
+	    	builder.set("pcap_file", combo.getPcapFilename());
+	    	
 	    	//ip fragments in the response
 	    	if(respTransport.isFragmented()){
 	    		int frags = respTransport.getReassembledFragments();

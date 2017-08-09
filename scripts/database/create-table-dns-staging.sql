@@ -57,7 +57,8 @@ create external table if not exists _IMPALA_DNS_STAGING_TABLE_TAB_ (
  is_opendns boolean,
  dns_res_len INT,
  server_location string,
- edns_padding INT)
+ edns_padding INT,
+ pcap_file STRING)
  partitioned by (year INT, month INT, day INT, server string)
   STORED AS PARQUETFILE
   LOCATION '_HDFS_DNS_STAGING_';

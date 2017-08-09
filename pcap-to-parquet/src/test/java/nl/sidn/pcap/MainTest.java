@@ -32,8 +32,8 @@ public class MainTest {
 		Main main = new Main();
 	
 		ClassLoader classLoader = getClass().getClassLoader();
-		String[] args = {"paddingtest",classLoader.getResource("test-settings.properties").getFile(),
-				"/Users/maarten/sidn/development/tmp/pcap/input","/Users/maarten/sidn/development/tmp/pcap/parquet", "/Users/maarten/sidn/development/tmp"};
+		String[] args = {"pcap",classLoader.getResource("test-settings.properties").getFile(),
+				"/Users/moritz.muller/Documents/Projecten/Entrada/","/tmp/parquet", "/tmp"};
 		main.run(args);
 	}
 

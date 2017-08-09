@@ -124,6 +124,9 @@ public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
 		    .set("l4_srcp",  icmpPacket.getSrcPort())
 		    .set("l4_dstp",  icmpPacket.getDstPort())
 		    .set("ip_len",  icmpPacket.getTotalLength()); //size of ip packet incl headers
+	    
+	   //add file name
+    	   builder.set("pcap_file", packetCombo.getPcapFilename());
 
 	    //if no anycast location is encoded in the name then the anycast server name and location will be null
     	//only store this column in case of anycast, to save storage space.

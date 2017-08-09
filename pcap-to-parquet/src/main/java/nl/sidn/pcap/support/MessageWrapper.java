@@ -28,13 +28,15 @@ public class MessageWrapper {
 
 	private Message message;
 	private Packet packet;
+	private String filename;
 
 	public MessageWrapper() {
 	}
 
-	public MessageWrapper(Message message, Packet packet) {
+	public MessageWrapper(Message message, Packet packet, String filename) {
 		this.message = message;
 		this.packet = packet;
+		this.filename = filename;
 
 	}
 
@@ -44,6 +46,10 @@ public class MessageWrapper {
 
 	public Packet getPacket() {
 		return packet;
+	}
+
+	public String getFilename() {
+		return filename;
 	}
 
 }

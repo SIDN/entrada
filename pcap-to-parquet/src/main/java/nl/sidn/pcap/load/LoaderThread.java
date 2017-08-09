@@ -208,10 +208,21 @@ public class LoaderThread extends AbstractStoppableThread {
 		LOGGER.info("Shared queue is empty continue with next file");
 	}
 
+	private String extractPcapFile(String file){
+		try {
+			return FileUtils.getFile(file).getName();
+		} catch (Exception e) {
+			// some problem, cannot get file, use "unknown" to signal this
+			return "err";
+		}
+	}
 	public void read(String file) {
 		createReader(file);
 		long readStart = System.currentTimeMillis();
 		LOGGER.info("Start reading packet queue");
+		
+		//get filename only to map parquet row to pcap file
+		String fileName = extractPcapFile(file);
 		
 		long counter = 0;
 		for (Packet currentPacket : pcapReader) {
@@ -224,7 +235,7 @@ public class LoaderThread extends AbstractStoppableThread {
 				if((currentPacket.getProtocol() == ICMPDecoder.PROTOCOL_ICMP_V4) ||
 						(currentPacket.getProtocol() == ICMPDecoder.PROTOCOL_ICMP_V6)){
 					//handle icmp
-					PacketCombination pc = new PacketCombination(currentPacket, null, current_server, false);
+					PacketCombination pc = new PacketCombination(currentPacket, null, current_server, false,fileName);
 					
 					try {
 						if(!sharedQueue.offer(pc , 5, TimeUnit.SECONDS)){
@@ -270,7 +281,7 @@ public class LoaderThread extends AbstractStoppableThread {
 							}
 							
 							RequestKey key = new RequestKey(msg.getHeader().getId(), qname, dnsPacket.getSrc(), dnsPacket.getSrcPort(), System.currentTimeMillis());
-							_requestCache.put(key, new MessageWrapper(msg,dnsPacket));
+							_requestCache.put(key, new MessageWrapper(msg,dnsPacket, fileName));
 						}else{
 							//try to find the request
 							responseCounter++;
@@ -297,7 +308,7 @@ public class LoaderThread extends AbstractStoppableThread {
 											
 							if(request != null &&  request.getPacket() != null && request.getMessage() != null){
 								try {
-									if(!sharedQueue.offer(new PacketCombination(request.getPacket(), request.getMessage(), current_server, dnsPacket, msg, false) , 5, TimeUnit.SECONDS)){
+									if(!sharedQueue.offer(new PacketCombination(request.getPacket(), request.getMessage(), current_server, dnsPacket, msg, false, fileName) , 5, TimeUnit.SECONDS)){
 										LOGGER.error("timeout adding items to queue");
 									}
 								} catch (InterruptedException e) {
@@ -310,7 +321,7 @@ public class LoaderThread extends AbstractStoppableThread {
 								LOGGER.debug("Found no request for response");
 								noQueryFoundCounter++;
 								try {
-									if(!sharedQueue.offer(new PacketCombination(null, null, current_server, dnsPacket,msg, false ), 5, TimeUnit.SECONDS)){
+									if(!sharedQueue.offer(new PacketCombination(null, null, current_server, dnsPacket,msg, false, fileName ), 5, TimeUnit.SECONDS)){
 										LOGGER.error("timeout adding items to queue");
 									}
 									purgeCounter++;
@@ -465,7 +476,7 @@ public class LoaderThread extends AbstractStoppableThread {
 				  
 				if(mw.getMessage() != null && mw.getMessage().getHeader().getQr() == MessageType.QUERY){
 					try {
-						if(!sharedQueue.offer(new PacketCombination(mw.getPacket(), mw.getMessage(), current_server, true), 5, TimeUnit.SECONDS)){
+						if(!sharedQueue.offer(new PacketCombination(mw.getPacket(), mw.getMessage(), current_server, true, mw.getFilename()), 5, TimeUnit.SECONDS)){
 							LOGGER.error("timeout adding items to queue");
 						}
 						purgeCounter++;

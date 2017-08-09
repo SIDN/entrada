@@ -39,6 +39,16 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 
+import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.esotericsoftware.kryo.Kryo;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
+import com.google.common.collect.Multimap;
+import com.google.common.collect.TreeMultimap;
+
 import nl.sidn.dnslib.message.Message;
 import nl.sidn.dnslib.types.MessageType;
 import nl.sidn.dnslib.types.ResourceRecordType;
@@ -56,19 +66,7 @@ import nl.sidn.pcap.support.PacketCombination;
 import nl.sidn.pcap.support.RequestKey;
 import nl.sidn.pcap.util.Settings;
 import nl.sidn.pcap.util.Settings.ServerInfo;
-import nl.sidn.stats.Metric;
 import nl.sidn.stats.MetricManager;
-import nl.sidn.stats.PersistenceManager;
-
-import org.apache.commons.io.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.io.Input;
-import com.esotericsoftware.kryo.io.Output;
-import com.google.common.collect.Multimap;
-import com.google.common.collect.TreeMultimap;
 
 public class LoaderThread extends AbstractStoppableThread {
 	

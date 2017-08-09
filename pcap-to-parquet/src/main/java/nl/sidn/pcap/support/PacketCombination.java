@@ -27,9 +27,10 @@ import nl.sidn.pcap.util.Settings.ServerInfo;
 
 public class PacketCombination {
 
-	public static final PacketCombination NULL = new PacketCombination(null,null, null, false);
+	public static final PacketCombination NULL = new PacketCombination(null,null, null, false, null);
 
 	private ServerInfo server;
+	private String pcapFilename;
 	private Packet request;
 	private Message requestMessage;
 	private Packet response;
@@ -37,17 +38,19 @@ public class PacketCombination {
 	//true if this packet has expired from cache
 	private boolean expired;
 
-	public PacketCombination(Packet request, Message requestMessage, ServerInfo server, boolean expired) {
-		this(request, requestMessage, server, null, null, expired);
+	public PacketCombination(Packet request, Message requestMessage, ServerInfo server, boolean expired, String pcapFilename) {
+		this(request, requestMessage, server, null, null, expired, pcapFilename);
 	}
 
-	public PacketCombination(Packet request, Message requestMessage, ServerInfo server, Packet response, Message responseMessage, boolean expired) {
+	public PacketCombination(Packet request, Message requestMessage, ServerInfo server, Packet response, Message responseMessage,
+			boolean expired, String pcapFilename) {
 		this.request = request;
 		this.response = response;
 		this.requestMessage = requestMessage;
 		this.responseMessage = responseMessage;
 		this.server = server;
 		this.expired = expired;
+		this.pcapFilename = pcapFilename; 
 	}
 
 	public Packet getRequest() {
@@ -72,6 +75,10 @@ public class PacketCombination {
 	
 	public boolean isExpired(){
 		return expired;
+	}
+
+	public String getPcapFilename() {
+		return pcapFilename;
 	}
 
 }

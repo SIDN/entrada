@@ -21,6 +21,7 @@
  */	
 package nl.sidn.dnslib.message.records.edns0;
 
+import nl.sidn.dnslib.message.util.NetworkData;
 
 /**
  * http://tools.ietf.org/html/draft-vandergaast-edns-client-subnet-02
@@ -35,8 +36,8 @@ public class ClientSubnetOption extends EDNS0Option{
 	
 	public ClientSubnetOption(){}
 	
-	public ClientSubnetOption(int code, int len) {
-		super(code, len);
+	public ClientSubnetOption(int code, int len,NetworkData buffer) {
+		super(code, len, buffer);
 	}
 
 	public int getFam() {
@@ -85,6 +86,44 @@ public class ClientSubnetOption extends EDNS0Option{
 				+ sourcenetmask + ", scopenetmask=" + scopenetmask
 				+ ", address=" + address + ", code=" + code + ", len=" + len
 				+ "]";
+	}
+	
+	@Override
+	public void decode(NetworkData buffer) {
+		char fam = buffer.readUnsignedChar();
+		short sourcenetmask = buffer.readUnsignedByte();
+		short scopenetmask = buffer.readUnsignedByte();
+		
+		setFam(fam);
+		setSourcenetmask(sourcenetmask);
+		int addressOctets = (int) Math.ceil((double)sourcenetmask /8);
+		setScopenetmask(scopenetmask);
+		int addrLength = len - 4; //(-4 bytes for fam+sourse+scope mask)
+		if(addrLength > 0){
+			if(fam == 1){ //IP v4
+				StringBuffer addressBuffer = new StringBuffer();
+				for (int i = 0; i < addressOctets; i++) {
+					if(addressBuffer.length() > 0){
+						addressBuffer.append(".");
+					}
+					int addressPart = buffer.readUnsignedByte();
+					addressBuffer.append(addressPart);
+				}
+				
+				setAddress(addressBuffer.toString());
+			}else if(fam == 2){ //v6
+				StringBuilder sb = new StringBuilder();
+				//read 2 byte blocks and convert to hex
+				for (int i = 0; i < addressOctets; i=i+2) {
+					if(sb.length() > 0){
+						sb.append(":");
+					}
+					int addressPart = buffer.readUnsignedChar();
+					sb.append(String.format("%04X", addressPart));
+				}
+				setAddress(sb.toString());
+			}
+		}
 	}
 
 }

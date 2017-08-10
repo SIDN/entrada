@@ -23,6 +23,8 @@ package nl.sidn.dnslib.message.records.edns0;
 
 import java.util.Arrays;
 
+import nl.sidn.dnslib.message.util.NetworkData;
+
 
 /**
  * @see http://tools.ietf.org/html/draft-hubert-ulevitch-edns-ping-01
@@ -35,8 +37,8 @@ public class PingOption extends EDNS0Option{
 	
 	public PingOption(){}
 
-	public PingOption(int code, int len) {
-		super(code, len);
+	public PingOption(int code, int len, NetworkData opt) {
+		super(code, len, opt);
 	}
 
 	public byte[] getPing() {
@@ -53,6 +55,12 @@ public class PingOption extends EDNS0Option{
 				+ ", len=" + len + "]";
 	}
 
+	@Override
+	public void decode(NetworkData buffer) {
+		byte[] ping = new byte[4];
+		buffer.readBytes(ping);
+		setPing(ping);
+	}
 
 
 

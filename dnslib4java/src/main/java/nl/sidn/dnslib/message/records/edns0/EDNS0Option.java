@@ -21,6 +21,8 @@
  */	
 package nl.sidn.dnslib.message.records.edns0;
 
+import nl.sidn.dnslib.message.util.NetworkData;
+
 public class EDNS0Option {
 	
 	protected int  code;
@@ -28,9 +30,10 @@ public class EDNS0Option {
 	
 	public EDNS0Option(){}
 	
-	public EDNS0Option(int code, int len) {
+	public EDNS0Option(int code, int len, NetworkData buffer) {
 		this.code = code;
 		this.len = len;
+		decode(buffer);
 	}
 
 	public int getCode() {
@@ -54,6 +57,11 @@ public class EDNS0Option {
 		return "EDNS0Option [code=" + code + ", len=" + len + "]";
 	}
 	
-	
+	public void decode(NetworkData buffer) {
+		//catch all, for experimental edns options
+		//read data, but ignore values
+		byte[] data = new byte[len];
+		buffer.readBytes(data);
+	}
 
 }

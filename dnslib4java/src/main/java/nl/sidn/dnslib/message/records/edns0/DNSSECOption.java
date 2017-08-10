@@ -26,6 +26,8 @@ import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 
+import nl.sidn.dnslib.message.util.NetworkData;
+
 /**
  * @see http://tools.ietf.org/html/rfc6014
  *
@@ -38,8 +40,8 @@ public class DNSSECOption extends EDNS0Option{
 	
 	private List<Integer> algs = new ArrayList<>();
 
-	public DNSSECOption(int code, int len) {
-		super(code, len);
+	public DNSSECOption(int code, int len, NetworkData buffer) {
+		super(code, len, buffer);
 	}
 	
 	public void addAlgorithm(int alg){
@@ -57,6 +59,14 @@ public class DNSSECOption extends EDNS0Option{
 	
 	public String export(){
 		return StringUtils.join(algs, ',');
+	}
+	
+	@Override
+	public void decode(NetworkData buffer) {
+		for (int i = 0; i <len; i++) {
+			int alg = buffer.readUnsignedByte();
+			addAlgorithm(alg);		
+		}
 	}
 
 }

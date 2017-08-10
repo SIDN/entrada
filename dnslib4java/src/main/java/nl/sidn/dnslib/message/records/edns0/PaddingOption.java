@@ -21,6 +21,8 @@
  */	
 package nl.sidn.dnslib.message.records.edns0;
 
+import nl.sidn.dnslib.message.util.NetworkData;
+
 /**
  * @see https://tools.ietf.org/html/rfc7830
  * 
@@ -32,8 +34,8 @@ public class PaddingOption extends EDNS0Option{
 	
 	public PaddingOption(){}
 
-	public PaddingOption(int code, int len) {
-		super(code, len);
+	public PaddingOption(int code, int len,NetworkData buffer) {
+		super(code, len, buffer);
 		this.length = len;
 	}
 
@@ -45,5 +47,6 @@ public class PaddingOption extends EDNS0Option{
 	public String toString() {
 		return "PaddingOption [length=" + length + "]";
 	}
+	
 
 }

@@ -21,7 +21,7 @@
  */	
 package nl.sidn.dnslib.message.records.edns0;
 
-
+import nl.sidn.dnslib.message.util.NetworkData;
 
 /**
  * @see http://tools.ietf.org/html/rfc5001
@@ -34,8 +34,8 @@ public class NSidOption extends EDNS0Option{
 
 	public NSidOption(){}
 	
-	public NSidOption(int code, int len) {
-		super(code, len);
+	public NSidOption(int code, int len, NetworkData opt) {
+		super(code, len,opt);
 	}
 
 	public String getId() {
@@ -49,6 +49,16 @@ public class NSidOption extends EDNS0Option{
 	@Override
 	public String toString() {
 		return "NSidOption [id=" + id + ", code=" + code + ", len=" + len + "]";
+	}
+	
+	@Override
+	public void decode(NetworkData buffer) {
+		if(len > 0){
+			//id present in packet
+			byte[] iddata = new byte[len];
+			buffer.readBytes(iddata);
+			id = new String(iddata);
+		}
 	}
 
 

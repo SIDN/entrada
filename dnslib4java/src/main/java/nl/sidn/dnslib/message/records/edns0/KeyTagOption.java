@@ -21,7 +21,10 @@
  */	
 package nl.sidn.dnslib.message.records.edns0;
 
+import java.util.ArrayList;
 import java.util.List;
+
+import nl.sidn.dnslib.message.util.NetworkData;
 
 /**
  * @see https://tools.ietf.org/html/rfc8145#section-4.1
@@ -34,8 +37,8 @@ public class KeyTagOption extends EDNS0Option{
 	
 	public KeyTagOption(){}
 
-	public KeyTagOption(int code, int len) {
-		super(code, len);
+	public KeyTagOption(int code, int len, NetworkData buffer) {
+		super(code, len, buffer);
 	}
 
 	public List<Integer> getKeytags() {
@@ -49,6 +52,28 @@ public class KeyTagOption extends EDNS0Option{
 	@Override
 	public String toString() {
 		return "KeyTagOption [keytags=" + keytags + "]";
+	}
+	
+	@Override
+	public void decode(NetworkData buffer) {
+		//get the actual padding data, to move pointer to end of packet.
+		//ignore data read.
+		if(len > 0){
+			List<Integer> keytags = new ArrayList<>();
+			if(len % 2 == 0) {
+				//only read keytags if correct even number of bytes found
+				int keys = len / 2;
+				for(int i = 0; i < keys; i++) {
+					//read 2 bytes
+					keytags.add( (int)buffer.readUnsignedChar());
+				}	
+			}else{
+				//illegal optionlen size, read data to get pointer in correct loc, ignore data.
+				byte[] data = new byte[len];
+				buffer.readBytes(data);
+			}
+			setKeytags(keytags);
+		}
 	}
 
 }

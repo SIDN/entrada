@@ -128,23 +128,18 @@ public class OPTResourceRecord extends AbstractResourceRecord {
 
 	}
 	
-	
+	/**
+	 * Detect the code and len of the edns0 option and create the correct
+	 * option object to return.	
+	 * @param opt
+	 * @return edns0 option object
+	 */
 	private EDNS0Option decodeOption(NetworkData opt){
-	
 		int optioncode = opt.readUnsignedChar();
 		int optionlen = opt.readUnsignedChar();
 
 		if(optioncode == 3 ){ //nsid
-			NSidOption option = new NSidOption(optioncode, optionlen);
-			if(optionlen > 0){
-				//id present in packet
-				byte[] iddata = new byte[optionlen];
-				opt.readBytes(iddata);
-				String id = new String(iddata);
-				option.setId(id);
-			}
-
-			return option;
+			return new NSidOption(optioncode, optionlen, opt);
 		}else if(optioncode == 5 ){
 			//optioncode 5 can be two things:
 			//1 dnssec DAU http://tools.ietf.org/html/rfc6975
@@ -154,114 +149,27 @@ public class OPTResourceRecord extends AbstractResourceRecord {
 			//option length 4
 			if(udpPlayloadSize == POWERDNS_EDNSPING_UDPSIZE &&
 					optionlen == POWERDNS_EDNSPING_LENGTH ){
-				PingOption pOption = new PingOption(optioncode, optionlen);
-				
-				byte[] ping = new byte[4];
-				opt.readBytes(ping);
-				pOption.setPing(ping);
-				return pOption;
+				return new PingOption(optioncode, optionlen, opt);
 			}else{
 				//must be dnssec DAU
-				DNSSECOption option = new DNSSECOption(optioncode,optionlen);
-				for (int i = 0; i <optionlen; i++) {
-					int alg = opt.readUnsignedByte();
-					option.addAlgorithm(alg);		
-				}
-				return option;
+				return new DNSSECOption(optioncode,optionlen, opt);
 			}
-		
 		}else if(optioncode == 6 || optioncode == 7){
 			//decode dnssec option
-			DNSSECOption option = new DNSSECOption(optioncode,optionlen);
-			for (int i = 0; i <optionlen; i++) {
-				int alg = opt.readUnsignedByte();
-				option.addAlgorithm(alg);		
-			}
-			return option;
+			return new DNSSECOption(optioncode,optionlen, opt);
 		}else if(optioncode == 8){
 			//decode clientsubnet option
-			char fam = opt.readUnsignedChar();
-			short sourcenetmask = opt.readUnsignedByte();
-			short scopenetmask = opt.readUnsignedByte();
-			
-			ClientSubnetOption option = new ClientSubnetOption(optioncode, optionlen);
-			option.setFam(fam);
-			option.setSourcenetmask(sourcenetmask);
-			int addressOctets = (int) Math.ceil((double)sourcenetmask /8);
-			option.setScopenetmask(scopenetmask);
-			int addrLength = optionlen - 4; //(-4 bytes for fam+sourse+scope mask)
-			if(addrLength > 0){
-				if(fam == 1){ //IP v4
-					StringBuffer addressBuffer = new StringBuffer();
-					for (int i = 0; i < addressOctets; i++) {
-						if(addressBuffer.length() > 0){
-							addressBuffer.append(".");
-						}
-						int addressPart = opt.readUnsignedByte();
-						addressBuffer.append(addressPart);
-					}
-					
-					option.setAddress(addressBuffer.toString());
-				}else if(fam == 2){ //v6
-					StringBuilder sb = new StringBuilder();
-					//read 2 byte blocks and convert to hex
-					for (int i = 0; i < addressOctets; i=i+2) {
-						if(sb.length() > 0){
-							sb.append(":");
-						}
-						int addressPart = opt.readUnsignedChar();
-						sb.append(String.format("%04X", addressPart));
-					}
-					option.setAddress(sb.toString());
-				}
-			}
-			return option;
+			return new ClientSubnetOption(optioncode, optionlen, opt);
 		}else if(optioncode == 12){ //Padding
-			
-			PaddingOption po = new PaddingOption(optioncode, optionlen);
-			//get the actual padding data, to move pointer to end of packet.
-			//ignore data read.
-			if(optionlen > 0){
-				byte[] data = new byte[optionlen];
-				opt.readBytes(data);
-			}
-			return po;
+			return new PaddingOption(optioncode, optionlen, opt);
 		}else if(optioncode == 14){ //dns key
-			
-			KeyTagOption kto = new KeyTagOption(optioncode, optionlen);
-			//get the actual padding data, to move pointer to end of packet.
-			//ignore data read.
-			if(optionlen > 0){
-				List<Integer> keytags = new ArrayList<>();
-				if(optionlen % 2 == 0) {
-					//only read keytags if correct even number of bytes found
-					int keys = optionlen / 2;
-					for(int i = 0; i < keys; i++) {
-						//read 2 bytes
-						keytags.add( (int)opt.readUnsignedChar());
-					}	
-				}else{
-					//illegal optionlen size, read data to get pointer in correct loc, ignore data.
-					byte[] data = new byte[optionlen];
-					opt.readBytes(data);
-				}
-				kto.setKeytags(keytags);
-			}
-			return kto;
+			return new KeyTagOption(optioncode, optionlen, opt);
 		}else{
-			//catch all, for experimental edns options
-			//read data, but ignore values
-			byte[] data = new byte[optionlen];
-			opt.readBytes(data);
-
-			EDNS0Option ednsOption = new EDNS0Option(optioncode, optionlen);
-			return ednsOption;
+			return new EDNS0Option(optioncode, optionlen, opt);
 		}
 	}
 	
 	public static String convertAddress(byte[] data) {
-		//byte[] addr = new byte[16];
-		//System.arraycopy(data, 0, addr, 0, addr.length);
 		try {
 			return InetAddress.getByAddress(data).getHostAddress();
 		} catch (UnknownHostException e) {

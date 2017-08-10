@@ -60,6 +60,8 @@
     { "name": "dns_res_len", "type": ["null","int"], "default": null},
     { "name": "server_location", "type": ["null","string"], "default": null},
     { "name": "edns_padding", "type": "int", "default": -1},
-    { "name": "pcap_file", "type": ["null","string"], "default": null}
+    { "name": "pcap_file", "type": ["null","string"], "default": null},
+    { "name": "edns_keytag_count", "type": ["null","int"], "default": null},
+    { "name": "edns_keytag_list", "type": ["null","string"], "default": null}
   ]
 }

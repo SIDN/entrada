@@ -28,9 +28,9 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
-import nl.sidn.dnslib.message.util.NetworkData;
-
 import com.google.common.net.InetAddresses;
+
+import nl.sidn.dnslib.message.util.NetworkData;
 
 public class AAAAResourceRecord extends AbstractResourceRecord {
 	

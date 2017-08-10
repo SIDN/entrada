@@ -30,13 +30,13 @@ import javax.json.JsonArrayBuilder;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
+import org.apache.commons.codec.binary.Base32;
+import org.apache.commons.codec.binary.Hex;
+
 import nl.sidn.dnslib.message.records.AbstractResourceRecord;
 import nl.sidn.dnslib.message.util.NetworkData;
 import nl.sidn.dnslib.types.DigestType;
 import nl.sidn.dnslib.types.TypeMap;
-
-import org.apache.commons.codec.binary.Base32;
-import org.apache.commons.codec.binary.Hex;
 
 public class NSEC3ResourceRecord extends AbstractResourceRecord {
 	

@@ -25,10 +25,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 
+import org.apache.commons.lang3.StringUtils;
+
 import nl.sidn.dnslib.exception.DnsDecodeException;
 import nl.sidn.dnslib.exception.DnsEncodeException;
-
-import org.apache.commons.lang3.StringUtils;
 
 /**
  * DNS Label Types

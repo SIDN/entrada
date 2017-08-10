@@ -27,12 +27,22 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.GenericRecordBuilder;
+import org.apache.commons.lang3.StringUtils;
+import org.kitesdk.data.PartitionStrategy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import com.google.common.base.Joiner;
+
 import nl.sidn.dnslib.message.Header;
 import nl.sidn.dnslib.message.Message;
 import nl.sidn.dnslib.message.Question;
 import nl.sidn.dnslib.message.records.edns0.ClientSubnetOption;
 import nl.sidn.dnslib.message.records.edns0.DNSSECOption;
 import nl.sidn.dnslib.message.records.edns0.EDNS0Option;
+import nl.sidn.dnslib.message.records.edns0.KeyTagOption;
 import nl.sidn.dnslib.message.records.edns0.NSidOption;
 import nl.sidn.dnslib.message.records.edns0.OPTResourceRecord;
 import nl.sidn.dnslib.message.records.edns0.PaddingOption;
@@ -50,13 +60,6 @@ import nl.sidn.pcap.packet.Packet;
 import nl.sidn.pcap.support.PacketCombination;
 import nl.sidn.pcap.util.Settings;
 import nl.sidn.stats.MetricManager;
-
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.GenericRecordBuilder;
-import org.apache.commons.lang3.StringUtils;
-import org.kitesdk.data.PartitionStrategy;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 
@@ -440,8 +443,11 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 	        		
 	        	}else if(option instanceof PaddingOption){
 	        		builder.set("edns_padding", ((PaddingOption)option).getLength());
-	        	}
-	        	else{
+	        	}else if(option instanceof KeyTagOption){
+	        		KeyTagOption kto = (KeyTagOption)option;
+	        		builder.set("edns_keytag_count", kto.getKeytags().size());
+	        		builder.set("edns_keytag_list", Joiner.on(",").join(kto.getKeytags()));
+	        	}else{
 	        		//other
 	        		if(StringUtils.length(other) > 0){
 	        			other = other + "," + option.getCode();

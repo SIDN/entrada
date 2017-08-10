@@ -19,23 +19,36 @@
  * along with ENTRADA.  If not, see [<http://www.gnu.org/licenses/].
  *
  */	
-package nl.sidn.pcap;
+package nl.sidn.dnslib.message.records.edns0;
 
-import org.junit.Test;
+import java.util.List;
 
-
-
-public class MainTest {
+/**
+ * @see https://tools.ietf.org/html/rfc8145#section-4.1
+ * 
+ *
+ */
+public class KeyTagOption extends EDNS0Option{
 	
-	@Test
-	public void testRun(){
-		Main main = new Main();
+	private List<Integer> keytags;
 	
-		ClassLoader classLoader = getClass().getClassLoader();
-		String[] args = {"paddingtest",classLoader.getResource("test-settings.properties").getFile(),
-				 "/Users/maarten/sidn/development/tmp/pcap/input","/Users/maarten/sidn/development/tmp/pcap/parquet", "/Users/maarten/sidn/development/tmp"};
-		main.run(args);
+	public KeyTagOption(){}
+
+	public KeyTagOption(int code, int len) {
+		super(code, len);
 	}
 
-	
+	public List<Integer> getKeytags() {
+		return keytags;
+	}
+
+	public void setKeytags(List<Integer> keytags) {
+		this.keytags = keytags;
+	}
+
+	@Override
+	public String toString() {
+		return "KeyTagOption [keytags=" + keytags + "]";
+	}
+
 }

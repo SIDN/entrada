@@ -27,12 +27,12 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
+import org.apache.commons.codec.binary.Base64;
+
 import nl.sidn.dnslib.message.records.AbstractResourceRecord;
 import nl.sidn.dnslib.message.util.NetworkData;
 import nl.sidn.dnslib.types.AlgorithmType;
 import nl.sidn.dnslib.util.KeyUtil;
-
-import org.apache.commons.codec.binary.Base64;
 
 public class DNSKEYResourceRecord extends AbstractResourceRecord {
 	

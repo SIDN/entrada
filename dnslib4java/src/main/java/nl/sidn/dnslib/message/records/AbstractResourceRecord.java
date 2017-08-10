@@ -27,12 +27,12 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
+import org.apache.commons.lang3.StringUtils;
+
 import nl.sidn.dnslib.message.util.DNSStringUtil;
 import nl.sidn.dnslib.message.util.NetworkData;
 import nl.sidn.dnslib.types.ResourceRecordClass;
 import nl.sidn.dnslib.types.ResourceRecordType;
-
-import org.apache.commons.lang3.StringUtils;
 
 public abstract class AbstractResourceRecord implements ResourceRecord, Serializable {
 	

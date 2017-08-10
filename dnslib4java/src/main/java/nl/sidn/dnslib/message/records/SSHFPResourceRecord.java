@@ -25,9 +25,9 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
-import nl.sidn.dnslib.message.util.NetworkData;
-
 import org.apache.commons.codec.binary.Hex;
+
+import nl.sidn.dnslib.message.util.NetworkData;
 
 public class SSHFPResourceRecord extends AbstractResourceRecord {
 	

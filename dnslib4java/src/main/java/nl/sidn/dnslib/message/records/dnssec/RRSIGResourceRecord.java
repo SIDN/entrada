@@ -29,6 +29,9 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
+import org.apache.commons.codec.binary.Base64;
+import org.apache.commons.codec.binary.Hex;
+
 import nl.sidn.dnslib.message.records.AbstractResourceRecord;
 import nl.sidn.dnslib.message.util.DNSStringUtil;
 import nl.sidn.dnslib.message.util.NetworkData;
@@ -36,9 +39,6 @@ import nl.sidn.dnslib.types.AlgorithmType;
 import nl.sidn.dnslib.types.ResourceRecordType;
 import nl.sidn.dnslib.types.TypeMap;
 import nl.sidn.dnslib.util.LabelUtil;
-
-import org.apache.commons.codec.binary.Base64;
-import org.apache.commons.codec.binary.Hex;
 
 public class RRSIGResourceRecord extends AbstractResourceRecord {
 	

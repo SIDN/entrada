@@ -30,12 +30,12 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
+import org.apache.log4j.Logger;
+
 import nl.sidn.dnslib.message.records.AbstractResourceRecord;
 import nl.sidn.dnslib.message.util.DNSStringUtil;
 import nl.sidn.dnslib.message.util.NetworkData;
 import nl.sidn.dnslib.types.ResourceRecordType;
-
-import org.apache.log4j.Logger;
 
 /**
  * 
@@ -226,6 +226,28 @@ public class OPTResourceRecord extends AbstractResourceRecord {
 				opt.readBytes(data);
 			}
 			return po;
+		}else if(optioncode == 14){ //dns key
+			
+			KeyTagOption kto = new KeyTagOption(optioncode, optionlen);
+			//get the actual padding data, to move pointer to end of packet.
+			//ignore data read.
+			if(optionlen > 0){
+				List<Integer> keytags = new ArrayList<>();
+				if(optionlen % 2 == 0) {
+					//only read keytags if correct even number of bytes found
+					int keys = optionlen / 2;
+					for(int i = 0; i < keys; i++) {
+						//read 2 bytes
+						keytags.add( (int)opt.readUnsignedChar());
+					}	
+				}else{
+					//illegal optionlen size, read data to get pointer in correct loc, ignore data.
+					byte[] data = new byte[optionlen];
+					opt.readBytes(data);
+				}
+				kto.setKeytags(keytags);
+			}
+			return kto;
 		}else{
 			//catch all, for experimental edns options
 			//read data, but ignore values

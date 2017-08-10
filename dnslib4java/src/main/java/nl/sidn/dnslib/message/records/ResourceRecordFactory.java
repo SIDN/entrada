@@ -21,6 +21,8 @@
  */	
 package nl.sidn.dnslib.message.records;
 
+import org.apache.log4j.Logger;
+
 import nl.sidn.dnslib.message.records.dnssec.DNSKEYResourceRecord;
 import nl.sidn.dnslib.message.records.dnssec.DSResourceRecord;
 import nl.sidn.dnslib.message.records.dnssec.NSEC3ParamResourceRecord;
@@ -28,8 +30,6 @@ import nl.sidn.dnslib.message.records.dnssec.NSEC3ResourceRecord;
 import nl.sidn.dnslib.message.records.dnssec.NSECResourceRecord;
 import nl.sidn.dnslib.message.records.dnssec.RRSIGResourceRecord;
 import nl.sidn.dnslib.message.records.edns0.OPTResourceRecord;
-
-import org.apache.log4j.Logger;
 
 public class ResourceRecordFactory {
 

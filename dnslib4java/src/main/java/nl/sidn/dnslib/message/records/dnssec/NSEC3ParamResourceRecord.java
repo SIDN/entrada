@@ -25,11 +25,11 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 
+import org.apache.commons.codec.binary.Hex;
+
 import nl.sidn.dnslib.message.records.AbstractResourceRecord;
 import nl.sidn.dnslib.message.util.NetworkData;
 import nl.sidn.dnslib.types.DigestType;
-
-import org.apache.commons.codec.binary.Hex;
 
 /**
  *  The RDATA of the NSEC3PARAM RR is as shown below:

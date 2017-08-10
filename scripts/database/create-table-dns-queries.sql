@@ -58,7 +58,9 @@ create external table if not exists _IMPALA_DNS_DWH_TABLE_TAB_ (
  server_location STRING,
  query_ts TIMESTAMP,
  edns_padding INT,
- pcap_file STRING) 
+ pcap_file STRING,
+ edns_keytag_count INT,
+ edns_keytag_list STRING) 
  partitioned by (year INT, month INT, day INT, server string)
   STORED AS PARQUETFILE
   LOCATION '_HDFS_DNS_QUERIES_';

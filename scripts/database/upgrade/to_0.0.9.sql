@@ -1,10 +1,10 @@
 use dns;
 
 alter table staging
-add columns (edns_padding INT, pcap_file STRING);
+add columns (edns_padding INT, pcap_file STRING, edns_keytag_count INT, edns_keytag_list STRING);
 
 alter table queries
-add columns (edns_padding INT, pcap_file STRING);
+add columns (edns_padding INT, pcap_file STRING, edns_keytag_count INT, edns_keytag_list STRING);
 
 use icmp;
 

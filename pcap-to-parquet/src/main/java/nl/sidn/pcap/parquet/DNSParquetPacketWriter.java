@@ -194,7 +194,7 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 	    	}
 	    	
 	    	//EDNS0 for response
-			writeResponseOptions(respMessage, builder);
+		writeResponseOptions(respMessage, builder);
 	    	
 	    	//update metric
     		responseBytes = responseBytes + respTransport.getUdpLength();

@@ -501,15 +501,14 @@ public class LoaderThread extends AbstractStoppableThread {
 	 * @return the compressor stream wrapped around the inputstream. If no decompressor is found, returns the inputstream as-is
 	 */
 	public InputStream getDecompressorStreamWrapper(InputStream in, String filename, int bufSize) throws IOException {
-		String filenameLower=filename.toLowerCase();
-		InputStream wrapper = in;
-		if(filenameLower.endsWith(".xz")) {
-			wrapper = new XZCompressorInputStream(in);
-		} 
-		if(filenameLower.endsWith(".gz")) {
-			wrapper = new GZIPInputStream(in,bufSize);
-		} 
-		return wrapper;
+		String filenameLower = filename.toLowerCase();
+		if (filenameLower.endsWith(".xz")) {
+			return new XZCompressorInputStream(in);
+		}
+		if (filenameLower.endsWith(".gz")) {
+			return new GZIPInputStream(in, bufSize);
+		}
+		throw new IOException("Could not open file with unknown extension: " + filenameLower);
 	}
 	
 	public void createReader(String file) {
@@ -523,8 +522,8 @@ public class LoaderThread extends AbstractStoppableThread {
 		    int bufSize = Settings.getInstance().getIntSetting(Settings.BUFFER_PCAP_READER,DEFAULT_PCAP_READER_BUFFER_SIZE);
 		    //sanity check
 		    if(bufSize <= 512){
-		    	//use default
-		    	bufSize = DEFAULT_PCAP_READER_BUFFER_SIZE; 
+			    	//use default
+			    	bufSize = DEFAULT_PCAP_READER_BUFFER_SIZE; 
 		    }
 		    InputStream decompressor = getDecompressorStreamWrapper(fis, file, bufSize);
 			

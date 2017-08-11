@@ -100,16 +100,6 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		return null;
 	}
 	
-//	private Header lookupHeader(Message reqMessage, Message respMessage){
-//		if(reqMessage != null){
-//			return reqMessage.getHeader();
-//		}else if(respMessage != null){
-//			return respMessage.getHeader();
-//		}
-//		//should never get here
-//		return null;
-//	}
-	
 	private long lookupTime(Packet reqPacket, Packet respPacket){
 		if(reqPacket != null){
 			return reqPacket.getTs();
@@ -167,13 +157,15 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 
 		//if no anycast location is encoded in the name then the anycast location will be null
 	    builder.set("server_location", combo.getServer().getLocation());
+	    
+		//add file name
+	    	builder.set("pcap_file", combo.getPcapFilename());
 
 		//add meta data
 		enrich(reqTransport, respTransport, builder);
 		
-		
 	    //these are the values that are retrieved from the response
-	    if(respTransport != null && respMessage != null){
+	    if(respTransport != null && respMessage != null && responseHeader != null){
 		    	rcode = responseHeader.getRawRcode();
 		   
 		    	builder
@@ -189,9 +181,6 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 				.set("qdcount", (int) responseHeader.getQdCount())
 		    	  	.set("res_len", respTransport.getTotalLength())
 		    	    .set("dns_res_len", respMessage.getBytes());
-		    	
-		    	//add file name
-		    	builder.set("pcap_file", combo.getPcapFilename());
 		    	
 		    	//ip fragments in the response
 		    	if(respTransport.isFragmented()){
@@ -274,8 +263,8 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		}
 	    
 	    if(rcode == RCODE_QUERY_WITHOUT_RESPONSE){
-	    	//no response found for query, update stats
-	    	metricManager.sendAggregated(MetricManager.METRIC_IMPORT_DNS_NO_RESPONSE_COUNT, 1, time);
+		    	//no response found for query, update stats
+		    	metricManager.sendAggregated(MetricManager.METRIC_IMPORT_DNS_NO_RESPONSE_COUNT, 1, time);
 	    }
 	    
 	    //question

@@ -100,15 +100,15 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		return null;
 	}
 	
-	private Header lookupHeader(Message reqMessage, Message respMessage){
-		if(reqMessage != null){
-			return reqMessage.getHeader();
-		}else if(respMessage != null){
-			return respMessage.getHeader();
-		}
-		//should never get here
-		return null;
-	}
+//	private Header lookupHeader(Message reqMessage, Message respMessage){
+//		if(reqMessage != null){
+//			return reqMessage.getHeader();
+//		}else if(respMessage != null){
+//			return respMessage.getHeader();
+//		}
+//		//should never get here
+//		return null;
+//	}
 	
 	private long lookupTime(Packet reqPacket, Packet respPacket){
 		if(reqPacket != null){
@@ -139,7 +139,11 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		Message respMessage = combo.getResponseMessage();
 		
 		Question q = lookupQuestion(requestMessage, respMessage);
-		Header header = lookupHeader(requestMessage, respMessage);
+		
+		Header requestHeader = null; //lookupHeader(requestMessage, respMessage);
+		if(requestMessage != null){
+			requestHeader =  requestMessage.getHeader();
+		}
 		
 		//get the time in milliseconds
 		long time = lookupTime(reqTransport, respTransport);
@@ -164,52 +168,77 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		
 	    //these are the values that are retrieved from the response
 	    if(respTransport != null && respMessage != null){
-	    	Header respHdr = respMessage.getHeader();
-	    	rcode = respHdr.getRawRcode();
-	   
-	    	builder
-		    	.set("aa",  respHdr.isAa())
-			    .set("tc",  respHdr.isTc())
-			    .set("ra",  respHdr.isRa())
-			    .set("ad",  respHdr.isAd())
-			    .set("ancount",  (int)respHdr.getAnCount())
-			    .set("arcount",  (int)respHdr.getArCount())
-			    .set("nscount",  (int)respHdr.getNsCount())
-	    	  	.set("res_len", respTransport.getTotalLength())
-	    	    .set("dns_res_len", respMessage.getBytes());
-	    	
-	    	//add file name
-	    	builder.set("pcap_file", combo.getPcapFilename());
-	    	
-	    	//ip fragments in the response
-	    	if(respTransport.isFragmented()){
-	    		int frags = respTransport.getReassembledFragments();
-	    		builder.set("resp_frag",frags );
-	    		
-	    		if((respTransport.getProtocol() == PcapReader.PROTOCOL_UDP) && frags > 1){
-	    			responseUDPFragmentedCount++;
-	    		}else if((respTransport.getProtocol() == PcapReader.PROTOCOL_TCP) && frags > 1){
-	    			responseTCPFragmentedCount++;
-	    		}
-	    	}
-	    	
-	    	//EDNS0 for response
-		writeResponseOptions(respMessage, builder);
-	    	
-	    	//update metric
-    		responseBytes = responseBytes + respTransport.getUdpLength();
-	    	if(!combo.isExpired()){
-	    		//do not send expired queries, this will cause duplicate timestamps with low values
-	    		//this looks like dips in the grafana graph
-	    		metricManager.sendAggregated(MetricManager.METRIC_IMPORT_DNS_RESPONSE_COUNT, 1, time);
-	    	}
+		    	Header respHdr = respMessage.getHeader();
+		    	rcode = respHdr.getRawRcode();
+		   
+		    	builder
+			    	.set("aa",  respHdr.isAa())
+				    .set("tc",  respHdr.isTc())
+				    .set("ra",  respHdr.isRa())
+				    .set("ad",  respHdr.isAd())
+				    .set("ancount",  (int)respHdr.getAnCount())
+				    .set("arcount",  (int)respHdr.getArCount())
+				    .set("nscount",  (int)respHdr.getNsCount())
+		    	  	.set("res_len", respTransport.getTotalLength())
+		    	    .set("dns_res_len", respMessage.getBytes());
+		    	
+		    	//add file name
+		    	builder.set("pcap_file", combo.getPcapFilename());
+		    	
+		    	//ip fragments in the response
+		    	if(respTransport.isFragmented()){
+		    		int frags = respTransport.getReassembledFragments();
+		    		builder.set("resp_frag",frags );
+		    		
+		    		if((respTransport.getProtocol() == PcapReader.PROTOCOL_UDP) && frags > 1){
+		    			responseUDPFragmentedCount++;
+		    		}else if((respTransport.getProtocol() == PcapReader.PROTOCOL_TCP) && frags > 1){
+		    			responseTCPFragmentedCount++;
+		    		}
+		    	}
+		    	
+		    	//EDNS0 for response
+			writeResponseOptions(respMessage, builder);
+		    	
+		    	//update metric
+	    		responseBytes = responseBytes + respTransport.getUdpLength();
+		    	if(!combo.isExpired()){
+		    		//do not send expired queries, this will cause duplicate timestamps with low values
+		    		//this looks like dips in the grafana graph
+		    		metricManager.sendAggregated(MetricManager.METRIC_IMPORT_DNS_RESPONSE_COUNT, 1, time);
+		    	}
+		    	
+		    	//check if we have a request hdr if not continue using values
+		    	//from the response header
+		    	Header headerToUse = requestHeader;
+		    	if(headerToUse == null) {
+		    		headerToUse = respHdr;
+		    	}else {
+		    		//get these values only from the req header
+		    		//if no request is found these will be null
+		    		builder
+		    			.set("q_tc", headerToUse.isTc())
+			 	    .set("q_ra", headerToUse.isRa())
+			 	    .set("q_ad", headerToUse.isAd())
+			 	    .set("q_rcode", headerToUse.getRawRcode());
+		    	}
+		    	//get these values from either the req or resp header
+		    	builder
+		 	    	.set("id", headerToUse.getId())
+		 	    	.set("opcode", headerToUse.getRawOpcode())
+		 	    	.set("rd",  headerToUse.isRd())
+		 	    .set("z",  headerToUse.isZ())
+		 	    .set("cd",  headerToUse.isCd())
+		 	    .set("qdcount", (int) headerToUse.getQdCount());
+		    	
+		    	
+		    	updateMetricMap(opcodes, headerToUse.getRawOpcode());
+		 	    
 	    }
 	    
 	    //values from request now, if no request found then use parts of the response.
 	    builder
-	    	.set("id", header.getId())
 			.set("rcode", rcode)
-		    .set("opcode",  header.getRawOpcode())
 			.set("unixtime", reqTransport != null? reqTransport.getTs(): respTransport.getTs())
 			.set("time",  ts.getTime())
 			.set("time_micro", reqTransport != null? reqTransport.getTsmicros(): respTransport.getTsmicros())
@@ -225,15 +254,8 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		    .set("dst",  reqTransport != null? reqTransport.getDst(): respTransport.getSrc())
 		    .set("dstp",  reqTransport != null? reqTransport.getDstPort(): respTransport.getSrcPort())
 		    .set("udp_sum",  reqTransport != null? reqTransport.getUdpsum(): null)
-		    .set("dns_len",  requestMessage != null? requestMessage.getBytes(): null)
-		    .set("rd",  header.isRd())
-		    .set("z",  header.isZ())
-		    .set("cd",  header.isCd())
-		    .set("qdcount", (int) header.getQdCount())
-		    .set("q_tc", header.isTc())
-		    .set("q_ra", header.isRa())
-		    .set("q_ad", header.isAd())
-		    .set("q_rcode", header.getRawRcode());
+		    .set("dns_len",  requestMessage != null? requestMessage.getBytes(): null);
+		  
 
 	    if(reqTransport != null){
 	    	
@@ -279,7 +301,6 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		//create metrics
 		domainnames.add(domaininfo.name);
 		updateMetricMap(rcodes, rcode);
-		updateMetricMap(opcodes, header.getRawOpcode());
 		
 		//ip version stats
 		updateIpVersionMetrics(reqTransport, respTransport);

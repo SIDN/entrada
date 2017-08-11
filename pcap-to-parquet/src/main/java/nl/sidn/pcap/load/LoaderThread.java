@@ -26,6 +26,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -39,6 +40,7 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
 import java.util.zip.GZIPInputStream;
 
+import org.apache.commons.compress.compressors.xz.XZCompressorInputStream;
 import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -491,6 +493,25 @@ public class LoaderThread extends AbstractStoppableThread {
 		LOGGER.info("Marked " + purgeCounter + " expired queries from request cache to output file with rcode no response");
 	}
 
+	/**
+	 * wraps the inputstream with a decompressor based on a filename ending
+	 * 
+	 * @param in The input stream to wrap with a decompressor
+	 * @param filename The filename from which we guess the correct decompressor
+	 * @return the compressor stream wrapped around the inputstream. If no decompressor is found, returns the inputstream as-is
+	 */
+	public InputStream getDecompressorStreamWrapper(InputStream in, String filename, int bufSize) throws IOException {
+		String filenameLower=filename.toLowerCase();
+		InputStream wrapper = in;
+		if(filenameLower.endsWith(".xz")) {
+			wrapper = new XZCompressorInputStream(in);
+		} 
+		if(filenameLower.endsWith(".gz")) {
+			wrapper = new GZIPInputStream(in,bufSize);
+		} 
+		return wrapper;
+	}
+	
 	public void createReader(String file) {
 		LOGGER.info("Start loading queue from file:" + file);
 		fileCount++;
@@ -505,8 +526,9 @@ public class LoaderThread extends AbstractStoppableThread {
 		    	//use default
 		    	bufSize = DEFAULT_PCAP_READER_BUFFER_SIZE; 
 		    }
-			GZIPInputStream gzip = new GZIPInputStream(fis,bufSize);
-		    dis = new DataInputStream(gzip);
+		    InputStream decompressor = getDecompressorStreamWrapper(fis, file, bufSize);
+			
+		    dis = new DataInputStream(decompressor);
 			pcapReader.init(dis);
 		} catch (IOException e) {
 			LOGGER.error("Error opening pcap file: " + file, e);
@@ -522,7 +544,7 @@ public class LoaderThread extends AbstractStoppableThread {
 		} catch (Exception e) {
 			throw new RuntimeException("input dir error",e);
 		}
-		Iterator<File> files = FileUtils.iterateFiles(f, new String[]{"pcap.gz"}, false);
+		Iterator<File> files = FileUtils.iterateFiles(f, new String[]{"pcap.gz", "pcap.xz"}, false);
 	    while(files.hasNext()) {
 	    	File pcap = files.next();
 			String fqn = pcap.getAbsolutePath();

@@ -229,7 +229,11 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		    .set("rd",  header.isRd())
 		    .set("z",  header.isZ())
 		    .set("cd",  header.isCd())
-		    .set("qdcount",  (int)header.getQdCount());
+		    .set("qdcount", (int) header.getQdCount())
+		    .set("q_tc", header.isTc())
+		    .set("q_ra", header.isRa())
+		    .set("q_ad", header.isAd())
+		    .set("q_rcode", header.getRawRcode());
 
 	    if(reqTransport != null){
 	    	

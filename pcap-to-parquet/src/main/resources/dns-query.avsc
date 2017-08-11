@@ -62,6 +62,10 @@
     { "name": "edns_padding", "type": "int", "default": -1},
     { "name": "pcap_file", "type": ["null","string"], "default": null},
     { "name": "edns_keytag_count", "type": ["null","int"], "default": null},
-    { "name": "edns_keytag_list", "type": ["null","string"], "default": null}
+    { "name": "edns_keytag_list", "type": ["null","string"], "default": null},
+    { "name": "q_tc","type": ["null","boolean"], "default": null},
+    { "name": "q_ra", "type": ["null","boolean"], "default": null},
+    { "name": "q_ad", "type": ["null","boolean"], "default": null},
+    { "name": "q_rcode", "type": ["null","int"]", "default": null}
   ]
 }

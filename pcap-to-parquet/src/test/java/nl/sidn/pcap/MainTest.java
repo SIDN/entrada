@@ -33,7 +33,7 @@ public class MainTest {
 	
 		ClassLoader classLoader = getClass().getClassLoader();
 		String[] args = {"switch.corrupt",classLoader.getResource("test-settings.properties").getFile(),
-				 "/Users/maarten/sidn/development/tmp/pcap/input","/Users/maarten/sidn/development/tmp/pcap/parquet", "/Users/maarten/sidn/development/tmp"};
+				 "/Users/schacher/sidn/development/tmp/pcap/input","/Users/schacher/sidn/development/tmp/pcap/parquet", "/Users/schacher/sidn/development/tmp"};
 		main.run(args);
 	}
 

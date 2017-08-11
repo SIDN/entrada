@@ -36,7 +36,7 @@ public class FileUtil {
 	public static int countFiles(String inputDir) {
 		LOGGER.info("Scan for pcap files in: " + inputDir);
 		File f = FileUtils.getFile(inputDir);
-		Iterator<File> files = FileUtils.iterateFiles(f, new String[]{"pcap.gz"}, false);
+		Iterator<File> files = FileUtils.iterateFiles(f, new String[]{"pcap.gz", "pcap.xz"}, false);
 		int filecount = 0;
 	    while(files.hasNext()) {
 	    	files.next();

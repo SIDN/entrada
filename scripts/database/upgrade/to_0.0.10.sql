@@ -11,5 +11,5 @@ use icmp;
 alter table staging
 add columns (pcap_file STRING);
 
-alter table queries
+alter table packets
 add columns (pcap_file STRING);

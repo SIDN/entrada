@@ -110,10 +110,10 @@ public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
 	    builder.set("svr", packetCombo.getServer().getName())
 	        .set("unixtime", icmpPacket.getTs())
 	        .set("time_micro", icmpPacket.getTsmicros())
-	    	.set("time",  packetTime.getTime())
-	    	.set("icmp_type",  icmpPacket.getType())
-	    	.set("icmp_code",  icmpPacket.getCode())
-	    	.set("icmp_echo_client_type", icmpPacket.getClientType())
+		    	.set("time",  packetTime.getTime())
+		    	.set("icmp_type",  icmpPacket.getType())
+		    	.set("icmp_code",  icmpPacket.getCode())
+		    	.set("icmp_echo_client_type", icmpPacket.getClientType())
 		    .set("ip_ttl",  icmpPacket.getTtl())
 		    .set("ip_v",  (int)icmpPacket.getIpVersion())
 		    .set("ip_src",  icmpPacket.getSrc())
@@ -129,8 +129,8 @@ public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
     	   builder.set("pcap_file", packetCombo.getPcapFilename());
 
 	    //if no anycast location is encoded in the name then the anycast server name and location will be null
-    	//only store this column in case of anycast, to save storage space.
-    	//the server name can be determined with the "svr" column
+	    	//only store this column in case of anycast, to save storage space.
+	    	//the server name can be determined with the "svr" column
 	    builder.set("server_location", packetCombo.getServer().getLocation());
 	  
 	    //orig packet from payload
@@ -144,7 +144,7 @@ public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
 		    .set("orig_l4_prot",  (int)originalPacket.getProtocol())
 		    .set("orig_l4_srcp",  originalPacket.getSrcPort())
 		    .set("orig_l4_dstp",  originalPacket.getDstPort())
-	    	.set("orig_udp_sum",  originalPacket.getUdpsum())
+	    		.set("orig_udp_sum",  originalPacket.getUdpsum())
 		    .set("orig_ip_len",  originalPacket.getTotalLength()); //size of ip packet incl headers
 	    
 		    if(originalICMPPacket != null){
@@ -156,9 +156,9 @@ public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
 		    if(dnsResponseMessage != null){
 			    //orig dns response from icmp packet
 		    	builder
-		    	.set("orig_dns_len", originalPacket.getPayloadLength()) //get the size from the reassembled udp header of the original udp response
-		    	.set("orig_dns_id", dnsResponseHdr.getId())
-		    	.set("orig_dns_qname",normalizedQname )
+			    	.set("orig_dns_len", originalPacket.getPayloadLength()) //get the size from the reassembled udp header of the original udp response
+			    	.set("orig_dns_id", dnsResponseHdr.getId())
+			    	.set("orig_dns_qname",normalizedQname )
 			    .set("orig_dns_domainname", domaininfo.name)  
 			    .set("orig_dns_aa",  dnsResponseHdr.isAa())
 			    .set("orig_dns_tc",  dnsResponseHdr.isTc())

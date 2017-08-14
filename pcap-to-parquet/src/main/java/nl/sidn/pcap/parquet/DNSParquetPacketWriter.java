@@ -22,8 +22,10 @@
 package nl.sidn.pcap.parquet;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -90,6 +92,13 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		metricManager = MetricManager.getInstance();
 	}
 
+	/**
+	 * Get the question, from the request packet if not available
+	 * then from the response, which should be the same.
+	 * @param reqMessage
+	 * @param respMessage
+	 * @return
+	 */
 	private Question lookupQuestion(Message reqMessage, Message respMessage){
 		if(reqMessage != null && reqMessage.getQuestions().size() > 0){
 			return reqMessage.getQuestions().get(0);
@@ -128,14 +137,15 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		Packet respTransport = combo.getResponse();
 		Message respMessage = combo.getResponseMessage();
 		
-		Question q = lookupQuestion(requestMessage, respMessage);
+		//get the question
+		Question question = lookupQuestion(requestMessage, respMessage);
 		
+		//get the headers from the messages.
 		Header requestHeader = null;
 		Header responseHeader = null;
 		if(requestMessage != null){
 			requestHeader =  requestMessage.getHeader();
 		}
-		
 		if(respMessage != null){
 			responseHeader =  respMessage.getHeader();
 		}
@@ -144,7 +154,8 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		long time = lookupTime(reqTransport, respTransport);
 		Timestamp ts = new Timestamp((time * 1000));
 
-	    String normalizedQname =  q == null? "": filter(q.getqName());
+		//get the qname domain name details
+	    String normalizedQname =  question == null? "": filter(question.getqName());
 	    normalizedQname = StringUtils.lowerCase(normalizedQname);	    
 	    Domaininfo domaininfo = NameUtil.getDomain(normalizedQname, Settings.getTldSuffixes());
 	    //check to see it a response was found, if not then save -1 value
@@ -158,7 +169,8 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		//if no anycast location is encoded in the name then the anycast location will be null
 	    builder.set("server_location", combo.getServer().getLocation());
 	    
-		//add file name
+		//add file name, makes it easier to find the original input pcap
+	    //in case of of debugging.
 	    	builder.set("pcap_file", combo.getPcapFilename());
 
 		//add meta data
@@ -166,6 +178,7 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		
 	    //these are the values that are retrieved from the response
 	    if(respTransport != null && respMessage != null && responseHeader != null){
+	    		//use rcode from response
 		    	rcode = responseHeader.getRawRcode();
 		   
 		    	builder
@@ -179,7 +192,9 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 				.set("arcount",  (int)responseHeader.getArCount())
 				.set("nscount",  (int)responseHeader.getNsCount())
 				.set("qdcount", (int) responseHeader.getQdCount())
+				//size of the complete packet incl all headers
 		    	  	.set("res_len", respTransport.getTotalLength())
+		    	  	//size of the dns message
 		    	    .set("dns_res_len", respMessage.getBytes());
 		    	
 		    	//ip fragments in the response
@@ -204,9 +219,10 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		    		//this looks like dips in the grafana graph
 		    		metricManager.sendAggregated(MetricManager.METRIC_IMPORT_DNS_RESPONSE_COUNT, 1, time);
 		    	}  
-	    }
+	    }// end of response only section
 	    
-	    //values from request now, if no request found then use parts of the response.
+	    //values from request OR response now
+	    //if no request found in the request then use values from the response.
 	    builder
 			.set("rcode", rcode)
 			.set("unixtime", reqTransport != null? reqTransport.getTs(): respTransport.getTs())
@@ -226,8 +242,9 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		    .set("udp_sum",  reqTransport != null? reqTransport.getUdpsum(): null)
 		    .set("dns_len",  requestMessage != null? requestMessage.getBytes(): null);
 	 
-	    if(reqTransport != null){
-	    		//these values are only from the request
+	    //get values from the request only.
+	    //may overwrite values from the response
+	    if(reqTransport != null && requestHeader != null){
 	    		builder
 		 	    	.set("id", requestHeader.getId())
 		 	    	.set("opcode", requestHeader.getRawOpcode())
@@ -251,7 +268,7 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 				}else if((reqTransport.getProtocol() == PcapReader.PROTOCOL_TCP) && req_frags > 1){
 					requestTCPFragmentedCount++;
 				}
-			}
+			}//end request only section
 			
 			//update metrics
 		    	requestBytes = requestBytes + reqTransport.getUdpLength();
@@ -268,7 +285,7 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 	    }
 	    
 	    //question
-	    writeQuestion(q, builder);
+	    writeQuestion(question, builder);
 		
 		//EDNS0 for request
 		writeRequestOptions(requestMessage, builder);
@@ -304,7 +321,7 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		    asn = getAsn(reqPacket.getSrc(), reqPacket.getIpVersion() == 4);
 		    isGoogle = googleCheck.isMatch(reqPacket.getSrc());
 		    if(!isGoogle){
-		    	isOpenDNS = openDNSCheck.isMatch(reqPacket.getSrc());
+		    		isOpenDNS = openDNSCheck.isMatch(reqPacket.getSrc());
 		    }
 		}else{
 			//response packet, check the destination address
@@ -312,16 +329,17 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		    asn = getAsn(respPacket.getDst(), respPacket.getIpVersion() == 4);
 		    isGoogle = googleCheck.isMatch(respPacket.getDst());
 		    if(!isGoogle){
-		    	isOpenDNS = openDNSCheck.isMatch(respPacket.getDst());
+		    		isOpenDNS = openDNSCheck.isMatch(respPacket.getDst());
 		    }
 		}
 		
-		builder.set("country",  country)
-        .set("asn", asn)
-		//check of the resolver is a google backend resolver
-	    .set("is_google", isGoogle)
-		//check of the resolver is a opendns backend resolver
-	    .set("is_opendns", isOpenDNS);
+		builder
+			.set("country",  country)
+	        .set("asn", asn)
+			//check of the resolver is a google backend resolver
+		    .set("is_google", isGoogle)
+			//check of the resolver is a opendns backend resolver
+		    .set("is_opendns", isOpenDNS);
 	}
 
 	private void updateIpVersionMetrics(Packet req, Packet resp){
@@ -379,11 +397,11 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		if(opt != null){
 			 for (EDNS0Option option : opt.getOptions()) {
 		        if(option instanceof NSidOption){
-		        	String id = ((NSidOption)option).getId();
-		        	builder.set("edns_nsid", id!= null? id: "");
-		        	
-		        	//this is the only server edns data we support, stop processing other options
-		        	break;
+			        	String id = ((NSidOption)option).getId();
+			        	builder.set("edns_nsid", id!= null? id: "");
+			        	
+			        	//this is the only server edns data we support, stop processing other options
+			        	break;
 		        }
 			 }
 		}   
@@ -408,64 +426,60 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 	        .set("edns_do", opt.getDnssecDo())
 	        .set("edns_padding", -1); //use default no padding found
 	        
-	        String other = null;
+	        List<Integer> otherEdnsOptions = new ArrayList<>();
 	        for (EDNS0Option option : opt.getOptions()) {
-	        	if(option instanceof PingOption){
-	        		builder.set("edns_ping", true);
-	        	}else if(option instanceof DNSSECOption){
-	        		if(option.getCode() == DNSSECOption.OPTION_CODE_DAU){
-	        			builder.set("edns_dnssec_dau", ((DNSSECOption)option).export());
-	        		}else if(option.getCode() == DNSSECOption.OPTION_CODE_DHU){
-	        			builder.set("edns_dnssec_dhu", ((DNSSECOption)option).export());
-	        		}else{ //N3U
-	        			builder.set("edns_dnssec_n3u", ((DNSSECOption)option).export());
-	        		}
-	        	}else if(option instanceof ClientSubnetOption){
-	        		ClientSubnetOption scOption = (ClientSubnetOption)option;
-	        		//get client country and asn
-	        		String clientCountry = null;
-	        		String clientASN = null;
-	        		if(scOption.getAddress() != null){
-		        		if(scOption.isIPv4()){
-		        			try{
-			        			byte[] addrBytes= IPUtil.ipv4tobytes(scOption.getAddress());
-			        			clientCountry = geoLookup.lookupCountry(addrBytes);
-			        			clientASN = geoLookup.lookupASN(addrBytes, true);
-		        			}catch(Exception e){
-		        				LOGGER.error("Could not convert IPv4 addr to bytes, invalid address? :" + scOption.getAddress());
-		        			}
-		        		}else{
-		        			try{
-			        			byte[] addrBytes= IPUtil.ipv6tobytes(scOption.getAddress());
-			        			clientCountry = geoLookup.lookupCountry(addrBytes);
-			        			clientASN = geoLookup.lookupASN(addrBytes, false);
-		        			}catch(Exception e){
-		        				LOGGER.error("Could not convert IPv6 addr to bytes, invalid address? :" + scOption.getAddress());
-		        			}
+		        	if(option instanceof PingOption){
+		        		builder.set("edns_ping", true);
+		        	}else if(option instanceof DNSSECOption){
+		        		if(option.getCode() == DNSSECOption.OPTION_CODE_DAU){
+		        			builder.set("edns_dnssec_dau", ((DNSSECOption)option).export());
+		        		}else if(option.getCode() == DNSSECOption.OPTION_CODE_DHU){
+		        			builder.set("edns_dnssec_dhu", ((DNSSECOption)option).export());
+		        		}else{ //N3U
+		        			builder.set("edns_dnssec_n3u", ((DNSSECOption)option).export());
 		        		}
-	        		}	
-	        		builder.set("edns_client_subnet",  scOption.export())
- 		    			.set("edns_client_subnet_asn", clientASN)
- 		    			.set("edns_client_subnet_country", clientCountry);
-	        		
-	        	}else if(option instanceof PaddingOption){
-	        		builder.set("edns_padding", ((PaddingOption)option).getLength());
-	        	}else if(option instanceof KeyTagOption){
-	        		KeyTagOption kto = (KeyTagOption)option;
-	        		builder.set("edns_keytag_count", kto.getKeytags().size());
-	        		builder.set("edns_keytag_list", Joiner.on(",").join(kto.getKeytags()));
-	        	}else{
-	        		//other
-	        		if(StringUtils.length(other) > 0){
-	        			other = other + "," + option.getCode();
-	        		}else{
-	        			other = String.valueOf(option.getCode());
-	        		}
-	        	}
+		        	}else if(option instanceof ClientSubnetOption){
+		        		ClientSubnetOption scOption = (ClientSubnetOption)option;
+		        		//get client country and asn
+		        		String clientCountry = null;
+		        		String clientASN = null;
+		        		if(scOption.getAddress() != null){
+			        		if(scOption.isIPv4()){
+			        			try{
+				        			byte[] addrBytes= IPUtil.ipv4tobytes(scOption.getAddress());
+				        			clientCountry = geoLookup.lookupCountry(addrBytes);
+				        			clientASN = geoLookup.lookupASN(addrBytes, true);
+			        			}catch(Exception e){
+			        				LOGGER.error("Could not convert IPv4 addr to bytes, invalid address? :" + scOption.getAddress());
+			        			}
+			        		}else{
+			        			try{
+				        			byte[] addrBytes= IPUtil.ipv6tobytes(scOption.getAddress());
+				        			clientCountry = geoLookup.lookupCountry(addrBytes);
+				        			clientASN = geoLookup.lookupASN(addrBytes, false);
+			        			}catch(Exception e){
+			        				LOGGER.error("Could not convert IPv6 addr to bytes, invalid address? :" + scOption.getAddress());
+			        			}
+			        		}
+		        		}	
+		        		builder.set("edns_client_subnet",  scOption.export())
+	 		    			.set("edns_client_subnet_asn", clientASN)
+	 		    			.set("edns_client_subnet_country", clientCountry);
+		        		
+		        	}else if(option instanceof PaddingOption){
+		        		builder.set("edns_padding", ((PaddingOption)option).getLength());
+		        	}else if(option instanceof KeyTagOption){
+		        		KeyTagOption kto = (KeyTagOption)option;
+		        		builder.set("edns_keytag_count", kto.getKeytags().size());
+		        		builder.set("edns_keytag_list", Joiner.on(",").join(kto.getKeytags()));
+		        	}else{
+		        		//other
+		        		otherEdnsOptions.add(option.getCode());
+		        	}
 			}
 	        
-	        if(other != null){
-	        	builder.set("edns_other", other);
+	        if(otherEdnsOptions.size() > 0){
+	        		builder.set("edns_other", Joiner.on(",").join(otherEdnsOptions));
 	        }
 		 }
 	}

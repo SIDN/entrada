@@ -260,10 +260,10 @@ public class LoaderThread extends AbstractStoppableThread {
 					for (Message msg : dnsPacket.getMessages()) {
 						//get qname from request which is part of the cache lookup key
 						String qname = null;
-				    	if(msg != null && msg.getQuestions() != null && msg.getQuestions().size() > 0){
-				    		qname = msg.getQuestions().get(0).getqName();
-				    	}
-						//put request into cache with a key based on: query id, qname, ip src, tcp/udp port 
+					    	if(msg != null && msg.getQuestions() != null && msg.getQuestions().size() > 0){
+					    		qname = msg.getQuestions().get(0).getqName();
+					    	}
+						//put request into map until we find matching response, with a key based on: query id, qname, ip src, tcp/udp port 
 						//add time for possible timeout eviction
 						if(msg.getHeader().getQr() == MessageType.QUERY){  
 							queryCounter++;
@@ -304,7 +304,7 @@ public class LoaderThread extends AbstractStoppableThread {
 		
 							key = new RequestKey(msg.getHeader().getId(),qname, dnsPacket.getDst(), dnsPacket.getDstPort());
 							MessageWrapper request = _requestCache.remove(key);
-							//check to see if the request msg exists, at the start of the pcap there may be missing querys
+							//check to see if the request msg exists, at the start of the pcap there may be missing queries
 											
 							if(request != null &&  request.getPacket() != null && request.getMessage() != null){
 								try {
@@ -555,7 +555,7 @@ public class LoaderThread extends AbstractStoppableThread {
 	    //so ordering is important.
 	    Collections.sort(inputFiles);
 	    for (String file : inputFiles) {
-	    	LOGGER.info("Found file: " + file);
+	    		LOGGER.info("Found file: " + file);
 		}
 	}
 

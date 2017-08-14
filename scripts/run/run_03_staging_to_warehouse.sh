@@ -80,7 +80,9 @@ do
          edns_client_subnet_asn,
          edns_client_subnet_country,
          labels,res_len,time_micro,resp_frag,proc_time,is_google,is_opendns,
-         dns_res_len,server_location,cast(unixtime as timestamp), year,month,day,server
+         dns_res_len,server_location,cast(unixtime as timestamp),
+         edns_padding,pcap_file,edns_keytag_count,edns_keytag_list,q_tc,q_ra,q_ad,q_rcode,
+         year,month,day,server
          from $IMPALA_DNS_STAGING_TABLE where year=$year and month=$month and day=$day and server=\"$server\";"
 
     if [ $? -ne 0 ]
@@ -154,7 +156,8 @@ do
           orig_dns_qtype,orig_dns_opcode,
           orig_dns_qclass,orig_dns_edns_udp,
           orig_dns_edns_version,orig_dns_edns_do,
-          orig_dns_labels,svr,time_micro, server_location,cast(unixtime as timestamp),year,month,day
+          orig_dns_labels,svr,time_micro, server_location,cast(unixtime as timestamp),
+          pcap_file,year,month,day
          from $IMPALA_ICMP_STAGING_TABLE where year=$year and month=$month and day=$day;"
 
     if [ $? -ne 0 ]

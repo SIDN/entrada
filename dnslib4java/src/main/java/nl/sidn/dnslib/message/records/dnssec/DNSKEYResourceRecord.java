@@ -82,7 +82,7 @@ public class DNSKEYResourceRecord extends AbstractResourceRecord {
 		keydata = new byte[keysize];
 		buffer.readBytes(keydata);
 	
-		publicKey = KeyUtil.createRSAPublicKey(keydata);
+		publicKey = KeyUtil.createPublicKey(keydata, algorithm);
 		
 		keytag =  KeyUtil.createKeyTag(rdata, algorithm);
 		

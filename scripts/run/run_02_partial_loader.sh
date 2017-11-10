@@ -47,7 +47,8 @@ echo "[$(date)] :Start loader for $NAMESERVER with config $CONFIG_FILE"
 #kitesdk naming workaround
 #replace "." by an "_" because kitesdk does not support dots in the namespace
 #see: https://issues.cloudera.org/browse/KITE-673
-NORMALIZED_NAMESERVER=${NAMESERVER//./_}
+#NORMALIZED_NAMESERVER=${NAMESERVER//./_}
+NORMALIZED_NAMESERVER=$(echo $NAMESERVER | sed 's/[^a-zA-Z0-9]/_/g')
 echo "[$(date)] :Normalized name server: $NORMALIZED_NAMESERVER"
 
 PID=$TMP_DIR/run_02_partial_loader_$NAMESERVER

@@ -125,10 +125,12 @@ public abstract class AbstractParquetPacketWriter {
 	
 	public void open(){
 		String server = Settings.getInstance().getServer().getFullname();
-		String path =  repoLocation + System.getProperty("file.separator") + server + System.getProperty("file.separator") + repoName;
-		//remove any dots from the path, kitesdk does not support this
+		//replace any non alphanumeric chars in the servername with underscore
+		//kitesdk does not support this non alphas
 		//https://issues.cloudera.org/browse/KITE-673
-		path = StringUtils.replace(path, ".", "_");
+		String normalizedServer = server.replaceAll("[^A-Za-z0-9 ]", "_");
+		String path =  repoLocation + System.getProperty("file.separator") + normalizedServer + System.getProperty("file.separator") + repoName;
+		
 		
 		LOGGER.info("Create new Parquet write with path: " + path);
 		

@@ -58,6 +58,12 @@ echo 1 > $PID
 #Make sure cleanup() is called when script is done processing or crashed.
 trap cleanup EXIT
 
+#check if tmp dir exists, if not create it
+if ! [ -f "$TMP_DIR" ]
+then
+  mkdir -p $TMP_DIR
+fi
+
 #check if hist file exists, if not create it
 if ! [ -f "$HISTORY_FILE" ]
 then

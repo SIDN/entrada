@@ -24,10 +24,8 @@ package nl.sidn.pcap.parquet;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
@@ -70,7 +68,6 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 	private static final int RCODE_QUERY_WITHOUT_RESPONSE = -1;
 	
 	//metrics
-	private Set<String> domainnames = new HashSet<>();
 	private long responseBytes = 0;
 	private long requestBytes = 0;
 	private Map<Integer, Integer> qtypes = new HashMap<>();
@@ -298,7 +295,6 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		writer.write(record);
 		
 		//create metrics
-		domainnames.add(domaininfo.name);
 		updateMetricMap(rcodes, rcode);
     		updateMetricMap(opcodes, requestHeader != null ? requestHeader.getRawOpcode() : responseHeader.getRawOpcode());
 		//ip version stats
@@ -508,7 +504,6 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 		metricManager.send(MetricManager.METRIC_IMPORT_COUNTRY_COUNT,countries.size() );
 		metricManager.send(MetricManager.METRIC_IMPORT_ASN_COUNT,asn_cache.size() );
 		
-		metricManager.send(MetricManager.METRIC_IMPORT_DNS_DOMAINNAME_COUNT, domainnames.size() );
 		if(responseBytes > 0){
 			metricManager.send(MetricManager.METRIC_IMPORT_DNS_RESPONSE_BYTES_SIZE, (int)(responseBytes/1024));
 		}else{

@@ -28,11 +28,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 
-import nl.sidn.pcap.util.Settings;
-
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import nl.sidn.pcap.util.Settings;
 
 
 public class MetricManager {
@@ -63,7 +63,6 @@ public class MetricManager {
 	public static String METRIC_IMPORT_IP_COUNT = ".ip.count";
 	public static String METRIC_IMPORT_COUNTRY_COUNT = ".country.count";
 	public static String METRIC_IMPORT_ASN_COUNT = ".asn.count";
-	public static String METRIC_IMPORT_DNS_DOMAINNAME_COUNT = ".dns.domainname.count";
 	public static String METRIC_IMPORT_DNS_RESPONSE_BYTES_SIZE = ".dns.response.bytes.size";
 	public static String METRIC_IMPORT_DNS_QUERY_BYTES_SIZE = ".dns.request.bytes.size";
 

@@ -21,12 +21,12 @@
  */	
 package nl.sidn.pcap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import nl.sidn.pcap.util.FileUtil;
 import nl.sidn.pcap.util.Settings;
 import nl.sidn.stats.MetricManager;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class Main {
 	private static final Logger LOGGER = LoggerFactory.getLogger(Main.class);

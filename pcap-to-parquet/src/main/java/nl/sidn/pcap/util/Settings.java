@@ -28,11 +28,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
 
-import nl.sidn.dnslib.util.DomainParent;
-
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import nl.sidn.dnslib.util.DomainParent;
 
 /**
  * Utility class for reading the entrada config file and making the

@@ -24,11 +24,11 @@ package nl.sidn.pcap.util;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
-import nl.sidn.dnslib.util.IPUtil;
-
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import nl.sidn.dnslib.util.IPUtil;
 
 public class MaxMindTest {
 

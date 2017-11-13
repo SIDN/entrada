@@ -35,13 +35,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import nl.sidn.pcap.util.Settings;
-
 import org.apache.commons.lang3.time.DateUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.net.InetAddresses;
+
+import nl.sidn.pcap.util.Settings;
 
 public abstract class AbstractNetworkCheck{
 	

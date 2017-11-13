@@ -28,8 +28,6 @@ public abstract class AbstractStoppableThread implements Runnable{
 	
 	public static final Log LOG = LogFactory.getLog(AbstractStoppableThread.class);
 
-	private boolean keepRunning = true;
-	
 	@Override
 	public void run() {
 		try{
@@ -41,13 +39,5 @@ public abstract class AbstractStoppableThread implements Runnable{
 	}
 
 	protected abstract void doWork();
-
-	public void stop() {
-		keepRunning = false;
-	}
-	
-	public boolean isRunning(){
-		return keepRunning;
-	}
 	
 }

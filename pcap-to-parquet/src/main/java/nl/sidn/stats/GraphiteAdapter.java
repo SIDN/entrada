@@ -26,10 +26,10 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 
-import nl.sidn.pcap.util.Settings;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import nl.sidn.pcap.util.Settings;
 
 /**
  * Adapter for sending metrics to the carbon database used by Graphite.

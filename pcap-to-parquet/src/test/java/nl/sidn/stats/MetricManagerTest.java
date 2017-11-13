@@ -21,10 +21,10 @@
  */	
 package nl.sidn.stats;
 
-import nl.sidn.pcap.util.Settings;
-
 import org.junit.Before;
 import org.junit.Test;
+
+import nl.sidn.pcap.util.Settings;
 
 public class MetricManagerTest {
 	

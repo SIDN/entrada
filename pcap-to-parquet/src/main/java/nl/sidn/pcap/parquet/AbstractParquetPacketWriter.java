@@ -28,14 +28,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
-import nl.sidn.pcap.support.PacketCombination;
-import nl.sidn.pcap.util.GeoLookupUtil;
-import nl.sidn.pcap.util.Settings;
-
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.kitesdk.data.Dataset;
 import org.kitesdk.data.DatasetDescriptor;
 import org.kitesdk.data.DatasetWriter;
@@ -44,6 +39,10 @@ import org.kitesdk.data.Formats;
 import org.kitesdk.data.PartitionStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import nl.sidn.pcap.support.PacketCombination;
+import nl.sidn.pcap.util.GeoLookupUtil;
+import nl.sidn.pcap.util.Settings;
 
 public abstract class AbstractParquetPacketWriter {
 

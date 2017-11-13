@@ -25,6 +25,11 @@ import java.sql.Timestamp;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.GenericRecordBuilder;
+import org.apache.commons.lang3.StringUtils;
+import org.kitesdk.data.PartitionStrategy;
+
 import nl.sidn.dnslib.message.Header;
 import nl.sidn.dnslib.message.Message;
 import nl.sidn.dnslib.message.Question;
@@ -37,11 +42,6 @@ import nl.sidn.pcap.packet.Packet;
 import nl.sidn.pcap.support.PacketCombination;
 import nl.sidn.pcap.util.Settings;
 import nl.sidn.stats.MetricManager;
-
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.GenericRecordBuilder;
-import org.apache.commons.lang3.StringUtils;
-import org.kitesdk.data.PartitionStrategy;
 
 public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
 

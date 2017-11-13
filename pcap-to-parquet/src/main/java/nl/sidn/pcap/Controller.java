@@ -29,6 +29,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.TimeUnit;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import nl.sidn.pcap.decoder.ICMPDecoder;
 import nl.sidn.pcap.load.LoaderThread;
 import nl.sidn.pcap.packet.Packet;
@@ -39,9 +42,6 @@ import nl.sidn.pcap.support.PacketCombination;
 import nl.sidn.pcap.support.RequestKey;
 import nl.sidn.pcap.util.Settings;
 import nl.sidn.stats.MetricManager;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class Controller {
 	private static final Logger LOGGER = LoggerFactory.getLogger(Controller.class);

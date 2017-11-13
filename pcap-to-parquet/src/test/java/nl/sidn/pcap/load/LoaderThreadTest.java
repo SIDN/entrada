@@ -4,12 +4,12 @@ import java.io.File;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-import nl.sidn.pcap.support.PacketCombination;
-import nl.sidn.pcap.util.Settings;
-
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import nl.sidn.pcap.support.PacketCombination;
+import nl.sidn.pcap.util.Settings;
 
 public class LoaderThreadTest {
 	

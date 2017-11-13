@@ -23,8 +23,6 @@ package nl.sidn.pcap.ip;
 
 import java.net.UnknownHostException;
 
-import nl.sidn.pcap.util.Settings;
-
 import org.apache.commons.lang3.StringUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -32,6 +30,8 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import nl.sidn.pcap.util.Settings;
 
 /**
  * check if an IP address is a Google open resolver.

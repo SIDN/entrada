@@ -141,10 +141,7 @@ public class LoaderThread extends AbstractStoppableThread {
 		//save unmatched packet state to file
 		//the next pcap might have the missing responses
 		persistState();
-		
-		//add marker packet indicating all packets are decoded
-		sharedQueue.add(PacketCombination.NULL);
-		
+
 		LOGGER.info("--------- Done loading queue ------------");
 		LOGGER.info("Loaded " + (queryCounter+responseCounter) + " packets");
 		LOGGER.info("Loaded " + queryCounter + " query packets");
@@ -154,6 +151,10 @@ public class LoaderThread extends AbstractStoppableThread {
 		LOGGER.info("-----------------------------------------");
 		
 		writeMetrics();
+		
+		//add marker packet indicating all packets are decoded
+		//this will cause the controller thread to stop all processing.
+		sharedQueue.add(PacketCombination.NULL);
 	}
 
 	/**

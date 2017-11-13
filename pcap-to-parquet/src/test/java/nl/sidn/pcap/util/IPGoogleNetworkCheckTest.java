@@ -21,12 +21,12 @@
  */	
 package nl.sidn.pcap.util;
 
-import nl.sidn.pcap.ip.GoogleResolverCheck;
-import nl.sidn.pcap.ip.OpenDNSResolverCheck;
-
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+
+import nl.sidn.pcap.ip.GoogleResolverCheck;
+import nl.sidn.pcap.ip.OpenDNSResolverCheck;
 
 public class IPGoogleNetworkCheckTest {
 

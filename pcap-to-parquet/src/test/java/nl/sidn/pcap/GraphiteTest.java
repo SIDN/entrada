@@ -21,12 +21,12 @@
  */	
 package nl.sidn.pcap;
 
+import org.junit.Before;
+import org.junit.Test;
+
 import nl.sidn.pcap.util.Settings;
 import nl.sidn.stats.GraphiteAdapter;
 import nl.sidn.stats.Metric;
-
-import org.junit.Before;
-import org.junit.Test;
 
 /**
  * These tests need a working graphite configuration

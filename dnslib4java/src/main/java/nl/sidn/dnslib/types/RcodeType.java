@@ -31,7 +31,7 @@ import java.util.Map;
 	Registration Procedures
 	IETF Review
 	Reference
-	[RFC-ietf-dnsext-rfc6195bis-05][RFC1035]
+	[RFC6895][RFC1035]
 	
  * 	RCODE 	Name 	Description 	Reference 
 		0	NoError	No Error	[RFC1035]
@@ -55,7 +55,8 @@ import java.util.Map;
 		20	BADNAME	Duplicate key name	[RFC2930]
 		21	BADALG	Algorithm not supported	[RFC2930]
 		22	BADTRUNC	Bad Truncation	[RFC4635]
-		23-3840	Unassigned		
+		23	BADCOOKIE	Bad/missing Server Cookie	[RFC7873]
+		24-3840		Unassigned
 		3841-4095	Reserved for Private Use		[RFC-ietf-dnsext-rfc6195bis-05]
 		4096-65534	Unassigned		
 		65535	Reserved, can be allocated by Standards Action		[RFC-ietf-dnsext-rfc6195bis-05]
@@ -81,7 +82,8 @@ public enum RcodeType {
 	BADMODE((char)19),
 	BADNAME((char)20),
 	BADALG((char)21),
-	BADTRUNC((char)22),	
+	BADTRUNC((char)22),
+	BADCOOKIE((char)23),
 	RESERVED((char)65535);
 	
 	private char value;

@@ -178,15 +178,18 @@ public enum ResourceRecordType {
 	NSEC3(50),
 	NSEC3PARAM(51),
 	TLSA(52),
-	//Unassigned	53-54
-	UNASSIGNED_53(53),
+	SMIMEA(53),
+	//Unassigned 54
 	UNASSIGNED_54(54),
 	HIP(55),
 	NINFO(56),
 	RKEY(57),
 	TALINK(58),
-	CDS(59),			
-	//Unassigned	60-98				
+	CDS(59),
+	CDNSKEY(60),
+	OPENPGPKEY(61),
+	CSYNC(62),
+	//Unassigned	63-98
 	SPF(99),
 	UINFO(100),
 	UID(101),
@@ -208,7 +211,9 @@ public enum ResourceRecordType {
 	ANY(255),
 	URI(256),
 	CAA(257),
-	//Unassigned	258-32767	
+	AVC(258),
+	DOA(259),
+	//Unassigned	260-32767
 	TA(32768),
 	DLV(32769),
 	//Unassigned	32770-65279				
@@ -247,15 +252,15 @@ public enum ResourceRecordType {
 	public static ResourceRecordType fromValue(int value){
 		ResourceRecordType type = typesToInt.get(new Integer(value));
 		if(type == null){
-			//Unassigned	53-54
-			//Unassigned	60-98
+			//Unassigned	54
+			//Unassigned	63-98
 			//Unassigned	110-248
-			//Unassigned	258-32767	
+			//Unassigned	260-32767
 			//Unassigned	32770-65279
-			if( (value >= 53 &&  value <= 54) ||
-				(value >= 60 &&  value <= 98) ||
+			if( (value == 54) ||
+				(value >= 63 &&  value <= 98) ||
 				(value >= 110 &&  value <= 248) ||
-				(value >= 258 &&  value <= 32767) ||
+				(value >= 260 &&  value <= 32767) ||
 				(value >= 32770 &&  value <= 65279)
 			  ){
 				return UNASSIGNED;

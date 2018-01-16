@@ -28,6 +28,11 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.RSAPublicKeySpec;
+import java.security.spec.ECPublicKeySpec;
+import java.security.spec.EllipticCurve;
+import java.security.spec.ECParameterSpec;
+import java.security.spec.ECFieldFp;
+import java.security.spec.ECPoint;
 
 import nl.sidn.dnslib.message.records.dnssec.DNSKEYResourceRecord;
 import nl.sidn.dnslib.message.records.dnssec.DSResourceRecord;
@@ -36,6 +41,17 @@ public class KeyUtil {
 	
 	private static char KEY_ZONE_FLAG_MASK = 0x0100; //0000 0001 0000 0000
 	private static char KEY_ZONE_SEP_FLAG_MASK = 0x0101; //0000 0001 0000 0001
+	
+	public static PublicKey createPublicKey(byte[] key, int algorithm) {
+		if (algorithm == 13) {
+			return createECPublicKey(key);
+		} else {
+			// Maybe not super clean to let all the other
+			// algorithms (!= 13) being handled by the following method,
+			// but a start.
+			return createRSAPublicKey(key);
+		}
+	}
 	
 	public static PublicKey createRSAPublicKey(byte[] key) {
 		ByteBuffer b = ByteBuffer.wrap(key);
@@ -57,7 +73,42 @@ public class KeyUtil {
 		} catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
 			throw new RuntimeException("Error creating public key", e);
 		}
-		
+	}
+	
+	public static PublicKey createECPublicKey(byte[] key) {
+		// RFC 5114 Section 2.6
+		// ECDSA_P256
+		// Algorithm 13
+		String p_str = "FFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFF";
+		String a_str = "FFFFFFFF00000001000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFC";
+		String b_str = "5AC635D8AA3A93E7B3EBBD55769886BC651D06B0CC53B0F63BCE3C3E27D2604B";
+		String gx_str = "6B17D1F2E12C4247F8BCE6E563A440F277037D812DEB33A0F4A13945D898C296";
+		String gy_str = "4FE342E2FE1A7F9B8EE7EB4A7C0F9E162BCE33576B315ECECBB6406837BF51F5";
+		String n_str = "FFFFFFFF00000000FFFFFFFFFFFFFFFFBCE6FAADA7179E84F3B9CAC2FC632551";
+		BigInteger p, a, b, gx, gy, n;
+		p = new BigInteger(p_str, 16);
+		a = new BigInteger(a_str, 16);
+		b = new BigInteger(b_str, 16);
+		gx = new BigInteger(gx_str, 16);
+		gy = new BigInteger(gy_str, 16);
+		n = new BigInteger(n_str, 16);
+		try {
+			ByteBuffer buff = ByteBuffer.wrap(key);
+			byte [] x_bytes = new byte[key.length/2];
+			byte [] y_bytes = new byte[key.length/2];
+			buff.get(x_bytes);
+			buff.get(y_bytes);
+			BigInteger x = new BigInteger(1, x_bytes);
+			BigInteger y = new BigInteger(1, y_bytes);
+			ECPoint q = new ECPoint(x, y);
+			EllipticCurve curve = new EllipticCurve(new ECFieldFp(p), a, b);
+			ECParameterSpec spec = new ECParameterSpec(curve, new ECPoint(gx, gy), n, 1);
+			
+			KeyFactory factory = KeyFactory.getInstance("EC");
+			return factory.generatePublic(new ECPublicKeySpec(q, spec));
+		} catch (NoSuchAlgorithmException | InvalidKeySpecException e) {
+			throw new RuntimeException("Error creating public key for ECDSA (algorithm 13)", e);
+		}
 	}
 	
 	/**

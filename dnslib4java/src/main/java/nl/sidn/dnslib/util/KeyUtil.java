@@ -31,6 +31,7 @@ import nl.sidn.dnslib.message.records.dnssec.DSResourceRecord;
 
 public class KeyUtil {
 
+
   private static char KEY_ZONE_FLAG_MASK = 0x0100; // 0000 0001 0000 0000
   private static char KEY_ZONE_SEP_FLAG_MASK = 0x0101; // 0000 0001 0000 0001
 

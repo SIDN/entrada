@@ -1,4 +1,5 @@
 .DS_Store
+.idea
 pcap-to-parquet/target/
 dnslib4java/target/
 pcaplib4java/target/

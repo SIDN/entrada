@@ -24,12 +24,13 @@ import org.junit.Before;
 import org.junit.Test;
 import nl.sidn.pcap.ip.GoogleResolverCheck;
 
-public class GoogleNetworkCheckTest {
+public class GoogleResolverCheckTest {
 
   @Before
   public void setup() {
     ClassLoader classLoader = getClass().getClassLoader();
     Settings.setPath(classLoader.getResource("test-settings.properties").getFile());
+    Settings.getInstance().setSetting(Settings.STATE_LOCATION, "/tmp/");
   }
 
   @Test

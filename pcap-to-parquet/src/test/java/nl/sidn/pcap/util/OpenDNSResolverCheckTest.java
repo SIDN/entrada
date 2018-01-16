@@ -30,6 +30,7 @@ public class OpenDNSResolverCheckTest {
   public void setup() {
     ClassLoader classLoader = getClass().getClassLoader();
     Settings.setPath(classLoader.getResource("test-settings.properties").getFile());
+    Settings.getInstance().setSetting(Settings.STATE_LOCATION, "/tmp/");
   }
 
   @Test

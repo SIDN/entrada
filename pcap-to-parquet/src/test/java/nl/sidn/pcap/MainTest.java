@@ -19,6 +19,8 @@
  */
 package nl.sidn.pcap;
 
+import java.io.File;
+
 public class MainTest {
 
   // @Test
@@ -26,8 +28,11 @@ public class MainTest {
     Main main = new Main();
 
     ClassLoader classLoader = getClass().getClassLoader();
-    String[] args = {"ns3.dns.nl", classLoader.getResource("test-settings.properties").getFile(),
-        "/Users/maarten/sidn/development/tmp/pcap/input",
+
+    File file = new File(classLoader.getResource("pcap/ns1.example.nl").getFile());
+
+    String[] args = {"ns1.example.nl",
+        classLoader.getResource("test-settings.properties").getFile(), file.getParent(),
         "/Users/maarten/sidn/development/tmp/pcap/parquet", "/Users/maarten/sidn/development/tmp"};
     main.run(args);
   }

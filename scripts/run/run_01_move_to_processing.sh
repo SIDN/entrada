@@ -35,7 +35,7 @@ if [ ! -d "$PROCESSING_DIR/$SERVER" ]; then
    mkdir -p $PROCESSING_DIR/$SERVER
 fi
 
-for f in $INCOMING_DIR/$SERVER/*pcap.[gx]z
+for f in $INCOMING_DIR/$SERVER/*
 do
   ! [ -f $f ] && continue
 

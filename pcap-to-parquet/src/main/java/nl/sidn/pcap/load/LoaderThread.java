@@ -531,12 +531,13 @@ public class LoaderThread extends AbstractStoppableThread {
     if (filenameLower.endsWith(".xz")) {
       return new XZCompressorInputStream(in);
     }
-    if (filenameLower.endsWith(".gz")) {
-      return new GZIPInputStream(in, bufSize);
-    }
     if (filenameLower.endsWith(".pcap")) {
       return in;
     }
+    if (filenameLower.endsWith(".gz")) {
+      return new GZIPInputStream(in, bufSize);
+    }
+
     throw new IOException("Could not open file with unknown extension: " + filenameLower);
   }
 

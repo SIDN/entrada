@@ -6,6 +6,8 @@ pipeline {
                 sh 'mvn -f dnslib4java/pom.xml -B -DskipTests clean install' 
                 sh 'mvn -f pcaplib4java/pom.xml -B -DskipTests clean install'
                 sh 'mvn -f pcap-to-parquet/pom.xml -B -DskipTests clean package'
+                sh './create_package.sh'
+                archiveArtifacts artifacts: '*.tar.gz', fingerprint: true, onlyIfSuccessful: true
                 archiveArtifacts artifacts: 'pcap-to-parquet/target/**/*.jar', fingerprint: true, onlyIfSuccessful: true
             }
         }
@@ -20,12 +22,6 @@ pipeline {
                 unhealthyTarget: [methodCoverage: 50, conditionalCoverage: 50, statementCoverage: 50],
                 failingTarget: [methodCoverage: 0, conditionalCoverage: 0, statementCoverage: 0]    
               ])
-            }
-         }
-         stage('Package'){
-            steps {
-                sh './create_package.sh'
-                archiveArtifacts artifacts: '*.tar.gz', fingerprint: true, onlyIfSuccessful: true
             }
          }
     }

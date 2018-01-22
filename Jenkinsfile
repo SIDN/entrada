@@ -23,8 +23,10 @@ pipeline {
             }
          }
          stage('Package'){
-            sh './create_package.sh'
-            archiveArtifacts artifacts: '*.tar.gz', fingerprint: true, onlyIfSuccessful: true
+            steps {
+                sh './create_package.sh'
+                archiveArtifacts artifacts: '*.tar.gz', fingerprint: true, onlyIfSuccessful: true
+            }
          }
     }
     post {

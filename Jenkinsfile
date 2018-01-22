@@ -6,7 +6,7 @@ pipeline {
                 sh 'mvn -f dnslib4java/pom.xml -B -DskipTests clean install' 
                 sh 'mvn -f pcaplib4java/pom.xml -B -DskipTests clean install'
                 sh 'mvn -f pcap-to-parquet/pom.xml -B -DskipTests clean package'
-                sh 'create_package.sh'
+                ./create_package.sh
                 archiveArtifacts artifacts: 'pcap-to-parquet/target/**/*.jar', fingerprint: true, onlyIfSuccessful: true
             }
         }

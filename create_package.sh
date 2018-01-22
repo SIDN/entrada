@@ -4,6 +4,8 @@ VERSION=$(cat VERSION)
 BASE_DIR="entrada-$VERSION"
 echo "Create ENTRADA installation package for version $VERSION"
 
+echo "Workspace: $WORKSPACE"
+
 #make 100% sure the package dir does not exist
 rm -rf $BASE_DIR
 

@@ -32,9 +32,10 @@ public class MainTest {
 
     File file = new File(classLoader.getResource("pcap/ns1.example.nl").getFile());
 
-    String[] args = {"ns1.example.nl",
-        classLoader.getResource("test-settings.properties").getFile(), file.getParent(),
-        "/Users/maarten/sidn/development/tmp/pcap/parquet", "/Users/maarten/sidn/development/tmp"};
+    String[] args =
+        {"ns1.example.nl", classLoader.getResource("test-settings.properties").getFile(),
+            file.getParent(), "/Users/maarten/sidn/development/tmp/pcap/parquet",
+            "/Users/maarten/sidn/development/tmp/entrada/"};
     main.run(args);
   }
 

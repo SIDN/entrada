@@ -20,10 +20,11 @@
 package nl.sidn.pcap;
 
 import java.io.File;
+import org.junit.Test;
 
 public class MainTest {
 
-  // @Test
+  @Test
   public void testRun() {
     Main main = new Main();
 

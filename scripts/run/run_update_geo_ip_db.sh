@@ -28,8 +28,7 @@
 MAXMIND_DIR=$TMP_DIR/maxmind
 #database are updated on the first Tuesday of each month. 
 COUNTRY_URL=http://geolite.maxmind.com/download/geoip/database/GeoLite2-Country.mmdb.gz
-ASN_URL=http://download.maxmind.com/download/geoip/database/asnum/GeoIPASNum.dat.gz
-ASN_V6_URL=http://download.maxmind.com/download/geoip/database/asnum/GeoIPASNumv6.dat.gz
+ASN_URL=http://geolite.maxmind.com/download/geoip/database/GeoLite2-ASN.tar.gz
 
 echo "[$(date)] : start update of Maxmind databases"
 if [ ! -d $MAXMIND_DIR ];
@@ -48,8 +47,8 @@ rm -f *.mmdb
 echo "[$(date)] : fetch $COUNTRY_URL"
 curl -sH 'Accept-encoding: gzip' $COUNTRY_URL | gunzip - > GeoLite2-Country.mmdb
 echo "[$(date)] : fetch $ASN_URL"
-curl -sH 'Accept-encoding: gzip' $ASN_URL | gunzip - > GeoIPASNum.dat
-echo "[$(date)] : fetch $ASN_V6_URL"
-curl -sH 'Accept-encoding: gzip' $ASN_V6_URL | gunzip - > GeoIPASNumv6.dat
+curl -sH 'Accept-encoding: gzip' $ASN_URL | tar xvz
+mv GeoLite2-ASN_*/GeoLite2-ASN.mmdb GeoLite2-ASN.mmdb
+rm -rf GeoLite2-ASN_*
 
 echo "[$(date)] : Maxmind update done"

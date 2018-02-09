@@ -42,7 +42,7 @@ import nl.sidn.pcap.util.Settings;
 public final class OpenDNSResolverCheck extends AbstractNetworkCheck {
 
   private static String OPENDNS_RESOLVER_IP_FILENAME = "opendns-resolvers";
-  protected static final Logger LOGGER = LoggerFactory.getLogger(GoogleResolverCheck.class);
+  protected static final Logger LOGGER = LoggerFactory.getLogger(OpenDNSResolverCheck.class);
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
 

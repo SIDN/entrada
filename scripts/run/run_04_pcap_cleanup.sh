@@ -25,4 +25,11 @@
 #
 ############################################################
 
-find $DATA_DIR/processed/archive/**/*.pcap.[gx]z -mtime +$PCAP_DAYS_TO_KEEP -exec rm {} \;
+for ns_dir in $DATA_DIR/processed/archive/*;
+do
+   [ -d $ns_dir ] && echo "cleanup directory: $ns_dir" && find $ns_dir/*.pcap.[gx]z -mtime +$PCAP_DAYS_TO_KEEP -exec rm {} \;
+done
+
+
+
+

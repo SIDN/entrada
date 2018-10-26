@@ -1,3 +1,11 @@
+# Upgrading to version 0.0.12
+
+No action required when upgrading from 0.0.11
+
+# Upgrading to version 0.0.11
+
+No action required when upgrading from 0.0.10
+
 # Upgrading to version 0.0.10
 
 Added new columns, execute database/upgrade/to_0.0.10.sql

@@ -55,7 +55,12 @@ public class NetworkData {
 	}
 	
 	public NetworkData(byte[] data){
-		this.buf = data;
+		if (data.length % 2 == 1) {
+			this.buf = Arrays.copyOf(data, data.length + 1);
+		}
+		else {
+			this.buf = data;
+		}
 		index = 0;
 	}
 	

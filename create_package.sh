@@ -10,7 +10,7 @@ echo "Workspace: $WORKSPACE"
 rm -rf $BASE_DIR
 
 mkdir $BASE_DIR
-cp ./pcap-to-parquet-$VERSION-jar-with-dependencies.jar $BASE_DIR
+cp $WORKSPACE/pcap-to-parquet/target/pcap-to-parquet-$VERSION-jar-with-dependencies.jar $BASE_DIR
 cp -R scripts $BASE_DIR
 cp -R grafana-dashboard $BASE_DIR
 cp VERSION $BASE_DIR

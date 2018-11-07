@@ -80,7 +80,7 @@ public class LoaderThread extends AbstractStoppableThread {
   private BlockingQueue<PacketCombination> sharedQueue;
 
   private List<String> processedFiles = new ArrayList<String>();
-  private List<String> inputFiles = new ArrayList<String>();;
+  private List<String> inputFiles = new ArrayList<String>();
 
   private String inputDir;
   private String outputDir;

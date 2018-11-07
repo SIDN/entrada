@@ -102,16 +102,14 @@ public class OPTResourceRecord extends AbstractResourceRecord {
 				loadOptions(buffer);
 			} catch (Exception e) {
 				// ignore
-				LOGGER.error("Could not decode OPT RR");
-				e.printStackTrace();
+				LOGGER.error("Could not decode OPT RR", e);
 			}
 		} 
 	}
 	
 	private void loadOptions(NetworkData buffer){
-		if(rdLeng != buffer.bytesAvailable()){
-			LOGGER.info("Incorrect edns rdata size");
-			LOGGER.info("rdlength=" + (int)rdLeng + " and bytesavail:" + buffer.bytesAvailable());	
+		if(rdLeng > buffer.bytesAvailable()){
+			LOGGER.error("Incorrect edns rdata size, rdlength=" + (int)rdLeng + " and bytesavail:" + buffer.bytesAvailable());	
 			return;
 		}
 				
@@ -121,11 +119,8 @@ public class OPTResourceRecord extends AbstractResourceRecord {
 		NetworkData opt = new NetworkData(optionBytes);
 		while(opt.isBytesAvailable()){
 			EDNS0Option option = decodeOption(opt);
-			if(option != null){
-				options.add(option);
-			}
+			options.add(option);
 		}
-
 	}
 	
 	/**

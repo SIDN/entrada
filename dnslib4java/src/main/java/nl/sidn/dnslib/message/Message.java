@@ -192,7 +192,6 @@ public class Message {
 		//decode all questions in the message
 		for(int i = 0; i < header.getQdCount(); i++){
 			Question question = decodeQuestion(buffer);
-			//LOGGER.debug("decoded question:" + question);
 			addQuestion(question);
 		}
 		

@@ -3,6 +3,7 @@ pipeline {
     stages {
         stage('Build') { 
             steps {
+                sh 'rm -rf **/entrada-*.tar.gz'
                 sh 'mvn -f dnslib4java/pom.xml -B -DskipTests clean install' 
                 sh 'mvn -f pcaplib4java/pom.xml -B -DskipTests clean install'
                 sh 'mvn -f pcap-to-parquet/pom.xml -B -DskipTests clean package'

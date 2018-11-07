@@ -25,9 +25,37 @@
 # 
 ############################################################
 
-PATH=$PATH:$SCRIPT_DIR:/usr/local/bin
+PID=$TMP_DIR/run_00_copy-pcap-to-staging_bootstrap
+
+#----- functions ---------------
+
+cleanup(){
+  #remove pid file
+  if [ -f $PID ];
+  then
+     rm $PID
+  fi
+}
+
+# ------- main program -----------
+
+echo "[$(date)] : Bootstrapping PCAP data copy process"
+
+if [ -f $PID ];
+then
+   echo "[$(date)] : $PID  : Process is already running, do not start new process."
+   exit 1
+fi
+
+#create pid file
+echo 1 > $PID
+
+#Make sure cleanup() is called when script is done processing or crashed.
+trap cleanup EXIT
 
 #parallel will start process for each name server
 nslist=$(echo $NAMESERVERS | tr ';' ' ')
 
-parallel run_00_copy-pcap-to-staging.sh  ::: $nslist
+parallel -j $PARALLEL_JOBS run_00_copy-pcap-to-staging.sh ::: $nslist
+
+echo "Copied data for all nameservers"

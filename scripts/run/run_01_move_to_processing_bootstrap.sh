@@ -25,9 +25,37 @@
 # 
 ############################################################
 
-nsarray=(`echo $NAMESERVERS | tr ';' ' '`)
+PID=$TMP_DIR/run_01_move-pcap-to-staging_bootstrap
 
-for ns in ${nsarray[@]}; do
-  run_01_move_to_processing.sh $ns
-done
+#----- functions ---------------
+
+cleanup(){
+  #remove pid file
+  if [ -f $PID ];
+  then
+     rm $PID
+  fi
+}
+
+# ------- main program -----------
+
+echo "[$(date)] : Bootstrapping PCAP data move process"
+
+if [ -f $PID ];
+then
+   echo "[$(date)] : $PID  : Process is already running, do not start new process."
+   exit 1
+fi
+
+#create pid file
+echo 1 > $PID
+
+#Make sure cleanup() is called when script is done processing or crashed.
+trap cleanup EXIT
+
+nslist=$(echo $NAMESERVERS | tr ';' ' ')
+
+parallel -j $PARALLEL_JOBS run_01_move_to_processing.sh ::: $nslist
+
+echo "Moved data for all nameservers"
 

@@ -72,6 +72,9 @@ export KEYTAB_FILE="my.keytab"
 #error mail recipient
 export ERROR_MAIL=""
 
+#Max number of nameserver to process at the same time
+#to prevent overloading the server
+export PARALLEL_JOBS=3
 
 #HDFS directories for table files
 export HDFS_DNS_STAGING="$HDFS_HOME/staging"

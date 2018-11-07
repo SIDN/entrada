@@ -25,6 +25,35 @@
 # 
 ############################################################
 
+PID=$TMP_DIR/run_02_partial_loader_bootstrap
+
+#----- functions ---------------
+
+cleanup(){
+  #remove pid file
+  if [ -f $PID ];
+  then
+     rm $PID
+  fi
+}
+
+# ------- main program -----------
+
+echo "[$(date)] : Bootstrapping PCAP loading process"
+
+if [ -f $PID ];
+then
+   echo "[$(date)] : $PID  : Process is already running, do not start new process."
+   exit 1
+fi
+
+#create pid file
+echo 1 > $PID
+
+#Make sure cleanup() is called when script is done processing or crashed.
+trap cleanup EXIT
+
+
 CLASS=nl.sidn.pcap.Update
 
 #check if tmp dir exists, if not create
@@ -49,7 +78,7 @@ echo "[$(date)] :Start parallel processing new pcap data"
 #replace colon with whitespace so it will work with gnu parallel
 nslist=$(echo $NAMESERVERS | tr ';' ' ')
 
-parallel run_02_partial_loader.sh ::: $nslist ::: $CONFIG_FILE ::: $1
+parallel -j $PARALLEL_JOBS run_02_partial_loader.sh ::: $nslist ::: $CONFIG_FILE ::: $1
 
-
+echo "Loaded data for all nameservers"
 

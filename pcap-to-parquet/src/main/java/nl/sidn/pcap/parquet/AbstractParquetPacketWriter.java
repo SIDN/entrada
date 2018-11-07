@@ -130,7 +130,7 @@ public abstract class AbstractParquetPacketWriter {
         + System.getProperty("file.separator") + repoName;
 
 
-    LOGGER.info("Create new Parquet write with path: " + path);
+    LOGGER.info("Create new Parquet writer with path: " + path);
 
     /* before opening, make sure there is no (old) .metadata folder in the output dir */
     String metadataLocation = path + System.getProperty("file.separator") + ".metadata";
@@ -158,6 +158,8 @@ public abstract class AbstractParquetPacketWriter {
         Datasets.create("dataset:file:" + path, descriptor, GenericRecord.class);
 
     writer = dataset.newWriter();
+
+    LOGGER.info("Created new Parquet writer");
   }
 
   /**

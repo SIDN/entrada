@@ -20,6 +20,7 @@
 package nl.sidn.pcap;
 
 import java.io.File;
+import org.junit.Test;
 
 public class MainTest {
 
@@ -35,6 +36,23 @@ public class MainTest {
         {"ns1.example.nl", classLoader.getResource("test-settings.properties").getFile(),
             file.getParent(), "/Users/maarten/sidn/development/tmp/pcap/parquet",
             "/Users/maarten/sidn/development/tmp/entrada/"};
+    main.run(args);
+  }
+
+  @Test
+  public void testRun2() {
+    Main main = new Main();
+
+    ClassLoader classLoader = getClass().getClassLoader();
+
+    // File file = new
+    // File(classLoader.getResource("/Users/maartenwullink/sidn/development/tmp/pcap/ns1.dns.nl_ams1-ns1/ns1.dns.nl_ams1-ns1_2018-11-06-10:06:50.pcap.gz").getFile());
+
+    String[] args =
+        {"ns3.dns.nl_syy", classLoader.getResource("test-settings.properties").getFile(),
+            "/Users/maartenwullink/sidn/development/tmp/pcap/",
+            "/Users/maartenwullink/sidn/development/tmp/pcap/parquet",
+            "/Users/maartenwullink/sidn/development/tmp/entrada/"};
     main.run(args);
   }
 

@@ -1,11 +1,6 @@
 pipeline {
     agent any 
     stages {
-        stage('clean') { 
-            steps {
-                cleanWs()
-            }
-        }
         stage('Build') { 
             steps {
                 sh 'mvn -f dnslib4java/pom.xml -B -DskipTests clean install' 
@@ -34,6 +29,7 @@ pipeline {
         always {
            junit 'pcap-to-parquet/target/surefire-reports/*.xml'
            sh "echo 'Done'"
+           cleanWs()
         }
         failure {
            emailext body: "Something is wrong with ${env.BUILD_URL}", recipientProviders: [[$class: 'DevelopersRecipientProvider'], [$class: 'CulpritsRecipientProvider']], subject: "Failed Pipeline: ${currentBuild.fullDisplayName}"

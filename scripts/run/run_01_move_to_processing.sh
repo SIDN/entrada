@@ -28,8 +28,33 @@
 INCOMING_DIR=$DATA_DIR/incoming
 PROCESSING_DIR=$DATA_DIR/processing
 SERVER=$1
+PID=$TMP_DIR/run_01_move-pcap-to_processing_$SERVER
 
-echo "[$(date)] : start move data for $SERVER"
+#----- functions ---------------
+
+cleanup(){
+  #remove pid file
+  if [ -f $PID ];
+  then
+     rm $PID
+  fi
+}
+
+# ------- main program -----------
+
+echo "[$(date)] : start moving data for $SERVER"
+
+if [ -f $PID ];
+then
+   echo "[$(date)] : $PID  : Process is already running, do not start new process."
+   exit 1
+fi
+
+#create pid file
+echo 1 > $PID
+
+#Make sure cleanup() is called when script is done processing or crashed.
+trap cleanup EXIT
 
 if [ ! -d "$PROCESSING_DIR/$SERVER" ]; then
    mkdir -p $PROCESSING_DIR/$SERVER

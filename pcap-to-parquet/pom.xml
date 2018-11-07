@@ -95,13 +95,13 @@
 		<dependency>
 			<groupId>nl.sidn</groupId>
 			<artifactId>pcap-lib</artifactId>
-			<version>0.0.1</version>
+			<version>0.1.0</version>
 		</dependency>
 
 		<dependency>
 			<groupId>nl.sidn</groupId>
 			<artifactId>dnslib</artifactId>
-			<version>0.0.1</version>
+			<version>0.1.0</version>
 		</dependency>
 
 		<dependency>

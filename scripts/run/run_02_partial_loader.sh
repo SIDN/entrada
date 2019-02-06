@@ -112,6 +112,11 @@ java -Xms$ENTRADA_HEAP_SIZE -Xmx$ENTRADA_HEAP_SIZE -Dentrada_log_dir=$ENTRADA_LO
 #if Java process exited ok, continue
 if [ $? -eq 0 ]
 then
+   if [ -z "$IMPALA_NODE" ]
+   then
+      echo "\$IMPALA_NODE is empty, stopping"
+      exit 0
+   fi
 
    #check if hdfs data location exists
    #when hdfs not available keep converting data and upload

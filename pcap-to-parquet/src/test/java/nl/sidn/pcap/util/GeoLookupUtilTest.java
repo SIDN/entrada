@@ -24,7 +24,7 @@ import java.net.UnknownHostException;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import nl.sidn.dnslib.util.IPUtil;
+import com.google.common.net.InetAddresses;
 
 public class GeoLookupUtilTest {
 
@@ -35,34 +35,34 @@ public class GeoLookupUtilTest {
     ClassLoader classLoader = getClass().getClassLoader();
     Settings.setPath(classLoader.getResource("test-settings.properties").getFile());
     Settings.getInstance().setSetting(Settings.STATE_LOCATION,
-        "/Users/maarten/sidn/development/tmp/");
+        "/Users/maartenwullink/sidn/development/tmp/entrada/");
     geo = new GeoLookupUtil();
   }
 
   @Test
   public void testAsnLookupIpv4() throws UnknownHostException {
-    InetAddress addr = InetAddress.getByAddress(IPUtil.ipv4tobytes("94.198.159"));
+    InetAddress addr = InetAddresses.forString("94.198.159.1");
     String asn = geo.lookupASN(addr);
     Assert.assertEquals("1140", asn);
   }
 
   @Test
   public void testAsnLookupIpv6() throws UnknownHostException {
-    InetAddress addr = InetAddress.getByAddress(IPUtil.ipv6tobytes("2a00:d78::147:94:198:152"));
+    InetAddress addr = InetAddresses.forString("2a00:d78::147:94:198:152");
     String asn = geo.lookupASN(addr);
     Assert.assertEquals("1140", asn);
   }
 
   @Test
   public void testGeoLookupIpv4() throws UnknownHostException {
-    InetAddress addr = InetAddress.getByAddress(IPUtil.ipv4tobytes("94.198.159"));
+    InetAddress addr = InetAddresses.forString("94.198.159.1");
     String country = geo.lookupCountry(addr);
     Assert.assertEquals("NL", country);
   }
 
   @Test
   public void testGeoLookupIpv6() throws UnknownHostException {
-    InetAddress addr = InetAddress.getByAddress(IPUtil.ipv6tobytes("2a00:d78::147:94:198:152"));
+    InetAddress addr = InetAddresses.forString("2a00:d78::147:94:198:152");
     String country = geo.lookupCountry(addr);
     Assert.assertEquals("NL", country);
   }

@@ -43,9 +43,8 @@ public class Controller {
   private static final Logger LOGGER = LoggerFactory.getLogger(Controller.class);
 
   private ExecutorService executor;
-  protected final Map<RequestKey, Packet> _requestCache = new HashMap<RequestKey, Packet>();
-  private BlockingQueue<PacketCombination> sharedQueue =
-      new LinkedBlockingQueue<PacketCombination>();
+  protected final Map<RequestKey, Packet> _requestCache = new HashMap<>();
+  private BlockingQueue<PacketCombination> sharedQueue = new LinkedBlockingQueue<>();
 
   // default max 3 mil packets per files max (+/- 125mb files)
   private int parquetMaxPackets = 3000000;
@@ -87,8 +86,7 @@ public class Controller {
   public void startLoaderThread(String inputDir, String stateDir, String outputDir) {
     LOGGER.info("Start LoaderThread");
     executor = Executors.newFixedThreadPool(1, new NamedThreadFactory("PCAPLoader-Thread"));
-    LoaderThread ld = new LoaderThread(sharedQueue, inputDir, outputDir, stateDir);
-    executor.submit(ld);
+    executor.submit(new LoaderThread(sharedQueue, inputDir, outputDir, stateDir));
   }
 
   public void start() {

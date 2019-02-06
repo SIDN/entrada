@@ -33,6 +33,7 @@ public class ClientSubnetOption extends EDNS0Option {
   private int sourcenetmask;
   private int scopenetmask;
   private String address;
+  private InetAddress inetAddress;
 
   public ClientSubnetOption() {}
 
@@ -76,6 +77,10 @@ public class ClientSubnetOption extends EDNS0Option {
     return fam == 1;
   }
 
+  public InetAddress getInetAddress() {
+    return inetAddress;
+  }
+
   public String export() {
     return (fam == 1 ? "4," : "6,") + address + "/" + sourcenetmask + "," + scopenetmask;
   }
@@ -88,14 +93,13 @@ public class ClientSubnetOption extends EDNS0Option {
 
   @Override
   public void decode(NetworkData buffer) {
-    setFam(buffer.readUnsignedChar());
-    setSourcenetmask(buffer.readUnsignedByte());
-    setScopenetmask(buffer.readUnsignedByte());
+    fam = buffer.readUnsignedChar();
+    sourcenetmask = buffer.readUnsignedByte();
+    scopenetmask = buffer.readUnsignedByte();
     int addrLength = len - 4; // -4 byte offset for fam+source+scope
 
     if (addrLength > 0) {
 
-      InetAddress ip;
       byte[] addrBytes = new byte[0];
 
       // read available ip bytes, can be less than the bytes
@@ -109,13 +113,12 @@ public class ClientSubnetOption extends EDNS0Option {
       }
 
       try {
-        ip = InetAddress.getByAddress(addrBytes);
+        inetAddress = InetAddress.getByAddress(addrBytes);
       } catch (UnknownHostException e) {
         throw new RuntimeException("Invalid IP address", e);
       }
-      setAddress(ip.getHostAddress());
+      address = inetAddress.getHostAddress();
     }
-
   }
 
 }

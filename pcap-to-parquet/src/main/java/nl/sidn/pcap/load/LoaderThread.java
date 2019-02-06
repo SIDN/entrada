@@ -74,13 +74,12 @@ public class LoaderThread extends AbstractStoppableThread {
 
   private PcapReader pcapReader;
 
-  protected Map<RequestKey, MessageWrapper> _requestCache =
-      new HashMap<RequestKey, MessageWrapper>();
+  protected Map<RequestKey, MessageWrapper> requestCache = new HashMap<>();
 
   private BlockingQueue<PacketCombination> sharedQueue;
 
-  private List<String> processedFiles = new ArrayList<String>();
-  private List<String> inputFiles = new ArrayList<String>();
+  private List<String> processedFiles = new ArrayList<>();
+  private List<String> inputFiles = new ArrayList<>();
 
   private String inputDir;
   private String outputDir;
@@ -166,7 +165,7 @@ public class LoaderThread extends AbstractStoppableThread {
     mm.send(MetricManager.METRIC_IMPORT_STATE_PERSIST_UDP_FLOW_COUNT,
         pcapReader.getDatagrams().size());
     mm.send(MetricManager.METRIC_IMPORT_STATE_PERSIST_TCP_FLOW_COUNT, pcapReader.getFlows().size());
-    mm.send(MetricManager.METRIC_IMPORT_STATE_PERSIST_DNS_COUNT, _requestCache.size());
+    mm.send(MetricManager.METRIC_IMPORT_STATE_PERSIST_DNS_COUNT, requestCache.size());
     mm.send(MetricManager.METRIC_IMPORT_TCP_PREFIX_ERROR_COUNT, pcapReader.getTcpPrefixError());
     mm.send(MetricManager.METRIC_IMPORT_DNS_DECODE_ERROR_COUNT, pcapReader.getDnsDecodeError());
   }
@@ -288,7 +287,7 @@ public class LoaderThread extends AbstractStoppableThread {
 
               RequestKey key = new RequestKey(msg.getHeader().getId(), qname, dnsPacket.getSrc(),
                   dnsPacket.getSrcPort(), System.currentTimeMillis());
-              _requestCache.put(key, new MessageWrapper(msg, dnsPacket, fileName));
+              requestCache.put(key, new MessageWrapper(msg, dnsPacket, fileName));
             } else {
               // try to find the request
               responseCounter++;
@@ -314,7 +313,7 @@ public class LoaderThread extends AbstractStoppableThread {
 
               key = new RequestKey(msg.getHeader().getId(), qname, dnsPacket.getDst(),
                   dnsPacket.getDstPort());
-              MessageWrapper request = _requestCache.remove(key);
+              MessageWrapper request = requestCache.remove(key);
               // check to see if the request msg exists, at the start of the pcap there may be
               // missing queries
 
@@ -411,7 +410,7 @@ public class LoaderThread extends AbstractStoppableThread {
       kryo.writeObject(output, outMap);
 
       // persist request cache
-      kryo.writeObject(output, _requestCache);
+      kryo.writeObject(output, requestCache);
 
       // persist running statistics
       MetricManager.getInstance().getMetricPersistenceManager().persist(kryo, output);
@@ -421,7 +420,7 @@ public class LoaderThread extends AbstractStoppableThread {
       LOGGER.info("Data is persisted to " + file);
       LOGGER.info("Persist " + pmap.size() + " TCP flows");
       LOGGER.info("Persist " + pcapReader.getDatagrams().size() + " Datagrams");
-      LOGGER.info("Persist request cache " + _requestCache.size() + " DNS requests");
+      LOGGER.info("Persist request cache " + requestCache.size() + " DNS requests");
       LOGGER.info("----------------------------------------------------");
     } catch (Exception e) {
       LOGGER.error("Error saving decoder state to file: " + file, e);
@@ -464,7 +463,7 @@ public class LoaderThread extends AbstractStoppableThread {
       pcapReader.setDatagrams(datagrams);
 
       // read in previous request cache
-      _requestCache = kryo.readObject(input, HashMap.class);
+      requestCache = kryo.readObject(input, HashMap.class);
 
       // read running statistics
       MetricManager.getInstance().getMetricPersistenceManager().load(kryo, input);
@@ -473,7 +472,7 @@ public class LoaderThread extends AbstractStoppableThread {
       LOGGER.info("------------- Loader state stats ------------------");
       LOGGER.info("Loaded TCP state " + pcapReader.getFlows().size() + " TCP flows");
       LOGGER.info("Loaded Datagram state " + pcapReader.getDatagrams().size() + " Datagrams");
-      LOGGER.info("Loaded Request cache " + _requestCache.size() + " DNS requests");
+      LOGGER.info("Loaded Request cache " + requestCache.size() + " DNS requests");
       LOGGER.info("----------------------------------------------------");
     } catch (Exception e) {
       LOGGER.error("Error opening state file, continue without loading state: " + file, e);
@@ -484,7 +483,7 @@ public class LoaderThread extends AbstractStoppableThread {
 
   private void purgeCache() {
     // remove expired entries from _requestCache
-    Iterator<RequestKey> iter = _requestCache.keySet().iterator();
+    Iterator<RequestKey> iter = requestCache.keySet().iterator();
     long now = System.currentTimeMillis();
 
     while (iter.hasNext()) {
@@ -493,7 +492,7 @@ public class LoaderThread extends AbstractStoppableThread {
       // current time.
       if ((key.getTime() + cacheTimeout) <= now) {
         // remove expired request;
-        MessageWrapper mw = _requestCache.get(key);
+        MessageWrapper mw = requestCache.get(key);
         iter.remove();
 
         if (mw.getMessage() != null && mw.getMessage().getHeader().getQr() == MessageType.QUERY) {
@@ -530,6 +529,7 @@ public class LoaderThread extends AbstractStoppableThread {
     String filenameLower = filename.toLowerCase();
     if (filenameLower.endsWith(".xz")) {
       return new XZCompressorInputStream(in);
+      // return new XZInputStream(in);
     }
     if (filenameLower.endsWith(".pcap")) {
       return in;

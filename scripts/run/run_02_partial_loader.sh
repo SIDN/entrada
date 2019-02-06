@@ -58,11 +58,11 @@ PID=$TMP_DIR/run_02_partial_loader_$NAMESERVER
 #------------------------------
 
 cleanup(){
-  if [ -d $OUTPUT_DIR/$NORMALIZED_NAMESERVER ];
-  then
-      echo "rm -rf $OUTPUT_DIR/$NORMALIZED_NAMESERVER"
-      rm -rf $OUTPUT_DIR/$NORMALIZED_NAMESERVER 
-  fi
+  #if [ -d $OUTPUT_DIR/$NORMALIZED_NAMESERVER ];
+  #then
+  #    echo "rm -rf $OUTPUT_DIR/$NORMALIZED_NAMESERVER"
+  #    rm -rf $OUTPUT_DIR/$NORMALIZED_NAMESERVER 
+  #fi
 
   #remove pid file
   rm $PID 
@@ -107,19 +107,19 @@ echo 1 > $PID
 #Make sure cleanup() is called when script is done processing or crashed.
 trap cleanup EXIT
 
-#check if hdfs data location exists
-hdfs dfs -test -d "$HDFS_DNS_STAGING" 
-if [ $? -ne "0" ]
-then
-   echo "[$(date)] : hdfs root path $HDFS_DNS_STAGING does not exist, stop"
-   exit 0
-fi
-
 #transform pcap data to parquet data
 java -Xms$ENTRADA_HEAP_SIZE -Xmx$ENTRADA_HEAP_SIZE -Dentrada_log_dir=$ENTRADA_LOG_DIR -cp $ENTRADA_HOME/$ENTRADA_JAR $CLASS $NAMESERVER $CONFIG_FILE $DATA_DIR/processing $DATA_DIR/processed $TMP_DIR
 #if Java process exited ok, continue
 if [ $? -eq 0 ]
 then
+
+   #check if hdfs data location exists
+   hdfs dfs -test -d "$HDFS_DNS_STAGING" 
+   if [ $? -ne "0" ]
+   then
+      echo "[$(date)] : hdfs root path $HDFS_DNS_STAGING does not exist, stop"
+      exit 0
+   fi
 
    #check if parquet files were created
    if [ ! -d "$OUTPUT_DIR/$NORMALIZED_NAMESERVER/dnsdata" ];

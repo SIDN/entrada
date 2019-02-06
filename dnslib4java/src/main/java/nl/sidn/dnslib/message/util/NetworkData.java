@@ -57,7 +57,7 @@ public class NetworkData {
     index = 0;
   }
 
-  public int getNumBytes() {
+  public int length() {
     return buf.length;
   }
 
@@ -200,7 +200,5 @@ public class NetworkData {
   public byte[] getBytes() {
     return buf;
   }
-
-
 
 }

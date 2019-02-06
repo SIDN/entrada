@@ -46,7 +46,6 @@ import nl.sidn.dnslib.types.OpcodeType;
 import nl.sidn.dnslib.types.RcodeType;
 import nl.sidn.dnslib.types.ResourceRecordType;
 import nl.sidn.dnslib.util.Domaininfo;
-import nl.sidn.dnslib.util.IPUtil;
 import nl.sidn.dnslib.util.NameUtil;
 import nl.sidn.pcap.PcapReader;
 import nl.sidn.pcap.ip.GoogleResolverCheck;
@@ -430,10 +429,10 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
           // get client country and asn
           String clientCountry = null;
           String clientASN = null;
-          if (scOption.getAddress() != null) {
+          if (scOption.getInetAddress() != null) {
+            byte[] addrBytes = scOption.getInetAddress().getAddress();
             if (scOption.isIPv4()) {
               try {
-                byte[] addrBytes = IPUtil.ipv4tobytes(scOption.getAddress());
                 clientCountry = geoLookup.lookupCountry(addrBytes);
                 clientASN = geoLookup.lookupASN(addrBytes);
               } catch (Exception e) {
@@ -442,7 +441,6 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
               }
             } else {
               try {
-                byte[] addrBytes = IPUtil.ipv6tobytes(scOption.getAddress());
                 clientCountry = geoLookup.lookupCountry(addrBytes);
                 clientASN = geoLookup.lookupASN(addrBytes);
               } catch (Exception e) {

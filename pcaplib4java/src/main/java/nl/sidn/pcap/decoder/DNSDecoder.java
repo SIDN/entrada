@@ -73,7 +73,7 @@ public class DNSDecoder {
     if (LOG.isDebugEnabled() && packet.getProtocol() == PcapReader.PROTOCOL_UDP
         && nd.isBytesAvailable()) {
       LOG.debug("udp padding found for: " + packet.getSrc() + " " + packet.getSrcPort()
-          + " pad bytes: " + (nd.getNumBytes() - nd.getReaderIndex()));
+          + " pad bytes: " + (nd.length() - nd.getReaderIndex()));
     }
 
   }

@@ -114,6 +114,8 @@ if [ $? -eq 0 ]
 then
 
    #check if hdfs data location exists
+   #when hdfs not available keep converting data and upload
+   #this data when hdfs is available.
    hdfs dfs -test -d "$HDFS_DNS_STAGING" 
    if [ $? -ne "0" ]
    then
@@ -262,6 +264,13 @@ then
    then
      #send mail to indicate error
      echo "[$(date)] :Refresh metadata $IMPALA_ICMP_STAGING_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
+   fi
+
+   #delete local parquet data
+   if [ -d $OUTPUT_DIR/$NORMALIZED_NAMESERVER ];
+   then
+      echo "rm -rf $OUTPUT_DIR/$NORMALIZED_NAMESERVER"
+      rm -rf $OUTPUT_DIR/$NORMALIZED_NAMESERVER 
    fi
 else
    echo "[$(date)] :Converting pcap to parquet failed"

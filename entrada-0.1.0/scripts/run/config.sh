@@ -42,7 +42,7 @@ export IMPALA_NODE="" #edit: no need for this anymore
 export HDFS_HOME="/user/hive/entrada"
 
 #S3 locations for storing data
-export S3_HOME="s3://"
+export S3_HOME="s3://markus-emr-entrada/entrada"
 ##
 
 #input directories, subdirs must have same name as name server

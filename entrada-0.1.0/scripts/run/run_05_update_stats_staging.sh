@@ -37,16 +37,9 @@ fi
 export HADOOP_USER_NAME=hdfs
 
 echo "[$(date)] : Update stats for staging"
-hive -e "COMPUTE STATS $IMPALA_DNS_STAGING_TABLE;"
+hive -e "ANALYZE TABLES $IMPALA_DNS_STAGING_TABLE COMPUTE STATISTICS; ANALYZE TABLES $IMPALA_DNS_STAGIN_TABLE COMPUTE STATISTICS FOR COLUMNS"
 if [ $? -ne 0 ]
 then
    #send mail to indicate error
    echo "[$(date)] : Update stats $IMPALA_DNS_STAGING_TABLE failed" | mail -s "Impala error updating staging stats" $ERROR_MAIL
-fi
-
-hive -e "COMPUTE STATS $IMPALA_ICMP_STAGING_TABLE;"
-if [ $? -ne 0 ]
-then
-   #send mail to indicate error
-   echo "[$(date)] : Update stats $IMPALA_ICMP_STAGING_TABLE failed" | mail -s "Impala error updating staging stats" $ERROR_MAIL
 fi

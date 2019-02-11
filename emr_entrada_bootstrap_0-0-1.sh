@@ -13,9 +13,10 @@ yum install -y git
 
 #download the package
 cd /home/hadoop
-git clone https://markus.videfors-at-845534697080:ahs+HEzJwAYKy8zhlPvHrGSPPpNR44+Kd7+q+rUJbE4=@git-codecommit.eu-west-1.amazonaws.com/v1/repos/Internetstiftelsen_ENTRADA
-tar -xzvf packagePH
-ln -s packagePH entrada-latest
+git clone https://EMR_CodeCommit-at-845534697080:R9GGhQEz2rcrMfYFmmX9TSTlNbbZnNKHzMBeiXb1OUs=@git-codecommit.eu-west-1.amazonaws.com/v1/repos/entrada-0.1.0-internetstiftelsen-0.1 entrada-I-0.1
+
+chown -R hadoop:hadoop entrada-I-0.1
+chmod -R 700 entrada-I-0.1
 
 source packagePH/bootstrapConfig.sh
 
@@ -52,7 +53,6 @@ cat > /etc/logrotate.d/entrada << EOF
   missingok
 }
 EOF
-
 
 cd /home/hadoop/entrada-latest/scripts/run/
 source config.sh && sh run_update_geo_ip_db.sh

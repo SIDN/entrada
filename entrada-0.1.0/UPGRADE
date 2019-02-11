@@ -1,0 +1,49 @@
+# Upgrading to version 0.1.0
+
+No action required when upgrading from 0.0.12
+
+# Upgrading to version 0.0.12
+
+No action required when upgrading from 0.0.11
+
+# Upgrading to version 0.0.11
+
+No action required when upgrading from 0.0.10
+
+# Upgrading to version 0.0.10
+
+Added new columns, execute database/upgrade/to_0.0.10.sql
+to add this the columns.
+
+# Upgrading to version 0.0.9
+
+No action required when upgrading from 0.0.8
+
+# Upgrading to version 0.0.8
+
+Added new column: query_ts, execute database/upgrade/to_0.0.8.sql
+to add this this column.
+
+# Upgrading to version 0.0.7
+
+No action required when upgrading from 0.0.6
+
+# Upgrading to version 0.0.6
+
+No action required when upgrading from 0.0.5
+
+# Upgrading to version 0.0.5
+
+A new column (server_location) has been added in this version, this column is used to store the anycast server location.
+Any input directory using the format <servername>_<location> will be parsed into a server and location component.
+The server component value will be used for the Parquet "server" partition, the location component value will be stored in the "server_location" column.
+
+This allows for partition pruning at the logical server level while still being able to determine the anycast location for every packet. 
+
+If you have an existing ENTRADA installation, you must upgrade the data model with following SQL lines to add the new column to all the tables.
+
+ALTER TABLE dns.staging ADD COLUMNS (server_location STRING);
+ALTER TABLE dns.queries ADD COLUMNS (server_location STRING);
+ALTER TABLE icmp.staging ADD COLUMNS (server_location STRING);
+ALTER TABLE icmp.packets ADD COLUMNS (server_location STRING);
+

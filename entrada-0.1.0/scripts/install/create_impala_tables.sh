@@ -36,7 +36,8 @@ do
     script=${script/_HDFS_LOCATION_/$HDFS_HOME}
 
     # split the table name into db and table names and replace the placeholders
-    for TABLE in IMPALA_DNS_STAGING_TABLE IMPALA_ICMP_STAGING_TABLE IMPALA_DNS_DWH_TABLE IMPALA_ICMP_DWH_TABLE
+    #edit: removed ICMP parts
+    for TABLE in IMPALA_DNS_STAGING_TABLE IMPALA_DNS_DWH_TABLE
     do
         IFS='.';
         array=(${!TABLE})
@@ -47,7 +48,7 @@ do
         script=${script//_${TABLE}_DB_/$DB}
         script=${script//_${TABLE}_TAB_/$TAB}
     done
-    for LOC in HDFS_DNS_STAGING HDFS_ICMP_STAGING HDFS_DNS_QUERIES HDFS_ICMP_PACKETS
+    for LOC in HDFS_DNS_STAGING HDFS_DNS_QUERIES
     do
         script=${script//_${LOC}_/${!LOC}}
     done

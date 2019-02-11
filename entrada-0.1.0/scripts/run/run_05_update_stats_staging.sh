@@ -37,7 +37,8 @@ fi
 export HADOOP_USER_NAME=hdfs
 
 echo "[$(date)] : Update stats for staging"
-hive -e "ANALYZE TABLES $IMPALA_DNS_STAGING_TABLE COMPUTE STATISTICS; ANALYZE TABLES $IMPALA_DNS_STAGIN_TABLE COMPUTE STATISTICS FOR COLUMNS"
+#edit: cant use Impalas COMPUTE STATS, need to use both commands below instead
+hive -e "ANALYZE TABLE $IMPALA_DNS_STAGING_TABLE PARTITION(year, month, day, server) COMPUTE STATISTICS; ANALYZE TABLE $IMPALA_DNS_STAGIN_TABLE PARTITION(year, month, day, server) COMPUTE STATISTICS FOR COLUMNS"
 if [ $? -ne 0 ]
 then
    #send mail to indicate error

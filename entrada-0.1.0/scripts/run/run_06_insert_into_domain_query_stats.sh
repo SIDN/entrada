@@ -49,4 +49,6 @@ and q.domainname = c.domainname
 and q.domainname = asn.domainname;
 
 
-COMPUTE INCREMENTAL STATS $TARGET_TABLE partition(year=$year, month=$month, day=$day);"
+ANALYZE TABLE $TARGET_TABLE partition(year=$year, month=$month, day=$day) COMPUTE STATISTICS;
+ANALYZE TABLE $TARGET_TABLE partition(year=$year, month=$month, day=$day) COMPUTE STATISTICS for columns;"
+#edit: cant use Impalas COMPUTE STATS, need to use both commands above instead

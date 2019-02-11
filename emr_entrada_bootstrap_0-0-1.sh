@@ -9,11 +9,11 @@
 # some other text idk
 #
 
-
+yum install -y git
 
 #download the package
 cd /home/hadoop
-wget custom.package.placeholder/path/to/custom/entrada
+git clone https://markus.videfors-at-845534697080:ahs+HEzJwAYKy8zhlPvHrGSPPpNR44+Kd7+q+rUJbE4=@git-codecommit.eu-west-1.amazonaws.com/v1/repos/Internetstiftelsen_ENTRADA
 tar -xzvf packagePH
 ln -s packagePH entrada-latest
 

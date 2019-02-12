@@ -9,34 +9,40 @@
 # some other text idk
 #
 
+# Config: #
+nservers="ashburn calgary halifax hongkong london los-angeles miami montreal sao-paulo tokyo toronto vancouver winnipeg"
+#---------#
+
+
 yum install -y git
 
 #download the package
 cd /home/hadoop
 git clone https://EMR_CodeCommit-at-845534697080:R9GGhQEz2rcrMfYFmmX9TSTlNbbZnNKHzMBeiXb1OUs=@git-codecommit.eu-west-1.amazonaws.com/v1/repos/entrada-0.1.0-internetstiftelsen-0.1 entrada-I-0.1
-
-chown -R hadoop:hadoop entrada-I-0.1
-chmod -R 700 entrada-I-0.1
-
-source packagePH/bootstrapConfig.sh
+ln -s entrada-I-0.1 entrada-latest
 
 #create directories for processing
 mkdir ./pcap
 mkdir ./pcap/processing
 mkdir ./pcap/processed
 
-for nameserver in $nservers
+for server in $nservers
 do
-  mkdir ./pcap/processing/$nameserver
+  mkdir ./pcap/processing/$server
 done
 
-#create directory on hdfs for entrada
-HADOOP_USER_NAME=hdfs
-hdfs dfs -mkdir /user/hive/entrada
-hdfs dfs -chown hadoop:hive /user/hive/entrada
+chown -R hadoop:hadoop entrada-I-0.1
+chmod -R 700 entrada-I-0.1
 
-#create the tables on hdfs
 sh ./entrada-latest/scripts/install/create_impala_tables.sh
+
+# #create directory on hdfs for entrada
+# HADOOP_USER_NAME=hdfs
+# hdfs dfs -mkdir /user/hive/entrada
+# hdfs dfs -chown hadoop:hive /user/hive/entrada
+#
+# #create the tables on hdfs
+# sh ./entrada-latest/scripts/install/create_impala_tables.sh
 ###
 # need to add a function to import data from s3 into the tables created above, should be possible to just create the folder by partition and move the file
 ###

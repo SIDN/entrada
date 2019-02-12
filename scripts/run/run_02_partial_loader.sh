@@ -53,8 +53,8 @@ PID=$TMP_DIR/run_02_partial_loader_$NAMESERVER
 cleanup(){
   if [ -d $OUTPUT_DIR/$NORMALIZED_NAMESERVER ];
   then
-      echo "rm -rf $OUTPUT_DIR/$NORMALIZED_NAMESERVER"
-      rm -rf $OUTPUT_DIR/$NORMALIZED_NAMESERVER
+    echo "rm -rf $OUTPUT_DIR/$NORMALIZED_NAMESERVER"
+    rm -rf $OUTPUT_DIR/$NORMALIZED_NAMESERVER
   fi
 
   #remove pid file
@@ -62,26 +62,26 @@ cleanup(){
 }
 
 remove_zeroes(){
-    for year_dir in */
-    do
-        #goto year
-        if [ -d "$year_dir" ]; then
-          cd $year_dir
-          #rename months, remove leading zeros
-          for subdir in month=0*; do mv "${subdir}" "${subdir/0/}"; done 2>/dev/null
-          for month_dir in month=*/
-          do
-              #goto month dir
-              if [ -d "$month_dir" ]; then
-                cd $month_dir
-                #rename days, remove leading zeros
-                for subdir in day=0*; do mv "${subdir}" "${subdir/0/}"; done 2>/dev/null
-                cd ..
-              fi
-          done
+  for year_dir in */
+  do
+    #goto year
+    if [ -d "$year_dir" ]; then
+      cd $year_dir
+      #rename months, remove leading zeros
+      for subdir in month=0*; do mv "${subdir}" "${subdir/0/}"; done 2>/dev/null
+      for month_dir in month=*/
+      do
+        #goto month dir
+        if [ -d "$month_dir" ]; then
+          cd $month_dir
+          #rename days, remove leading zeros
+          for subdir in day=0*; do mv "${subdir}" "${subdir/0/}"; done 2>/dev/null
           cd ..
         fi
-    done
+      done
+      cd ..
+    fi
+  done
 }
 
 #-----------------------------
@@ -90,8 +90,8 @@ remove_zeroes(){
 
 if [ -f $PID ];
 then
-   echo "[$(date)] : $PID  : Process is already running, do not start new process."
-   exit 0
+  echo "[$(date)] : $PID  : Process is already running, do not start new process."
+  exit 0
 fi
 
 #create pid file
@@ -104,8 +104,8 @@ trap cleanup EXIT
 hdfs dfs -test -d "$HDFS_DNS_STAGING"
 if [ $? -ne "0" ]
 then
-   echo "[$(date)] : hdfs root path $HDFS_DNS_STAGING does not exist, stop"
-   exit 0
+  echo "[$(date)] : hdfs root path $HDFS_DNS_STAGING does not exist, stop"
+  exit 0
 fi
 
 #transform pcap data to parquet data
@@ -114,89 +114,44 @@ java -Xms$ENTRADA_HEAP_SIZE -Xmx$ENTRADA_HEAP_SIZE -Dentrada_log_dir=$ENTRADA_LO
 if [ $? -eq 0 ]
 then
 
-   #check if parquet files were created
-   if [ ! -d "$OUTPUT_DIR/$NORMALIZED_NAMESERVER/dnsdata" ];
-   then
-     echo "[$(date)] :No parquet files generated, quit script"
-     exit 0
-   fi
+  #check if parquet files were created
+  if [ ! -d "$OUTPUT_DIR/$NORMALIZED_NAMESERVER/dnsdata" ];
+  then
+    echo "[$(date)] :No parquet files generated, quit script"
+    exit 0
+  fi
 
-   #goto location of created parquet files
-   cd $OUTPUT_DIR/$NORMALIZED_NAMESERVER
+  #goto location of created parquet files
+  cd $OUTPUT_DIR/$NORMALIZED_NAMESERVER
 
-   #delete useless meta data
-   echo  "[$(date)] :delete .crc and  .tmp files"
-   find . -name '.*.crc' -print0 | xargs -0 --no-run-if-empty rm
-   find . -name '.*.tmp' -print0 | xargs -0 --no-run-if-empty rm
+  #delete useless meta data
+  echo  "[$(date)] :delete .crc and  .tmp files"
+  find . -name '.*.crc' -print0 | xargs -0 --no-run-if-empty rm
+  find . -name '.*.tmp' -print0 | xargs -0 --no-run-if-empty rm
 
-   ####
-   #### DNS data section
-   ####
+  #fix date partition format, remove leading zero otherwize impala partions with int type will not work
+  #at the start of the new year there may be 2 distinct years in the data.
+  cd dnsdata
+  remove_zeroes
 
-   #fix date partition format, remove leading zero otherwize impala partions with int type will not work
-   #at the start of the new year there may be 2 distinct years in the data.
-   cd dnsdata
-   remove_zeroes
+  echo "[$(date)] :upload the parquet files to hdfs $S3_DNS_STAGING"
 
-   echo "[$(date)] :upload the parquet files to hdfs $HDFS_DNS_STAGING"
-   #set the hdfs blocksize to 256mb
-   hdfs dfs -D dfs.block.size=268435456 -put year\=* $HDFS_DNS_STAGING
-   #make sure the permissions are set ok
-   #hdfs dfs -chown -R impala:hive $HDFS_DNS_STAGING/
-   hdfs dfs -chown -R impala:hive $HDFS_DNS_STAGING/
+  #edit: recursively move all directories and files into the staging folder on S3
+  aws s3 mv --recursive ./ $S3_DNS_STAGING/
+  #edit: automatically detect any new partitions as long as the naming convention of the parent folders is correct
+  hive -e "MSCK REPAIR TABLE dns.staging"
 
-   for f in $( find . -type d | grep server ); do
-     echo "process partition: $f"
-     p_year=
-     p_month=
-     p_day=
-     p_server=
+  #edit: removed the original part which did the move to staging entirely since s3 is used instead of hdfs for storage
 
-     for part in $(echo $f | tr "/" " ") ; do
-        if [[ $part == year=* ]]; then
-           p_year=$(echo $part | cut -d= -f 2)
-        elif [[ $part == month=* ]]; then
-           p_month=$(echo $part | cut -d= -f 2)
-        elif [[ $part == day=* ]]; then
-           p_day=$(echo $part | cut -d= -f 2)
-        elif [[ $part == server=* ]]; then
-           p_server=$(echo $part | cut -d= -f 2)
-        fi
-     done
-
-     echo "[$(date)] :detected partition: $p_year/$p_month/$p_day/$p_server"
-
-     if [ -z "$p_year" ] || [ -z "$p_month" ] || [ -z "$p_day" ] || [ -z "$p_server" ]
-     then
-       echo "1 or more var null, do not create partition"
-     else
-        #check if partition exists
-        isPartitioned=$( hive -e "select count(1) from $IMPALA_DNS_STAGING_TABLE where year=$p_year and month=$p_month and day=$p_day and server=\"$p_server\";" )
-
-        if  [[ $isPartitioned -eq  0 ]]
-        then
-          echo "[$(date)] :Create Impala partition for year=$p_year,month=$p_month,day=$p_day,server=$p_server"
-          hive -S -e "alter table $IMPALA_DNS_STAGING_TABLE add partition (year=$p_year,month=$p_month,day=$p_day,server=\"$p_server\");"
-          if [ $? -ne 0 ]
-          then
-            #the partition probably already exists
-            echo "[$(date)] :Adding partition to table $IMPALA_DNS_STAGING_TABLE failed"
-          fi
-       else
-         echo "[$(date)] :Partition for $p_year/$p_month/$p_day/$p_server already exists"
-       fi
-    fi
-   done
-
-   #edit: this fails in hive, should be looked into if its necessary or not
-   # echo "[$(date)] :Issue refresh"
-   # hive -S -e "refresh $IMPALA_DNS_STAGING_TABLE;"
-   # if [ $? -ne 0 ]
-   # then
-   #   #send mail to indicate error
-   #   echo "[$(date)] :Refresh metadata $IMPALA_DNS_STAGING_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
-   # fi
+  #edit: this fails in hive, should be looked into if its necessary or not
+  # echo "[$(date)] :Issue refresh"
+  # hive -S -e "refresh $IMPALA_DNS_STAGING_TABLE;"
+  # if [ $? -ne 0 ]
+  # then
+  #   #send mail to indicate error
+  #   echo "[$(date)] :Refresh metadata $IMPALA_DNS_STAGING_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
+  # fi
 else
-   echo "[$(date)] :Converting pcap to parquet failed"
+  echo "[$(date)] :Converting pcap to parquet failed"
 fi
 echo "[$(date)] :Done with loading data into staging"

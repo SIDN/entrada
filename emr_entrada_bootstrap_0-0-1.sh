@@ -31,8 +31,8 @@ do
   mkdir ./pcap/processing/$server
 done
 
-chown -R hadoop:hadoop entrada-I-0.1
-chmod -R 700 entrada-I-0.1
+chown -R hadoop:hadoop ./
+chmod -R 700 ./
 
 sh ./entrada-latest/scripts/install/create_s3External_tables.sh
 

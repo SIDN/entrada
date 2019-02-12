@@ -34,7 +34,7 @@ done
 chown -R hadoop:hadoop entrada-I-0.1
 chmod -R 700 entrada-I-0.1
 
-sh ./entrada-latest/scripts/install/create_impala_tables.sh
+sh ./entrada-latest/scripts/install/create_s3External_tables.sh
 
 # #create directory on hdfs for entrada
 # HADOOP_USER_NAME=hdfs

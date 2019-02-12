@@ -29,11 +29,9 @@ SCRIPT_DIR=$(dirname "$0")
 echo "SCRIPT_DIR == $SCRIPT_DIR"
 source $SCRIPT_DIR/../run/config.sh
 
-for f in $SCRIPT_DIR/../database/*.sql
+for f in $SCRIPT_DIR/../databaseS3/*.sql
 do
     script=$(< $f)
-    #replace hdfs root placeholder
-    script=${script/_HDFS_LOCATION_/S3_HOME}
 
     # split the table name into db and table names and replace the placeholders
     #edit: removed ICMP parts

@@ -43,9 +43,7 @@ sh ./entrada-latest/scripts/install/create_s3External_tables.sh
 #
 # #create the tables on hdfs
 # sh ./entrada-latest/scripts/install/create_impala_tables.sh
-###
-# need to add a function to import data from s3 into the tables created above, should be possible to just create the folder by partition and move the file
-###
+
 
 #create log dir and set up logrotate
 mkdir -p /var/log/entrada

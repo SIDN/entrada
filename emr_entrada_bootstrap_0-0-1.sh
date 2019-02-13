@@ -26,6 +26,8 @@ mkdir ./pcap
 mkdir ./pcap/processing
 mkdir ./pcap/processed
 
+mkdir ./tmp
+
 for server in $nservers
 do
   mkdir ./pcap/processing/$server
@@ -35,15 +37,6 @@ chown -R hadoop:hadoop ./
 chmod -R 700 ./
 
 sh ./entrada-latest/scripts/install/create_s3External_tables.sh
-
-# #create directory on hdfs for entrada
-# HADOOP_USER_NAME=hdfs
-# hdfs dfs -mkdir /user/hive/entrada
-# hdfs dfs -chown hadoop:hive /user/hive/entrada
-#
-# #create the tables on hdfs
-# sh ./entrada-latest/scripts/install/create_impala_tables.sh
-
 
 #create log dir and set up logrotate
 mkdir -p /var/log/entrada

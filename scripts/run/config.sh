@@ -45,8 +45,6 @@ export HDFS_HOME="/user/hive/entrada"
 export S3_HOME="s3://markus-emr-entrada/entrada"
 ##
 
-#input directories, subdirs must have same name as name server
-export DATA_RSYNC_DIR="/home/hadoop/captures" #edit: probably wont use this
 #root directory for data input/output
 export DATA_DIR="/home/hadoop/pcap"
 #number of days to keep old pcap files

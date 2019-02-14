@@ -3,10 +3,11 @@
 # This bash script is made to move incoming pcap files from S3 to local storage
 # and then copy those files onto an archive built in S3.
 
-INPUT_FILTER="*.pcap"
+# INPUT_INCLUDE=\"*.pcap\"
+# INPUT_EXCLUDE=\"*\"
 SOURCE="$S3_HOME/input"
 OUTPUT_DIR="$DATA_DIR/processing"
-PID=$TMP_DIR/moving_pcaps
+PID=$TMP_DIR/import_pcaps
 
 # copied with modifications from the original scripts:
 cleanup(){
@@ -17,7 +18,7 @@ cleanup(){
   fi
 }
 
-echo "[$(date)] : starting movement of pcaps"
+echo "[$(date)] : Starting PCAP import"
 
 if [ -f $PID ];
 then
@@ -36,5 +37,14 @@ echo 1 > $PID
 
 #Make sure cleanup() is called when script is done processing or crashed.
 trap cleanup EXIT
-
 #
+
+echo "[$(date)] : Starting download from $S3_HOME/input"
+aws s3 mv $SOURCE $OUTPUT_DIR --recursive #--exclude $INPUT_EXCLUDE
+echo "[$(date)] : Downloaded $(ls ./pcap/processing/*/*.* | wc -l) files"
+
+echo "[$(date)] : Starting archivation of pcaps to $ARCHIVE"
+aws s3 cp $OUTPUT_DIR $ARCHIVE --recursive
+echo "[$(date)] : Archivation complete"
+
+echo "[$(date)] : PCAP import complete"

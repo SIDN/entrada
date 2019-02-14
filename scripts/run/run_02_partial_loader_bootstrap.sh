@@ -52,6 +52,12 @@ then
    exit 1
 fi
 
+if [ -f $TMP_DIR/import_pcaps ];
+then
+  echo "[$(date)] : Currently importing pcaps, do not start processing"
+  exit 1
+fi
+
 #create pid file
 echo 1 > $PID
 

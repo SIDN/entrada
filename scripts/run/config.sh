@@ -43,6 +43,7 @@ export HDFS_HOME="/user/hive/entrada"
 
 #S3 locations for storing data
 export S3_HOME="s3://markus-emr-entrada/entrada"
+export S3_ARCHIVE="s3://markus-emr-entrada/entrada/archive"
 ##
 
 #root directory for data input/output

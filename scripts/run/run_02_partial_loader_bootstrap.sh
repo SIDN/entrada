@@ -35,6 +35,11 @@ cleanup(){
   then
      rm $PID
   fi
+  #edit: since all pcaps are archived in s3 this just takes up extra storage
+  if [ -d $DATA_DIR/processed/archive ];
+  then
+    rm -rf $DATA_DIR/processed/archive
+  fi
 }
 
 # ------- main program -----------

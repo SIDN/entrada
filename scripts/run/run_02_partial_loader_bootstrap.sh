@@ -33,7 +33,7 @@ cleanup(){
   #remove pid file
   if [ -f $PID ];
   then
-     rm $PID
+    rm $PID
   fi
   #edit: since all pcaps are archived in s3 this just takes up extra storage
   if [ -d $DATA_DIR/processed/archive ];
@@ -48,8 +48,8 @@ echo "[$(date)] : Bootstrapping PCAP loading process"
 
 if [ -f $PID ];
 then
-   echo "[$(date)] : $PID  : Process is already running, do not start new process."
-   exit 1
+  echo "[$(date)] : $PID  : Process is already running, do not start new process."
+  exit 1
 fi
 
 if [ -f $TMP_DIR/import_pcaps ];

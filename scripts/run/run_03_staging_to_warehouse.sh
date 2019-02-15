@@ -44,15 +44,30 @@ runasSuperuser
 #### DNS data section
 ####
 
-#get date in utc
-current_date=$(date -u "+%Y%m%d")
+#edit: For our purposes it is easier to just move the files directly (as long as we do it correctly) since this keeps static partitions
+# get values for today's date
+y=$(date -u "+%Y")
+m=$(date -u "+%m")
+m=${m#0}
+d=$(date -u "+%d")
+
+echo "[$(date)] : Starting file merge for movement to data warehouse"
+# add code to merge parquet files
+
+echo "[$(date)] : Merge complete, starting transfer"
+aws s3 mv $S3_DNS_STAGING $S3_DNS_QUERIES --recursive --exclude "$S3_DNS_STAGING/year=$y/month=$m/day=$d/*"
+echo "[$(date)] : Transfer complete"
+# add code to remove old partitions
+# find $S3_DNS_STAGING -type d -empty -delete
+
 
 #Data is beeing appended to the partition of this day, only process older partitions
 for partition in $(hive -e "select year,month,day,server
                     from $DNS_STAGING_TABLE
                     where (concat(cast(year as string),lpad(cast(month as string),2,\"0\"),lpad(cast(day as string),2,\"0\"))) < \"$current_date\"
                     group by year,month,day,server
-                    order by year,month,day,server desc;" --output_delimiter=, --quiet --delimited)
+                    order by year,month,day,server desc;"# --output_delimiter=, --quiet --delimited)
+                    )
 do
     year=$(echo $partition | cut -d, -f 1)
     month=$(echo $partition | cut -d, -f 2)

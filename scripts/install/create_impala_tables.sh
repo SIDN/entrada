@@ -37,7 +37,7 @@ do
 
     # split the table name into db and table names and replace the placeholders
     #edit: removed ICMP parts
-    for TABLE in IMPALA_DNS_STAGING_TABLE IMPALA_DNS_DWH_TABLE
+    for TABLE in DNS_STAGING_TABLE DNS_DWH_TABLE
     do
         IFS='.';
         array=(${!TABLE})

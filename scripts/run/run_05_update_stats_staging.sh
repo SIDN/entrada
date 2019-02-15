@@ -38,9 +38,9 @@ export HADOOP_USER_NAME=hdfs
 
 echo "[$(date)] : Update stats for staging"
 #edit: cant use Impala's COMPUTE STATS, need to use both of the commands below instead
-hive -e "ANALYZE TABLE $IMPALA_DNS_STAGING_TABLE PARTITION(year, month, day, server) COMPUTE STATISTICS; ANALYZE TABLE $IMPALA_DNS_STAGIN_TABLE PARTITION(year, month, day, server) COMPUTE STATISTICS FOR COLUMNS"
+hive -e "ANALYZE TABLE $DNS_STAGING_TABLE PARTITION(year, month, day, server) COMPUTE STATISTICS; ANALYZE TABLE $DNS_STAGING_TABLE PARTITION(year, month, day, server) COMPUTE STATISTICS FOR COLUMNS"
 if [ $? -ne 0 ]
 then
    #send mail to indicate error
-   echo "[$(date)] : Update stats $IMPALA_DNS_STAGING_TABLE failed" | mail -s "Impala error updating staging stats" $ERROR_MAIL
+   echo "[$(date)] : Update stats $DNS_STAGING_TABLE failed" | mail -s "Impala error updating staging stats" $ERROR_MAIL
 fi

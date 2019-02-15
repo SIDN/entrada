@@ -89,7 +89,7 @@ export S3_DNS_STAGING="$S3_HOME/staging"
 export S3_DNS_QUERIES="$S3_HOME/queries"
 
 # table names
-export IMPALA_DNS_STAGING_TABLE="dns.staging"
+export DNS_STAGING_TABLE="dns.staging"
 # export IMPALA_ICMP_STAGING_TABLE="icmp.staging"
-export IMPALA_DNS_DWH_TABLE="dns.queries"
+export DNS_DWH_TABLE="dns.queries"
 # export IMPALA_ICMP_DWH_TABLE="icmp.packets"

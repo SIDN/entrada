@@ -1,7 +1,7 @@
-CREATE DATABASE IF NOT EXISTS _IMPALA_DNS_STAGING_TABLE_DB_;
-use _IMPALA_DNS_STAGING_TABLE_DB_;
+CREATE DATABASE IF NOT EXISTS _DNS_STAGING_TABLE_DB_;
+use _DNS_STAGING_TABLE_DB_;
 
-create external table if not exists _IMPALA_DNS_STAGING_TABLE_TAB_ (
+create external table if not exists _DNS_STAGING_TABLE_TAB_ (
  id INT,
  unixtime BIGINT,
  time BIGINT,
@@ -39,7 +39,7 @@ create external table if not exists _IMPALA_DNS_STAGING_TABLE_TAB_ (
  edns_version SMALLINT,
  edns_do BOOLEAN,
  edns_ping BOOLEAN,
- edns_nsid STRING, 
+ edns_nsid STRING,
  edns_dnssec_dau STRING,
  edns_dnssec_dhu STRING,
  edns_dnssec_n3u STRING,
@@ -68,4 +68,3 @@ create external table if not exists _IMPALA_DNS_STAGING_TABLE_TAB_ (
  partitioned by (year INT, month INT, day INT, server string)
   STORED AS PARQUETFILE
   LOCATION '_HDFS_DNS_STAGING_';
-

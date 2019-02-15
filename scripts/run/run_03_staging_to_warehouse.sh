@@ -49,7 +49,7 @@ current_date=$(date -u "+%Y%m%d")
 
 #Data is beeing appended to the partition of this day, only process older partitions
 for partition in $(hive -e "select year,month,day,server
-                    from $IMPALA_DNS_STAGING_TABLE
+                    from $DNS_STAGING_TABLE
                     where (concat(cast(year as string),lpad(cast(month as string),2,\"0\"),lpad(cast(day as string),2,\"0\"))) < \"$current_date\"
                     group by year,month,day,server
                     order by year,month,day,server desc;" --output_delimiter=, --quiet --delimited)
@@ -59,11 +59,11 @@ do
     day=$(echo $partition | cut -d, -f 3)
     server=$(echo $partition | cut -d, -f 4)
 
-    echo "[$(date)] : Move $IMPALA_DNS_STAGING_TABLE table partition year=$year, month=$month, day=$day, server=$server to $IMPALA_DNS_DWH_TABLE"
+    echo "[$(date)] : Move $DNS_STAGING_TABLE table partition year=$year, month=$month, day=$day, server=$server to $DNS_DWH_TABLE"
 
     #insert all the staging data for yesterday into the datawarehouse table
     #skip the duplicate "svr" column.
-    hive -e  "insert into $IMPALA_DNS_DWH_TABLE partition(year, month, day, server) select
+    hive -e  "insert into $DNS_DWH_TABLE partition(year, month, day, server) select
          id, unixtime, time, qname, domainname,
          len, frag, ttl, ipv,
          prot, src, srcp, dst,
@@ -81,18 +81,18 @@ do
          dns_res_len,server_location,cast(unixtime as timestamp),
          edns_padding,pcap_file,edns_keytag_count,edns_keytag_list,q_tc,q_ra,q_ad,q_rcode,
          year,month,day,server
-         from $IMPALA_DNS_STAGING_TABLE where year=$year and month=$month and day=$day and server=\"$server\";"
+         from $DNS_STAGING_TABLE where year=$year and month=$month and day=$day and server=\"$server\";"
 
     if [ $? -ne 0 ]
     then
         #send mail to indicate error
-        echo "[$(date)] : insert data into $IMPALA_DNS_DWH_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
+        echo "[$(date)] : insert data into $DNS_DWH_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
         exit 1
     fi
 
     #drop partition from the staging table (unlink parquet files)
-    echo "[$(date)] : drop $IMPALA_DNS_STAGING_TABLE partition (year=$year,month=$month,day=$day,server=$server)"
-    hive -S -e "alter table $IMPALA_DNS_STAGING_TABLE drop partition (year=$year,month=$month,day=$day, server=\"$server\");"
+    echo "[$(date)] : drop $DNS_STAGING_TABLE partition (year=$year,month=$month,day=$day,server=$server)"
+    hive -S -e "alter table $DNS_STAGING_TABLE drop partition (year=$year,month=$month,day=$day, server=\"$server\");"
 
     #delete staging parquet data from hdfs
     # runasSuperuser
@@ -101,13 +101,13 @@ do
     # runasImpala
 
     #refresh impala metadata for staging table
-    echo "[$(date)] : issue refresh for $IMPALA_DNS_STAGING_TABLE"
-    hive -S -e "refresh $IMPALA_DNS_STAGING_TABLE;"
+    echo "[$(date)] : issue refresh for $DNS_STAGING_TABLE"
+    hive -S -e "refresh $DNS_STAGING_TABLE;"
 
     #update the table statistics
     #use the partion spec here, if we don't then Impala we analyze the entire table after adding
     #a new column, this might take very long in case of a large table.
-    hive -S -e "COMPUTE INCREMENTAL STATS $IMPALA_DNS_DWH_TABLE PARTITION (year=$year,month=$month,day=$day, server=\"$server\");"
+    hive -S -e "COMPUTE INCREMENTAL STATS $DNS_DWH_TABLE PARTITION (year=$year,month=$month,day=$day, server=\"$server\");"
 
 done
 

@@ -145,11 +145,11 @@ then
 
   #edit: this fails in hive, should be looked into if its necessary or not
   # echo "[$(date)] :Issue refresh"
-  # hive -S -e "refresh $IMPALA_DNS_STAGING_TABLE;"
+  # hive -S -e "refresh $DNS_STAGING_TABLE;"
   # if [ $? -ne 0 ]
   # then
   #   #send mail to indicate error
-  #   echo "[$(date)] :Refresh metadata $IMPALA_DNS_STAGING_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
+  #   echo "[$(date)] :Refresh metadata $DNS_STAGING_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
   # fi
 else
   echo "[$(date)] :Converting pcap to parquet failed"

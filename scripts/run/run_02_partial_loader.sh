@@ -139,7 +139,7 @@ then
   #edit: recursively move all directories and files into the staging folder on S3
   aws s3 mv --recursive ./ $S3_DNS_STAGING/
   #edit: automatically detect any new partitions as long as the naming convention of the parent folders is correct
-  hive -e "MSCK REPAIR TABLE dns.staging"
+  hive -e "MSCK REPAIR TABLE $DNS_STAGING_TABLE"
 
   #edit: removed the original part which did the move to staging entirely since s3 is used instead of hdfs for storage
 

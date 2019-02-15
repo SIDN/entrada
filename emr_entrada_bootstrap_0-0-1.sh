@@ -10,7 +10,7 @@
 #
 
 # Config: #
-nservers="ashburn calgary halifax hongkong london los-angeles miami montreal sao-paulo tokyo toronto vancouver winnipeg"
+
 #---------#
 
 
@@ -27,11 +27,6 @@ mkdir ./pcap/processing
 mkdir ./pcap/processed
 
 mkdir ./tmp
-
-for server in $nservers
-do
-  mkdir ./pcap/processing/$server
-done
 
 chown -R hadoop:hadoop ./
 chmod -R 700 ./

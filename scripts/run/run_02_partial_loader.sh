@@ -100,11 +100,11 @@ echo 1 > $PID
 #Make sure cleanup() is called when script is done processing or crashed.
 trap cleanup EXIT
 
-#check if hdfs data location exists
-hdfs dfs -test -d "$HDFS_DNS_STAGING"
+#edit: check if s3 data location exists
+hdfs dfs -test -d "$S3_DNS_STAGING"
 if [ $? -ne "0" ]
 then
-  echo "[$(date)] : hdfs root path $HDFS_DNS_STAGING does not exist, stop"
+  echo "[$(date)] : hdfs root path $S3_DNS_STAGING does not exist, stop"
   exit 0
 fi
 

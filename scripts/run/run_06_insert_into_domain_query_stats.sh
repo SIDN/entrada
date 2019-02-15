@@ -51,4 +51,4 @@ and q.domainname = asn.domainname;
 
 ANALYZE TABLE $TARGET_TABLE partition(year=$year, month=$month, day=$day) COMPUTE STATISTICS;
 ANALYZE TABLE $TARGET_TABLE partition(year=$year, month=$month, day=$day) COMPUTE STATISTICS for columns;"
-#edit: cant use Impalas COMPUTE STATS, need to use both commands above instead
+#edit: cant use Impala's COMPUTE STATS, need to use both of the commands above instead

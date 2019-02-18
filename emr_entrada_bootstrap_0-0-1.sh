@@ -44,7 +44,5 @@ cat > /etc/logrotate.d/entrada << EOF
 }
 EOF
 
-cd ./entrada-latest/scripts/run/
-source config.sh && sh run_update_geo_ip_db.sh
-
-exit 0
+# for some reason below code did not work when giving a relative path, wont debug further for now since absolute path works
+source /home/hadoop/config.sh && sh ./entrada-latest/scripts/run/run_update_geo_ip_db.sh

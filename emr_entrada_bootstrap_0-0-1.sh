@@ -16,7 +16,7 @@ yum install -y git
 #download the package
 cd /home/hadoop
 git clone https://EMR_CodeCommit-at-845534697080:R9GGhQEz2rcrMfYFmmX9TSTlNbbZnNKHzMBeiXb1OUs=@git-codecommit.eu-west-1.amazonaws.com/v1/repos/entrada-0.1.0-internetstiftelsen-0.1 entrada
-aws s3 cp $config entrada/scripts/run/config.sh
+aws s3 cp $config config.sh
 
 #create directories for processing
 mkdir ./pcap
@@ -45,3 +45,5 @@ EOF
 
 cd /home/hadoop/entrada-latest/scripts/run/
 source config.sh && sh run_update_geo_ip_db.sh
+
+exit 0

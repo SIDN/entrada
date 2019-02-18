@@ -9,11 +9,6 @@
 # some other text idk
 #
 
-# Config: #
-
-#---------#
-
-
 yum install -y git
 
 #download the package

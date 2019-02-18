@@ -11,7 +11,7 @@
 
 config=$1
 
-yum install -y git
+sudo yum install -y git
 
 #download the package
 cd /home/hadoop
@@ -26,15 +26,15 @@ mkdir ./pcap/processed
 
 mkdir ./tmp
 
-chown -R hadoop:hadoop ./
-chmod -R 700 ./
+sudo chown -R hadoop:hadoop ./
+sudo chmod -R 700 ./
 
 sh ./entrada-latest/scripts/install/create_s3External_tables.sh
 
 #create log dir and set up logrotate
-mkdir -p /var/log/entrada
-chown hadoop:hadoop /var/log/entrada
-cat > /etc/logrotate.d/entrada << EOF
+sudo mkdir -p /var/log/entrada
+sudo chown hadoop:hadoop /var/log/entrada
+sudo cat > /etc/logrotate.d/entrada << EOF
 /var/log/entrada/*.log {
   size 10k
   daily
@@ -45,6 +45,6 @@ cat > /etc/logrotate.d/entrada << EOF
 EOF
 
 # for some reason below code did not work when giving a relative path (for the source), wont debug further for now since absolute path works
-source /home/hadoop/entrada-latest/scripts/run/config.sh && sh ./entrada-latest/scripts/run/run_update_geo_ip_db.sh
+sudo sh -c 'source /home/hadoop/entrada-latest/scripts/run/config.sh && sh ./entrada-latest/scripts/run/run_update_geo_ip_db.sh'
 
 exit 0

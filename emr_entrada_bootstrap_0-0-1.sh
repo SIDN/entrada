@@ -30,6 +30,7 @@ sudo chown -R hadoop:hadoop ./
 sudo chmod -R 700 ./
 
 sh ./entrada-latest/scripts/install/create_s3External_tables.sh
+hive -e "MSCK REPAIR TABLE $DNS_STAGING_TABLE; MSCK REPAIR TABLE $DNS_DWH_TABLE"
 
 #create log dir and set up logrotate
 sudo mkdir -p /var/log/entrada

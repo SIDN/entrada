@@ -57,73 +57,101 @@ echo "[$(date)] : Starting file merge for movement to data warehouse"
 echo "[$(date)] : Merge complete, starting transfer"
 aws s3 mv $S3_DNS_STAGING $S3_DNS_QUERIES --recursive --exclude "$S3_DNS_STAGING/year=$y/month=$m/day=$d/*"
 echo "[$(date)] : Transfer complete"
-# add code to remove old partitions
-# find $S3_DNS_STAGING -type d -empty -delete
 
+# gather paths to all files and folders in source
+allObjs=$(hdfs dfs -find $S3_DNS_STAGING)
+# remove the start of all paths
+allObjs=${allObjs//$S3_DNS_STAGING\//}
+# remove the source path itself
+allObjs=${allObjs//$S3_DNS_STAGING/}
+# finds any parquet files and returns their full path
+files=$(hdfs dfs -find s3://markus-emr-entrada/entrada/staging/ -name *.parquet)
 
-#Data is beeing appended to the partition of this day, only process older partitions
-for partition in $(hive -e "select year,month,day,server
-                    from $DNS_STAGING_TABLE
-                    where (concat(cast(year as string),lpad(cast(month as string),2,\"0\"),lpad(cast(day as string),2,\"0\"))) < \"$current_date\"
-                    group by year,month,day,server
-                    order by year,month,day,server desc;"# --output_delimiter=, --quiet --delimited)
-                    )
+pathCount=$(echo $allObjs | wc -w)
+# go through backwards to avoid trying deleting a folder that's a subdirectory of a folder removed in a previous iteration
+for ((i=$pathCount;i>=1;i--))
 do
-    year=$(echo $partition | cut -d, -f 1)
-    month=$(echo $partition | cut -d, -f 2)
-    day=$(echo $partition | cut -d, -f 3)
-    server=$(echo $partition | cut -d, -f 4)
-
-    echo "[$(date)] : Move $DNS_STAGING_TABLE table partition year=$year, month=$month, day=$day, server=$server to $DNS_DWH_TABLE"
-
-    #insert all the staging data for yesterday into the datawarehouse table
-    #skip the duplicate "svr" column.
-    hive -e  "insert into $DNS_DWH_TABLE partition(year, month, day, server) select
-         id, unixtime, time, qname, domainname,
-         len, frag, ttl, ipv,
-         prot, src, srcp, dst,
-         dstp, udp_sum, dns_len, aa,
-         tc, rd, ra, z, ad, cd,
-         ancount, arcount, nscount, qdcount,
-         opcode, rcode, qtype, qclass,
-         country, asn, edns_udp, edns_version,
-         edns_do, edns_ping, edns_nsid, edns_dnssec_dau,
-         edns_dnssec_dhu, edns_dnssec_n3u,
-         edns_client_subnet, edns_other,
-         edns_client_subnet_asn,
-         edns_client_subnet_country,
-         labels,res_len,time_micro,resp_frag,proc_time,is_google,is_opendns,
-         dns_res_len,server_location,cast(unixtime as timestamp),
-         edns_padding,pcap_file,edns_keytag_count,edns_keytag_list,q_tc,q_ra,q_ad,q_rcode,
-         year,month,day,server
-         from $DNS_STAGING_TABLE where year=$year and month=$month and day=$day and server=\"$server\";"
-
-    if [ $? -ne 0 ]
-    then
-        #send mail to indicate error
-        echo "[$(date)] : insert data into $DNS_DWH_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
-        exit 1
-    fi
-
-    #drop partition from the staging table (unlink parquet files)
-    echo "[$(date)] : drop $DNS_STAGING_TABLE partition (year=$year,month=$month,day=$day,server=$server)"
-    hive -S -e "alter table $DNS_STAGING_TABLE drop partition (year=$year,month=$month,day=$day, server=\"$server\");"
-
-    #delete staging parquet data from hdfs
-    # runasSuperuser
-    echo "[$(date)] : delete the staging parquet files from hdfs $HDFS_DNS_STAGING/year=$year/month=$month/day=$day/server=$server"
-    hdfs dfs -rm -r -f $HDFS_DNS_STAGING/year=$year/month=$month/day=$day/server=$server
-    # runasImpala
-
-    #refresh impala metadata for staging table
-    echo "[$(date)] : issue refresh for $DNS_STAGING_TABLE"
-    hive -S -e "refresh $DNS_STAGING_TABLE;"
-
-    #update the table statistics
-    #use the partion spec here, if we don't then Impala we analyze the entire table after adding
-    #a new column, this might take very long in case of a large table.
-    hive -S -e "COMPUTE INCREMENTAL STATS $DNS_DWH_TABLE PARTITION (year=$year,month=$month,day=$day, server=\"$server\");"
-
+  # get a path
+  path=$(echo $allObjs | cut -d" " -f $i)
+  # check if the path is a part of any file's path
+  if [[ $files != *$path* ]]
+  then
+    # if not, remove it
+    echo "Removing $path"
+    hdfs dfs -rm -r -f s3://markus-emr-entrada/entrada/staging/$path
+    # might be wiser to use aws cli above, not sure what would be faster
+  fi
 done
+
+# Update partition meta data
+hive -e "MSCK REPAIR TABLE $DNS_STAGING_TABLE"
+
+
+
+#edit: commenting out below code until im sure what will be kept or not
+#Data is beeing appended to the partition of this day, only process older partitions
+# for partition in $(hive -e "select year,month,day,server
+#                     from $DNS_STAGING_TABLE
+#                     where (concat(cast(year as string),lpad(cast(month as string),2,\"0\"),lpad(cast(day as string),2,\"0\"))) < \"$current_date\"
+#                     group by year,month,day,server
+#                     order by year,month,day,server desc;"# --output_delimiter=, --quiet --delimited)
+#                     )
+# do
+#     year=$(echo $partition | cut -d, -f 1)
+#     month=$(echo $partition | cut -d, -f 2)
+#     day=$(echo $partition | cut -d, -f 3)
+#     server=$(echo $partition | cut -d, -f 4)
+#
+#     echo "[$(date)] : Move $DNS_STAGING_TABLE table partition year=$year, month=$month, day=$day, server=$server to $DNS_DWH_TABLE"
+#
+#     #insert all the staging data for yesterday into the datawarehouse table
+#     #skip the duplicate "svr" column.
+#     hive -e  "insert into $DNS_DWH_TABLE partition(year, month, day, server) select
+#          id, unixtime, time, qname, domainname,
+#          len, frag, ttl, ipv,
+#          prot, src, srcp, dst,
+#          dstp, udp_sum, dns_len, aa,
+#          tc, rd, ra, z, ad, cd,
+#          ancount, arcount, nscount, qdcount,
+#          opcode, rcode, qtype, qclass,
+#          country, asn, edns_udp, edns_version,
+#          edns_do, edns_ping, edns_nsid, edns_dnssec_dau,
+#          edns_dnssec_dhu, edns_dnssec_n3u,
+#          edns_client_subnet, edns_other,
+#          edns_client_subnet_asn,
+#          edns_client_subnet_country,
+#          labels,res_len,time_micro,resp_frag,proc_time,is_google,is_opendns,
+#          dns_res_len,server_location,cast(unixtime as timestamp),
+#          edns_padding,pcap_file,edns_keytag_count,edns_keytag_list,q_tc,q_ra,q_ad,q_rcode,
+#          year,month,day,server
+#          from $DNS_STAGING_TABLE where year=$year and month=$month and day=$day and server=\"$server\";"
+#
+#     if [ $? -ne 0 ]
+#     then
+#         #send mail to indicate error
+#         echo "[$(date)] : insert data into $DNS_DWH_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
+#         exit 1
+#     fi
+#
+#     #drop partition from the staging table (unlink parquet files)
+#     echo "[$(date)] : drop $DNS_STAGING_TABLE partition (year=$year,month=$month,day=$day,server=$server)"
+#     hive -S -e "alter table $DNS_STAGING_TABLE drop partition (year=$year,month=$month,day=$day, server=\"$server\");"
+#
+#     #delete staging parquet data from hdfs
+#     # runasSuperuser
+#     echo "[$(date)] : delete the staging parquet files from hdfs $HDFS_DNS_STAGING/year=$year/month=$month/day=$day/server=$server"
+#     hdfs dfs -rm -r -f $HDFS_DNS_STAGING/year=$year/month=$month/day=$day/server=$server
+#     # runasImpala
+#
+#     #refresh impala metadata for staging table
+#     echo "[$(date)] : issue refresh for $DNS_STAGING_TABLE"
+#     hive -S -e "refresh $DNS_STAGING_TABLE;"
+#
+#     #update the table statistics
+#     #use the partion spec here, if we don't then Impala we analyze the entire table after adding
+#     #a new column, this might take very long in case of a large table.
+#     hive -S -e "COMPUTE INCREMENTAL STATS $DNS_DWH_TABLE PARTITION (year=$year,month=$month,day=$day, server=\"$server\");"
+#
+# done
 
 echo "[$(date)] : done moving data from staging to queries table"

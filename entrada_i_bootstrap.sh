@@ -10,13 +10,15 @@
 #
 
 config=$1
+crontab=$2
 
 sudo yum install -y git
 
-#download the package and config
+#download the package, config and crontab
 cd /home/hadoop
 git clone https://EMR_CodeCommit-at-845534697080:R9GGhQEz2rcrMfYFmmX9TSTlNbbZnNKHzMBeiXb1OUs=@git-codecommit.eu-west-1.amazonaws.com/v1/repos/entrada-0.1.0-internetstiftelsen-0.1 entrada
 aws s3 cp $config entrada/scripts/run/config.sh
+aws s3 cp $crontab crontab.txt
 ln -s entrada entrada-latest
 
 #create directories for processing
@@ -46,6 +48,8 @@ sudo cat > /etc/logrotate.d/entrada << EOF
   missingok
 }
 EOF
+
+sudo bash -c "cat crontab.txt > /var/spool/cron/hadoop"
 
 # for some reason below code did not work when giving a relative path (for the source), wont debug further for now since absolute path works
 sudo sh -c 'source /home/hadoop/entrada-latest/scripts/run/config.sh && sh ./entrada-latest/scripts/run/run_update_geo_ip_db.sh'

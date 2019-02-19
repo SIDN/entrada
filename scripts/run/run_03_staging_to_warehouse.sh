@@ -83,7 +83,7 @@ do
   fi
 done
 
-# Update partition meta data
+# Update partition meta data ## not sure if this command can remove partitions but since metadata is recalculated on startup it shouldnt be a big problem
 hive -e "MSCK REPAIR TABLE $DNS_STAGING_TABLE"
 
 

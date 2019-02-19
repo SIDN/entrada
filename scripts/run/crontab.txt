@@ -4,10 +4,11 @@ PATH=/home/hadoop/entrada-latest/scripts/run/:/usr/local/sbin:/usr/local/bin:/us
 * * * * * echo "im working: $(date)" > /home/hadoop/tmp/test.txt
 
 #move pcap files from the incoming dir to the processing dir, every 2 minutes.
-0/10 * * * * source config.sh && sh run_01_import_pcaps.sh
+*/10 * * * * source config.sh && sh run_01_import_pcaps.sh
 
 #process the pcap files to parquet files and import into staging database table, every 5 minutes
-4/10 * * * * source config.sh && sh run_02_partial_loader_bootstrap.sh
+#cant use x/y for every y minutes after x in this version of cron
+5,15,25,35,45,55 * * * * source config.sh && sh run_02_partial_loader_bootstrap.sh
 
 #move the data from the staging table to the datawarehouse table, ervery night at 4 am
 #the parquet data uses UTC time, do not schedule this job before 2 am to avoid partitioning issues.

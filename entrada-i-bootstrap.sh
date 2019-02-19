@@ -12,7 +12,8 @@
 config=$1
 crontab=$2
 
-sudo yum install -y git
+#install git and parallel
+sudo yum install -y git parallel
 
 #download the package, config and crontab
 cd /home/hadoop

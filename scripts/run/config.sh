@@ -36,7 +36,7 @@ export TMP_DIR="$ENTRADA_HOME/tmp/"
 export CONFIG_FILE="$ENTRADA_HOME/scripts/config/entrada-settings.properties"
 
 #Impala deamon hostname for impala-shell to connect to
-export IMPALA_NODE="" #edit: no need for this anymore
+#export IMPALA_NODE="" edit: no need for this anymore
 
 #hdfs locations for storing data
 export HDFS_HOME="/user/hive/entrada"

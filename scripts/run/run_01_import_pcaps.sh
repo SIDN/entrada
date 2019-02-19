@@ -7,6 +7,7 @@
 # INPUT_EXCLUDE=\"*\"
 SOURCE="$S3_HOME/input"
 OUTPUT_DIR="$DATA_DIR/processing"
+ARCHIVE=$S3_ARCHIVE
 PID=$TMP_DIR/import_pcaps
 
 # copied with modifications from the original scripts:

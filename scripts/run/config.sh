@@ -30,7 +30,7 @@
 #home dir of entrada
 export ENTRADA_HOME="/home/hadoop/entrada-latest"
 #tmp dir used for keep state files
-export TMP_DIR="$ENTRADA_HOME/tmp/"
+export TMP_DIR="$ENTRADA_HOME/tmp"
 
 #decoder config file
 export CONFIG_FILE="$ENTRADA_HOME/scripts/config/entrada-settings.properties"

@@ -21,7 +21,7 @@ sudo yum install -y git parallel
 #download the package, config and crontab
 echo "[$(date)] : Downloading Entrada I"
 cd /home/hadoop
-git clone https://EMR_CodeCommit-at-845534697080:R9GGhQEz2rcrMfYFmmX9TSTlNbbZnNKHzMBeiXb1OUs=@git-codecommit.eu-west-1.amazonaws.com/v1/repos/entrada-0.1.0-internetstiftelsen-0.1 entrada
+git clone https://EMR_CodeCommit-at-845534697080:R9GGhQEz2rcrMfYFmmX9TSTlNbbZnNKHzMBeiXb1OUs=@git-codecommit.eu-west-1.amazonaws.com/v1/repos/entrada-i entrada
 aws s3 cp $config entrada/scripts/run/config.sh
 aws s3 cp $crontab crontab.txt
 ln -s entrada entrada-latest

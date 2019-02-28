@@ -47,7 +47,8 @@ export S3_ARCHIVE="s3://dnspcaps/archive"
 ##
 
 #root directory for data input/output
-export DATA_DIR="/home/hadoop/pcap"
+export DATA_DIR="/data"
+export OUTPUT_DIR="$ENTRADA_HOME/../processed"
 #number of days to keep old pcap files
 export PCAP_DAYS_TO_KEEP=10
 #remove input pcap files from original location after they are processed

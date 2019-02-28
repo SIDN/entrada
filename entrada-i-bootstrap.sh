@@ -12,7 +12,8 @@
 echo "[$(date)] : Starting Entrada I bootstrap"
 
 config=$1
-crontab=$2
+
+sudo yum update
 
 #install git and parallel
 echo "[$(date)] : Downloading prerequisites"
@@ -23,18 +24,11 @@ echo "[$(date)] : Downloading Entrada I"
 cd /home/hadoop
 git clone https://EMR_CodeCommit-at-845534697080:R9GGhQEz2rcrMfYFmmX9TSTlNbbZnNKHzMBeiXb1OUs=@git-codecommit.eu-west-1.amazonaws.com/v1/repos/entrada-i entrada
 aws s3 cp $config entrada/scripts/run/config.sh
-aws s3 cp $crontab crontab.txt
 ln -s entrada entrada-latest
 
-#create directories for processing
-mkdir ./pcap
-mkdir ./pcap/processing
-mkdir ./pcap/processed
-
-mkdir ./tmp
-
-sudo chown -R hadoop:hadoop ./
-sudo chmod -R 700 ./
+#load config
+echo "[$(date)] : Loading config"
+source entrada/scripts/run/config.sh
 
 echo "[$(date)] : Creating tables"
 # create tables using external s3 locations
@@ -42,7 +36,7 @@ sh ./entrada-latest/scripts/install/create_s3External_tables.sh && sh ./entrada-
 # detect already existing partitions (and thereby data) on these tables
 echo "[$(date)] : Gathering partitions"
 hive -e "MSCK REPAIR TABLE $DNS_STAGING_TABLE; MSCK REPAIR TABLE $DNS_DWH_TABLE; MSCK REPAIR TABLE dns.domain_query_stats;"
-# gather table statistics
+# gather table statistics (metadata)
 echo "[$(date)] : Analyzing tables"
 hive -e "
 ANALYZE TABLE $DNS_STAGING_TABLE PARTITION(year, month, day, server) COMPUTE STATISTICS;
@@ -66,12 +60,6 @@ sudo cat > /etc/logrotate.d/entrada << EOF
   missingok
 }
 EOF
-
-# create the cron table for hadoop
-sudo bash -c "cat crontab.txt > /var/spool/cron/hadoop"
-
-# for some reason below code did not work when giving a relative path (for the source), wont debug further for now since absolute path works
-sudo sh -c 'source /home/hadoop/entrada-latest/scripts/run/config.sh && sh ./entrada-latest/scripts/run/run_update_geo_ip_db.sh'
 
 echo "[$(date)] : Entrada I bootstrap complete"
 exit 0

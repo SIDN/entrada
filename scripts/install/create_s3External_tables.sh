@@ -27,7 +27,9 @@
 
 SCRIPT_DIR=$(dirname "$0")
 echo "SCRIPT_DIR == $SCRIPT_DIR"
-source $SCRIPT_DIR/../run/config.sh
+source $SCRIPT_DIR/../run/config.sh 2> /dev/null
+
+export HADOOP_USER_NAME=hdfs
 
 for f in $SCRIPT_DIR/../databaseS3/*.sql
 do

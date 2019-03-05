@@ -19,47 +19,27 @@ sudo yum update
 echo "[$(date)] : Downloading prerequisites"
 sudo yum install -y git parallel
 
+sudo chmod 777 -R /home/hadoop
+
 #download the package, config and crontab
 echo "[$(date)] : Downloading Entrada I"
 cd /home/hadoop
-git clone https://EMR_CodeCommit-at-845534697080:R9GGhQEz2rcrMfYFmmX9TSTlNbbZnNKHzMBeiXb1OUs=@git-codecommit.eu-west-1.amazonaws.com/v1/repos/entrada-i entrada
+sudo git clone https://EMR_CodeCommit-at-845534697080:R9GGhQEz2rcrMfYFmmX9TSTlNbbZnNKHzMBeiXb1OUs=@git-codecommit.eu-west-1.amazonaws.com/v1/repos/entrada-i entrada
 aws s3 cp $config entrada/scripts/run/config.sh
 ln -s entrada entrada-latest
 
 #load config
 echo "[$(date)] : Loading config"
-source entrada/scripts/run/config.sh
+source entrada/scripts/run/config.sh 2> /dev/null
+
+sudo chown -R hadoop:hadoop ./
+sudo chmod -R 700 ./
 
 echo "[$(date)] : Creating tables"
-# create tables using external s3 locations
-sh ./entrada-latest/scripts/install/create_s3External_tables.sh && sh ./entrada-latest/scripts/install/create_domain_stats_table_S3.sh
-# detect already existing partitions (and thereby data) on these tables
-echo "[$(date)] : Gathering partitions"
-hive -e "MSCK REPAIR TABLE $DNS_STAGING_TABLE; MSCK REPAIR TABLE $DNS_DWH_TABLE; MSCK REPAIR TABLE dns.domain_query_stats;"
-# gather table statistics (metadata)
-echo "[$(date)] : Analyzing tables"
-hive -e "
-ANALYZE TABLE $DNS_STAGING_TABLE PARTITION(year, month, day, server) COMPUTE STATISTICS;
-ANALYZE TABLE $DNS_STAGING_TABLE PARTITION(year, month, day, server) COMPUTE STATISTICS for columns;
-ANALYZE TABLE $DNS_DWH_TABLE PARTITION(year, month, day, server) COMPUTE STATISTICS;
-ANALYZE TABLE $DNS_DWH_TABLE PARTITION(year, month, day, server) COMPUTE STATISTICS for columns;
-ANALYZE TABLE dns.domain_query_stats PARTITION(year, month, day) COMPUTE STATISTICS;
-ANALYZE TABLE dns.domain_query_stats PARTITION(year, month, day) COMPUTE STATISTICS for columns;
-"
+sudo -u hadoop sh ./entrada-latest/scripts/install/create_s3External_tables.sh
+sudo -u hadoop sh ./entrada-latest/scripts/install/create_domain_stats_table_S3.sh
+sudo -u hadoop sh ./entrada-latest/scripts/install/get_s3data.sh
 echo "[$(date)] : Table creation finished"
-
-#create log dir and set up logrotate
-sudo mkdir -p /var/log/entrada
-sudo chown hadoop:hadoop /var/log/entrada
-sudo cat > /etc/logrotate.d/entrada << EOF
-/var/log/entrada/*.log {
-  size 10k
-  daily
-  maxage 10
-  compress
-  missingok
-}
-EOF
 
 echo "[$(date)] : Entrada I bootstrap complete"
 exit 0

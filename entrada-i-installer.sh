@@ -13,6 +13,7 @@ echo "[$(date)] : Starting Entrada I bootstrap"
 
 config=$1
 
+echo $(groups)
 sudo yum update
 
 #install git and parallel

@@ -9,11 +9,10 @@
 # some other text idk
 #
 
-echo "[$(date)] : Starting Entrada I bootstrap"
+echo "[$(date)] : Starting Entrada I installation"
 
 config=$1
 
-echo $(groups)
 sudo yum update
 
 #install git and parallel
@@ -42,5 +41,5 @@ sudo -u hadoop sh ./entrada-latest/scripts/install/create_domain_stats_table_S3.
 sudo -u hadoop sh ./entrada-latest/scripts/install/get_s3data.sh
 echo "[$(date)] : Table creation finished"
 
-echo "[$(date)] : Entrada I bootstrap complete"
+echo "[$(date)] : Entrada I installation complete"
 exit 0

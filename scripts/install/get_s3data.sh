@@ -1,7 +1,5 @@
 export HADOOP_USER_NAME=hdfs
 
-sudo su - hadoop
-
 # detect already existing partitions (and thereby data) on these tables
 hive -e "MSCK REPAIR TABLE $DNS_STAGING_TABLE; MSCK REPAIR TABLE $DNS_DWH_TABLE; MSCK REPAIR TABLE dns.domain_query_stats;"
 # gather table statistics (metadata)

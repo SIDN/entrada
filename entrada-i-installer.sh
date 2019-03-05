@@ -13,7 +13,7 @@ echo "[$(date)] : Starting Entrada I installation"
 
 config=$1
 
-sudo yum update
+sudo yum -y update
 
 #install git and parallel
 echo "[$(date)] : Downloading prerequisites"

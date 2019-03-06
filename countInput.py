@@ -5,4 +5,4 @@ def main(bucket, prefix, max):
     print(boto3.client("s3").list_objects_v2(Bucket=bucket, Prefix=prefix, MaxKeys=max)["KeyCount"])
 
 if __name__ == "__main__":
-    main()
+    main(*sys.argv[1:])

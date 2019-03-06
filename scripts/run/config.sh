@@ -43,6 +43,7 @@ export HDFS_HOME="/user/hive/entrada"
 
 #S3 locations for storing data
 export S3_HOME="s3://dnspcaps"
+export S3_PATH=""
 export S3_ARCHIVE="s3://dnspcaps/archive"
 ##
 

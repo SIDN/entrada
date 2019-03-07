@@ -4,15 +4,18 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import java.io.File;
-import org.junit.Assert;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import org.junit.Test;
-import com.android.dx.util.FileUtils;
 import nl.sidn.dnslib.message.Message;
 import nl.sidn.dnslib.message.RRset;
 import nl.sidn.dnslib.message.records.AAAAResourceRecord;
 import nl.sidn.dnslib.message.records.AResourceRecord;
 import nl.sidn.dnslib.message.records.NSResourceRecord;
 import nl.sidn.dnslib.message.records.ResourceRecord;
+
+
 
 public class DNSStringUtilTest {
 
@@ -53,7 +56,7 @@ public class DNSStringUtilTest {
     // go to a compressed name and try to read it
     buffer.setReaderIndex(92);
     String name = DNSStringUtil.readName(buffer);
-    Assert.assertEquals("dns2.123hjemmeside.dk.", name);
+    assertEquals("dns2.123hjemmeside.dk.", name);
   }
 
   @Test
@@ -65,16 +68,15 @@ public class DNSStringUtilTest {
         81, -128, 0, 7, 4, 110, 115, 115, 112, -64, 57, 0, 0, 41, 16, 0, 0, 0, 0, 0, 0, 0};
     NetworkData networkData = new NetworkData(bytes);
     Message dnsMessage = new Message(networkData, false);
-    Assert.assertEquals(1, dnsMessage.getAuthority().size());
+    assertEquals(1, dnsMessage.getAuthority().size());
     RRset rrSet = dnsMessage.getAuthority().get(0);
-    Assert.assertEquals(2, rrSet.getAll().size());
+    assertEquals(2, rrSet.getAll().size());
     for (ResourceRecord record : rrSet.getAll()) {
-      Assert.assertTrue(record instanceof NSResourceRecord);
+      assertTrue(record instanceof NSResourceRecord);
     }
     NSResourceRecord ns1 = (NSResourceRecord) rrSet.getAll().get(0);
     NSResourceRecord ns2 = (NSResourceRecord) rrSet.getAll().get(1);
-    System.out.println("ns1 = " + ns1);
-    System.out.println("ns2 = " + ns2);
+
     assertEquals("gandalf.seniorplanet.fr.", ns1.getNameserver());
     assertEquals("nssp.seniorplanet.fr.", ns2.getNameserver());
   }
@@ -152,10 +154,15 @@ public class DNSStringUtilTest {
 
   }
 
+
   private byte[] bytes(String filename) {
     ClassLoader classLoader = getClass().getClassLoader();
     File file = new File(classLoader.getResource(filename).getFile());
-    return FileUtils.readFile(file.getAbsoluteFile());
+    try {
+      return Files.readAllBytes(Paths.get(file.getAbsolutePath()));
+    } catch (IOException e) {
+      throw new RuntimeException("Cannot load data", e);
+    }
   }
 
 }

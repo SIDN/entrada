@@ -17,7 +17,7 @@ cleanup(){
   #remove pid file
   if [ -f $PID ];
   then
-    rm $PID
+    sudo rm $PID
   fi
 }
 
@@ -36,7 +36,7 @@ then
 fi
 
 #create pid file
-echo 1 > $PID
+sudo echo 1 > $PID
 
 #Make sure cleanup() is called when script is done processing or crashed.
 trap cleanup EXIT

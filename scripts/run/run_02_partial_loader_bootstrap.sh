@@ -35,13 +35,13 @@ cleanup(){
   #remove pid file
   if [ -f $PID ];
   then
-    rm $PID
+    sudo rm $PID
   fi
 
   #edit: since all pcaps are archived in s3 this just takes up extra storage
   if [ -d $DATA_DIR/processed/archive ];
   then
-    rm -rf $DATA_DIR/processed/archive
+    sudo rm -rf $DATA_DIR/processed/archive
   fi
 }
 
@@ -62,7 +62,7 @@ then
 fi
 
 #create pid file
-echo 1 > $PID
+sudo echo 1 > $PID
 
 #Make sure cleanup() is called when script is done processing or crashed.
 trap cleanup EXIT

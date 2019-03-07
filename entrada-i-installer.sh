@@ -25,13 +25,12 @@ sudo chmod 777 -R /home/hadoop
 #download the package, config and crontab
 echo "[$(date)] : Downloading Entrada I"
 cd /home/hadoop
-sudo git clone https://EMR_CodeCommit-at-845534697080:R9GGhQEz2rcrMfYFmmX9TSTlNbbZnNKHzMBeiXb1OUs=@git-codecommit.eu-west-1.amazonaws.com/v1/repos/entrada-i entrada
-sudo aws s3 cp $config entrada/scripts/run/config.sh
-ln -s entrada entrada-latest
+sudo git clone https://EMR_CodeCommit-at-845534697080:R9GGhQEz2rcrMfYFmmX9TSTlNbbZnNKHzMBeiXb1OUs=@git-codecommit.eu-west-1.amazonaws.com/v1/repos/entrada-i entrada-latest
+sudo aws s3 cp $config entrada-latest/scripts/run/config.sh
 
 #load config
 echo "[$(date)] : Loading config"
-source entrada/scripts/run/config.sh 2> /dev/null
+source entrada-latest/scripts/run/config.sh 2> /dev/null
 
 sudo chown -R hadoop:hadoop ./
 sudo chmod -R 700 ./

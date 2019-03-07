@@ -11,11 +11,6 @@ echo "[$(date)] : Making pcap directories"
 sudo mkdir -p $DATA_DIR
 sudo mkdir -p $OUTPUT_DIR
 
-sudo chown -R hadoop:hadoop ./
-sudo chmod -R 700 ./
-sudo chown -R hadoop:hadoop $DATA_DIR
-sudo chmod -R 700 $DATA_DIR
-
 # Find an unpartitioned disk and mount it on $DATA_DIR. Will use whichever unpartitioned
 # disk it finds first, so if more than 2 EBS volumes are attached it's possible it might
 # pick any device which isnt root.
@@ -36,3 +31,8 @@ done
 
 # for some reason below code did not work when giving a relative path (for the source), wont debug further for now since absolute path works
 sudo sh -c 'source /home/hadoop/entrada-latest/scripts/run/config.sh && sh ./entrada-latest/scripts/run/run_update_geo_ip_db.sh'
+
+sudo chown -R hadoop:hadoop ./
+sudo chmod -R 700 ./
+sudo chown -R hadoop:hadoop $DATA_DIR
+sudo chmod -R 700 $DATA_DIR

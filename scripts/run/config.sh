@@ -68,7 +68,7 @@ export NAMESERVERS=`cd ${DATA_DIR}/processing; ls -dm */ | tr '\n' ' ' |  tr ','
 #edit: changed it to use the processing folder instead of DATA_RSYNC_DIR
 
 #java lib jar
-export ENTRADA_JAR="entrada-latest.jar"
+export ENTRADA_JAR=$(cd $ENTRADA_HOME && ls pcap-to-parquet*)
 #start and max heap size for entrada pcap convertor
 export ENTRADA_HEAP_SIZE=4096m
 

@@ -25,6 +25,8 @@
 #
 ############################################################
 
+source entrada-latest/scripts/run/config.sh
+
 CLASS="nl.sidn.pcap.Main"
 OUTPUT_DIR="$DATA_DIR/processed"
 

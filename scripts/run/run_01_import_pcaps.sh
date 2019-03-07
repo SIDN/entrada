@@ -3,6 +3,8 @@
 # This bash script is made to move incoming pcap files from S3 to local storage
 # and then copy those files onto an archive built in S3.
 
+source entrada-latest/scripts/run/config.sh
+
 # INPUT_INCLUDE=\"*.pcap\"
 # INPUT_EXCLUDE=\"*\"
 SOURCE="$S3_HOME/input"

@@ -25,6 +25,8 @@
 #
 ############################################################
 
+source entrada-latest/scripts/run/config.sh
+
 PID=$TMP_DIR/run_02_partial_loader_bootstrap
 
 #----- functions ---------------
@@ -35,7 +37,7 @@ cleanup(){
   then
     rm $PID
   fi
-  
+
   #edit: since all pcaps are archived in s3 this just takes up extra storage
   if [ -d $DATA_DIR/processed/archive ];
   then

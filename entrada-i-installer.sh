@@ -36,9 +36,9 @@ sudo chown -R hadoop:hadoop ./
 sudo chmod -R 700 ./
 
 echo "[$(date)] : Creating tables"
-sudo -u hadoop sh ./entrada-latest/scripts/install/create_s3External_tables.sh
-sudo -u hadoop sh ./entrada-latest/scripts/install/create_domain_stats_table_S3.sh
-sudo -u hadoop sh ./entrada-latest/scripts/install/get_s3data.sh
+sh ./entrada-latest/scripts/install/create_s3External_tables.sh
+sh ./entrada-latest/scripts/install/create_domain_stats_table_S3.sh
+sh ./entrada-latest/scripts/install/get_s3data.sh
 echo "[$(date)] : Table creation finished"
 
 echo "[$(date)] : Entrada I installation complete"

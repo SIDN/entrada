@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>nl.sidn</groupId>
 	<artifactId>pcap-lib</artifactId>
-	<version>0.1.0</version>
+	<version>0.1.1</version>
 	<dependencies>
 		<dependency>
 			<groupId>org.apache.commons</groupId>
@@ -39,7 +39,7 @@
 		<dependency>
 			<groupId>nl.sidn</groupId>
 			<artifactId>dnslib</artifactId>
-			<version>0.1.0</version>
+			<version>0.1.1</version>
 		</dependency>
 
 		<dependency>

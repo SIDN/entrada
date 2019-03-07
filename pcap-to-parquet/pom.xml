@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>nl.sidn</groupId>
 	<artifactId>pcap-to-parquet</artifactId>
-	<version>0.1.0</version>
+	<version>0.1.1</version>
 	<name>pcap-to-parquet</name>
 
 	<parent>
@@ -96,13 +96,13 @@
 		<dependency>
 			<groupId>nl.sidn</groupId>
 			<artifactId>pcap-lib</artifactId>
-			<version>0.1.0</version>
+			<version>0.1.1</version>
 		</dependency>
 
 		<dependency>
 			<groupId>nl.sidn</groupId>
 			<artifactId>dnslib</artifactId>
-			<version>0.1.0</version>
+			<version>0.1.1</version>
 		</dependency>
 
 		<dependency>

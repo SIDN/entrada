@@ -25,7 +25,9 @@
 #
 ############################################################
 
-source entrada-latest/scripts/run/config.sh
+cd entrada-latest/scripts/run
+
+source config.sh
 
 PID=$TMP_DIR/run_02_partial_loader_bootstrap
 

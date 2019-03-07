@@ -43,8 +43,8 @@ trap cleanup EXIT
 #
 
 echo "[$(date)] : Starting download from $S3_HOME/input"
-aws s3 mv $SOURCE $OUTPUT_DIR --recursive
-echo "[$(date)] : Finished downloading $(ls ./pcap/processing/*/*.* 2>/dev/null | wc -l) files"
+fileCount=$(aws s3 mv $SOURCE $OUTPUT_DIR --recursive --no-progress | grep 'pcap' | wc -l)
+echo "[$(date)] : Finished downloading $fileCount files"
 
 echo "[$(date)] : Starting archivation of pcaps to $ARCHIVE"
 aws s3 cp $OUTPUT_DIR $ARCHIVE --recursive

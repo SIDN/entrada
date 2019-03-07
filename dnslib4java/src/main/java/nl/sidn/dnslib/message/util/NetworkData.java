@@ -194,6 +194,10 @@ public class NetworkData {
     index = markedIndex;
   }
 
+  public void rewind(int bytes) {
+    this.index = this.index - bytes;
+  }
+
   /**
    * Get the raw network order bytes
    */

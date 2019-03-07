@@ -86,8 +86,8 @@ public class DNSStringUtil {
    * 
    */
 
-  private static byte UNCOMPRESSED_NAME_BIT_MASK = (byte) 0x3f; // 0011 1111
-  private static byte COMPRESSED_NAME_BIT_MASK = (byte) 0xc0; // 1100 0000
+  private static final byte UNCOMPRESSED_NAME_BIT_MASK = (byte) 0x3f; // 0011 1111
+  private static final byte COMPRESSED_NAME_BIT_MASK = (byte) 0xc0; // 1100 0000
 
 
   public static boolean isUncompressedName(byte namePrefix) {
@@ -99,75 +99,82 @@ public class DNSStringUtil {
   }
 
   public static String readName(NetworkData buffer) {
+    int currentPosition = -1;
+    StringBuilder nameBuilder = new StringBuilder();
+
     short length = buffer.readUnsignedByte();
 
     if (length == 0) {
-      /* zero lentgh label means "." root */
+      /* zero length label means "." root */
       return ".";
     }
 
-    if (length > 5000) {
-      // large value chosen to allow decoding illegal long labels (>63)
-      // but have some protection against running out of memmory for
-      // huge erroneous huge label sizes.
-      throw new DnsDecodeException("Unsupported label length found, value: " + (int) length);
-    }
-
-    if (isUncompressedName((byte) length)) {
-      return readUncompressedName(length, buffer) + ".";
-    } else if (isCompressedName((byte) length)) {
-      return readCompressedName(buffer) + ".";
-    }
-
-    throw new DnsDecodeException("Unsupported label found");
-  }
-
-
-  public static String readUncompressedName(short length, NetworkData buffer) {
-    StringBuilder qnameBuilder = new StringBuilder();
-
-    // read the length of the first label
-
+    // keep reading labels until zero length (end of string) is reached
     while (length > 0) {
-      if (qnameBuilder.length() > 0) {
-        // add the "." between labels
-        qnameBuilder.append(".");
-      }
-      // read the label
-      byte[] bytes = new byte[length];
-      buffer.readBytes(bytes);
-      qnameBuilder.append(new String(bytes, Charsets.US_ASCII));
 
-      // read the length of the next label
+      if (length > 5000) {
+        // large value chosen to allow decoding illegal long labels (>63)
+        // but have some protection against running out of memmory for
+        // huge erroneous huge label sizes.
+        throw new DnsDecodeException("Unsupported label length found, value: " + (int) length);
+      }
+
+      if (isUncompressedName((byte) length)) {
+
+        byte[] bytes = new byte[length];
+        buffer.readBytes(bytes);
+        String label = new String(bytes, Charsets.US_ASCII);
+
+        nameBuilder.append(label);
+        nameBuilder.append(".");
+
+      } else if (isCompressedName((byte) length)) {
+        // save location in the stream (after reading the 2 (offset) bytes)
+        if (currentPosition == -1) {
+          // only save first pointer location, there may be multiple
+          // pointers forming a chain
+          currentPosition = buffer.getReaderIndex() + 1;
+        }
+        // follow 1 or more pointers to the data label.
+        followPointerChain(buffer);
+      } else {
+        throw new DnsDecodeException("Unsupported label type found");
+      }
+
       length = buffer.readUnsignedByte();
-
-      // check if the last label is a pointer
-      if (isCompressedName((byte) length)) {
-        qnameBuilder.append(".");
-        qnameBuilder.append(readCompressedName(buffer));
-        // the pointer is the last label, quit the loop
-        break;
-      }
     }
-    return qnameBuilder.toString();
+
+    // set index position to the first byte after the first pointer (16 bytes)
+    if (currentPosition >= 0) {
+      buffer.setReaderIndex(currentPosition);
+    }
+
+    return nameBuilder.toString();
   }
 
-
-  public static String readCompressedName(NetworkData buffer) {
-    // save location in the stream (after reading the 2 (offset) bytes)
-    int currentPosition = buffer.getReaderIndex() + 1;
-    short length;
-
+  /**
+   * 
+   * Follow 1 or more pointers to the data label After this method the index for the buffer param
+   * will be at the length byte of a data label.
+   * 
+   * @param buffer bytes with DNS message
+   */
+  private static void followPointerChain(NetworkData buffer) {
+    short length = 0;
     // protected against infinite loop (attack)
-    int maxLoop = 0;
+    int jumps = 0;
     do {
-      maxLoop++;
+      jumps++;
       // go back one byte to read the 16bit offset as a char
-      buffer.setReaderIndex(buffer.getReaderIndex() - 1);
+      buffer.rewind(1);
 
-      if (maxLoop == MAX_POINTER_CHAIN_LENGTH) {
+      /*
+       * some servers support pointer chaining (Knot) check for too long or infinite chain length
+       */
+
+      if (jumps == MAX_POINTER_CHAIN_LENGTH) {
         // protection against infinite loops
-        throw new DnsDecodeException("Illegal pointer chain size: " + maxLoop);
+        throw new DnsDecodeException("Illegal pointer chain size: " + jumps);
       }
 
       // read 16 bits
@@ -183,22 +190,15 @@ public class DNSStringUtil {
 
       // goto the pointer location in the buffer
       buffer.setReaderIndex(offset);
-
-      /*
-       * read the uncompressed name at the offset this name can also end with a compressed part.
-       * this will cause the current method to be called again which must therefore be reentrant.
-       */
+      // check for next pointre in case of pointer chaining
       length = buffer.readUnsignedByte();
     } while (isCompressedName((byte) length));
 
-    // read the label
-    byte[] bytes = new byte[length];
-    buffer.readBytes(bytes);
 
-    // go back to the location after the first pointer
-    buffer.setReaderIndex(currentPosition);
-    return new String(bytes, Charsets.US_ASCII);
+    // go 1 byte because we read the length of the next label already
+    buffer.rewind(1);
   }
+
 
 
   public static void writeName(String name, NetworkData buffer) {
@@ -241,7 +241,7 @@ public class DNSStringUtil {
   }
 
 
-  public static String readCharacterString(NetworkData buffer) {
+  public static String readLabelData(NetworkData buffer) {
     int length = buffer.readUnsignedByte();
     if (length > MAX_CHARACTER_STRING_LENGTH) {
       throw new DnsDecodeException("Illegal character string length (> 255), length = " + length);
@@ -256,7 +256,7 @@ public class DNSStringUtil {
 
   }
 
-  public static void writeCharacterString(String value, NetworkData buffer) {
+  public static void writeLabelData(String value, NetworkData buffer) {
     byte[] data = value.getBytes();
     if (data.length > MAX_CHARACTER_STRING_LENGTH) {
       throw new DnsEncodeException(

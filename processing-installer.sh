@@ -8,8 +8,8 @@ source entrada-latest/scripts/run/config.sh 2>&1 /dev/null
 
 #create directories for processing
 echo "[$(date)] : Making pcap directories"
-mkdir -p $DATA_DIR
-mkdir -p $OUTPUT_DIR
+sudo mkdir -p $DATA_DIR
+sudo mkdir -p $OUTPUT_DIR
 
 sudo chown -R hadoop:hadoop ./
 sudo chmod -R 700 ./

@@ -139,7 +139,7 @@ then
   echo "[$(date)] :upload the parquet files to hdfs $S3_DNS_STAGING"
 
   #edit: recursively move all directories and files into the staging folder on S3
-  aws s3 mv --recursive ./ $S3_DNS_STAGING/
+  aws s3 mv --recursive ./ $S3_DNS_STAGING/ --exclude ".metadata*"
   #edit: automatically detect any new partitions as long as the naming convention of the parent folders is correct
   hive -e "MSCK REPAIR TABLE $DNS_STAGING_TABLE"
 

@@ -48,6 +48,7 @@ if [ $fileCount -eq 0 ]
 then
     #if no files where downloaded exit with error which will cause processing.sh
     #to exit as well
+    echo "[$(date)] : No files were downloaded, exiting"
     exit 1
 fi
 echo "[$(date)] : Finished downloading $fileCount files"

@@ -28,7 +28,6 @@
 source config.sh
 
 CLASS="nl.sidn.pcap.Main"
-OUTPUT_DIR="$DATA_DIR/processed"
 
 #run all hdfs actions as user impala #edit: not using impala so use hdfs as user name instead
 #export HADOOP_USER_NAME=impala

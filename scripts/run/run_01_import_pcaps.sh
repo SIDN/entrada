@@ -8,7 +8,6 @@ source entrada-latest/scripts/run/config.sh
 # INPUT_INCLUDE=\"*.pcap\"
 # INPUT_EXCLUDE=\"*\"
 SOURCE="$S3_HOME/input"
-OUTPUT_DIR="$DATA_DIR"
 ARCHIVE="$S3_ARCHIVE"
 PID=$TMP_DIR/import_pcaps
 
@@ -42,8 +41,8 @@ sudo echo 1 > $PID
 trap cleanup EXIT
 #
 
-echo "[$(date)] : Starting download from $S3_HOME/input"
-fileCount=$(aws s3 mv $SOURCE $OUTPUT_DIR --recursive --no-progress | grep 'pcap' | wc -l)
+echo "[$(date)] : Starting download from $SOURCE"
+fileCount=$(aws s3 mv $SOURCE $DATA_DIR --recursive --no-progress | grep 'pcap' | wc -l)
 if [ $fileCount -eq 0 ]
 then
     #if no files where downloaded exit with error which will cause processing.sh
@@ -54,7 +53,7 @@ fi
 echo "[$(date)] : Finished downloading $fileCount files"
 
 echo "[$(date)] : Starting archivation of pcaps to $ARCHIVE"
-aws s3 cp $OUTPUT_DIR $ARCHIVE --recursive
+aws s3 cp $DATA_DIR $ARCHIVE --recursive
 echo "[$(date)] : Archivation complete"
 
 echo "[$(date)] : PCAP import complete"

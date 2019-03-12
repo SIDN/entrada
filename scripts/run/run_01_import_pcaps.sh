@@ -8,7 +8,7 @@ source entrada-latest/scripts/run/config.sh
 # INPUT_INCLUDE=\"*.pcap\"
 # INPUT_EXCLUDE=\"*\"
 SOURCE="$S3_HOME/input"
-OUTPUT_DIR="$DATA_DIR/processing"
+OUTPUT_DIR="$DATA_DIR"
 ARCHIVE="$S3_ARCHIVE"
 PID=$TMP_DIR/import_pcaps
 

@@ -20,6 +20,7 @@ for name in fsNames
 do
   # check that $name is a disk not a partition, sfdisk -d gives the same output (none) and
   # error when the target is a partition as it does when the target is an unpartitioned disk
+  # therefore first check that target is not named like a partition
   if [[ $name != *p*([0-9]) ]] && [ $(sudo sfdisk -d /dev/$name 2>&1) == "" ];
   then
     sudo mkfs -t xfs /dev/$name

@@ -49,7 +49,7 @@ export S3_ARCHIVE="s3://dnspcaps/archive"
 ##
 
 #root directory for data input/output
-export DATA_DIR="/data"
+export DATA_DIR="/mnt/processing"
 export OUTPUT_DIR="$ENTRADA_HOME/../processed"
 #number of days to keep old pcap files
 export PCAP_DAYS_TO_KEEP=10
@@ -64,7 +64,7 @@ export ENTRADA_LOG_DIR="/var/log/entrada"
 #or use the following line to automatically detect the name server sub directories.
 #if using auto detect make sure the data for every (new) name server is uploaded
 #in the correct temporal order.
-export NAMESERVERS=`cd ${DATA_DIR}/processing; ls -dm */ | tr '\n' ' ' |  tr ',' ';' | sed 's/[\/ ]//g'`
+export NAMESERVERS=`cd ${DATA_DIR}; ls -dm */ | tr '\n' ' ' |  tr ',' ';' | sed 's/[\/ ]//g'`
 #edit: changed it to use the processing folder instead of DATA_RSYNC_DIR
 
 #java lib jar

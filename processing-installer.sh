@@ -9,7 +9,7 @@ source entrada-latest/scripts/run/config.sh 2>&1 /dev/null
 #create directories for processing
 echo "[$(date)] : Making pcap directories"
 sudo mkdir -p $DATA_DIR
-sudo ln -s $OUTPUT_DIR/../processing
+sudo ln -s $DATA_DIR $OUTPUT_DIR/../processing
 sudo mkdir -p $OUTPUT_DIR
 
 # # Find an unpartitioned disk and mount it on $DATA_DIR. Will use whichever unpartitioned

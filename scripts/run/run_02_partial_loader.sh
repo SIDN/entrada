@@ -142,7 +142,7 @@ then
   #edit: automatically detect any new partitions as long as the naming convention of the parent folders is correct
   hive -e "MSCK REPAIR TABLE $DNS_STAGING_TABLE"
 
-  #edit: removed the original part which did the move to staging entirely since s3 is used instead of hdfs for storage
+  #edit: entirely removed the original part which did the move to staging since s3 is used instead of hdfs for storage
 
   #edit: this fails in hive, should be looked into if its necessary or not
   # echo "[$(date)] :Issue refresh"

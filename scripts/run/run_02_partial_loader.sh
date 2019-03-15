@@ -28,6 +28,7 @@
 source config.sh
 
 CLASS="nl.sidn.pcap.Main"
+OUTPUT_DIR=$DATA_DIR/processed
 
 #run all hdfs actions as user impala #edit: not using impala so use hdfs as user name instead
 #export HADOOP_USER_NAME=impala
@@ -52,10 +53,10 @@ PID=$TMP_DIR/run_02_partial_loader_$NAMESERVER
 #------------------------------
 
 cleanup(){
-  if [ -d $DATA_DIR/processed/$NORMALIZED_NAMESERVER ];
+  if [ -d $OUTPUT_DIR/$NORMALIZED_NAMESERVER ];
   then
     echo "rm -rf $OUTPUT_DIR/$NORMALIZED_NAMESERVER"
-    rm -rf $DATA_DIR/processed/$NORMALIZED_NAMESERVER
+    rm -rf $OUTPUT_DIR/$NORMALIZED_NAMESERVER
   fi
 
   #remove pid file
@@ -116,14 +117,14 @@ if [ $? -eq 0 ]
 then
 
   #check if parquet files were created
-  if [ ! -d "$DATA_DIR/processed/$NORMALIZED_NAMESERVER/dnsdata" ];
+  if [ ! -d "$OUTPUT_DIR/$NORMALIZED_NAMESERVER/dnsdata" ];
   then
     echo "[$(date)] :No parquet files generated, quit script"
     exit 0
   fi
 
   #goto location of created parquet files
-  cd $DATA_DIR/processed/$NORMALIZED_NAMESERVER
+  cd $OUTPUT_DIR/$NORMALIZED_NAMESERVER
 
   #delete useless meta data
   echo  "[$(date)] :delete .crc and  .tmp files"
@@ -152,6 +153,12 @@ then
   #   #send mail to indicate error
   #   echo "[$(date)] :Refresh metadata $DNS_STAGING_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
   # fi
+  
+  if [ -d $OUTPUT_DIR/$NORMALIZED_NAMESERVER ];
+   then
+      echo "rm -rf $OUTPUT_DIR/$NORMALIZED_NAMESERVER"
+      rm -rf $OUTPUT_DIR/$NORMALIZED_NAMESERVER
+  fi
 else
   echo "[$(date)] :Converting pcap to parquet failed"
 fi

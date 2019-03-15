@@ -8,9 +8,10 @@ source entrada-latest/scripts/run/config.sh 2>&1 /dev/null
 
 #create directories for processing
 echo "[$(date)] : Making pcap directories"
-sudo mkdir -p $DATA_DIR
-sudo ln -s $DATA_DIR $OUTPUT_DIR/../processing
-sudo mkdir -p $OUTPUT_DIR
+sudo mkdir -p $DATA_DIR/processing
+sudo mkdir $DATA_DIR/processed
+sudo ln -s $PROCESSING_DIR $DATA_DIR/processing
+
 
 # # Find an unpartitioned disk and mount it on $DATA_DIR. Will use whichever unpartitioned
 # # disk it finds first, so if more than 2 EBS volumes are attached it's possible it might

@@ -20,7 +20,7 @@ echo "[$(date)] : Downloading prerequisites"
 sudo yum install -y git parallel curl
 sudo python3 -m pip install boto3
 
-sudo chmod 777 -R /home/hadoop
+sudo chmod 770 -R /home/hadoop
 
 #download the package, config and crontab
 echo "[$(date)] : Downloading Entrada I"
@@ -34,7 +34,7 @@ source entrada-latest/scripts/run/config.sh 2> /dev/null
 #will throw error because of $NAMESERVERS, this can be disregarded however
 
 sudo chown -R hadoop:hadoop ./
-sudo chmod -R 700 ./
+sudo chmod -R 770 ./
 
 echo "[$(date)] : Creating tables"
 sh ./entrada-latest/scripts/install/create_s3External_tables.sh

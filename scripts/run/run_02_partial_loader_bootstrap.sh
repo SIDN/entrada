@@ -41,9 +41,9 @@ cleanup(){
   fi
 
   #edit: since all pcaps are archived in s3 this just takes up extra storage
-  if [ -d $OUTPUT_DIR/archive ];
+  if [ -d $DATA_DIR/processed/archive ];
   then
-    sudo rm -rf $OUTPUT_DIR/archive
+    sudo rm -rf $DATA_DIR/processed/archive
   fi
 }
 

@@ -42,7 +42,7 @@ trap cleanup EXIT
 #
 
 echo "[$(date)] : Starting download from $SOURCE"
-fileCount=$(aws s3 mv $SOURCE $DATA_DIR --recursive --no-progress | grep 'pcap' | wc -l)
+fileCount=$(aws s3 mv $SOURCE $DATA_DIR/processing --recursive --no-progress | grep 'pcap' | wc -l)
 if [ $fileCount -eq 0 ]
 then
     #if no files where downloaded exit with error which will cause processing.sh
@@ -53,7 +53,7 @@ fi
 echo "[$(date)] : Finished downloading $fileCount files"
 
 echo "[$(date)] : Starting archivation of pcaps to $ARCHIVE"
-aws s3 cp $DATA_DIR $ARCHIVE --recursive
+aws s3 cp $DATA_DIR/processing $ARCHIVE --recursive
 echo "[$(date)] : Archivation complete"
 
 echo "[$(date)] : PCAP import complete"

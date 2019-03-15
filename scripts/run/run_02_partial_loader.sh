@@ -52,10 +52,10 @@ PID=$TMP_DIR/run_02_partial_loader_$NAMESERVER
 #------------------------------
 
 cleanup(){
-  if [ -d $OUTPUT_DIR/$NORMALIZED_NAMESERVER ];
+  if [ -d $DATA_DIR/processed/$NORMALIZED_NAMESERVER ];
   then
     echo "rm -rf $OUTPUT_DIR/$NORMALIZED_NAMESERVER"
-    rm -rf $OUTPUT_DIR/$NORMALIZED_NAMESERVER
+    rm -rf $DATA_DIR/processed/$NORMALIZED_NAMESERVER
   fi
 
   #remove pid file
@@ -110,20 +110,20 @@ then
 fi
 
 #transform pcap data to parquet data
-java -Xms$ENTRADA_HEAP_SIZE -Xmx$ENTRADA_HEAP_SIZE -Dentrada_log_dir=$ENTRADA_LOG_DIR -cp $ENTRADA_HOME/$ENTRADA_JAR $CLASS $NAMESERVER $CONFIG_FILE $DATA_DIR $OUTPUT_DIR $TMP_DIR
+java -Xms$ENTRADA_HEAP_SIZE -Xmx$ENTRADA_HEAP_SIZE -Dentrada_log_dir=$ENTRADA_LOG_DIR -cp $ENTRADA_HOME/$ENTRADA_JAR $CLASS $NAMESERVER $CONFIG_FILE $DATA_DIR/processing $DATA_DIR/processed $TMP_DIR
 #if Java process exited ok, continue
 if [ $? -eq 0 ]
 then
 
   #check if parquet files were created
-  if [ ! -d "$OUTPUT_DIR/$NORMALIZED_NAMESERVER/dnsdata" ];
+  if [ ! -d "$DATA_DIR/processed/$NORMALIZED_NAMESERVER/dnsdata" ];
   then
     echo "[$(date)] :No parquet files generated, quit script"
     exit 0
   fi
 
   #goto location of created parquet files
-  cd $OUTPUT_DIR/$NORMALIZED_NAMESERVER
+  cd $DATA_DIR/processed/$NORMALIZED_NAMESERVER
 
   #delete useless meta data
   echo  "[$(date)] :delete .crc and  .tmp files"

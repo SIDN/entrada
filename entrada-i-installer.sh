@@ -17,7 +17,7 @@ sudo yum -y update
 
 #install git and parallel
 echo "[$(date)] : Downloading prerequisites"
-sudo yum install -y git parallel
+sudo yum install -y git parallel curl
 sudo python3 -m pip install boto3
 
 sudo chmod 777 -R /home/hadoop

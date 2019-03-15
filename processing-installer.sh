@@ -36,6 +36,6 @@ sudo ln -s $PROCESSING_DIR $DATA_DIR/processing
 sudo sh -c 'source /home/hadoop/entrada-latest/scripts/run/config.sh && sh ./entrada-latest/scripts/run/run_update_geo_ip_db.sh'
 
 sudo chown -R hadoop:hadoop ./
-sudo chmod -R 700 ./
-sudo chown -R hadoop:hadoop $DATA_DIR
-sudo chmod -R 700 $DATA_DIR
+sudo chmod -R 770 ./
+sudo chown -R hadoop:hadoop $PROCESSING_DIR
+sudo chmod -R 770 $PROCESSING_DIR

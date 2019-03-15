@@ -4,7 +4,7 @@ echo "[$(date)] : Starting Processing bootstrap"
 cd /home/hadoop
 #load config
 echo "[$(date)] : Loading config"
-source entrada-latest/scripts/run/config.sh 2>&1 /dev/null
+source entrada-latest/scripts/run/config.sh 2> /dev/null
 
 #create directories for processing
 echo "[$(date)] : Making pcap directories"

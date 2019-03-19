@@ -36,7 +36,7 @@ export TMP_DIR="$ENTRADA_HOME/tmp"
 export CONFIG_FILE="$ENTRADA_HOME/scripts/config/entrada-settings.properties"
 
 #Impala deamon hostname for impala-shell to connect to
-#export IMPALA_NODE="" edit: no need for this anymore
+export IMPALA_NODE="" #edit: no need for this anymore
 
 #hdfs locations for storing data
 export HDFS_HOME="/user/hive/entrada"
@@ -68,14 +68,13 @@ export NAMESERVERS=`cd ${DATA_DIR}; ls -dm */ | tr '\n' ' ' |  tr ',' ';' | sed 
 #edit: changed it to use the processing folder instead of DATA_RSYNC_DIR
 
 #java lib jar
-#export ENTRADA_JAR=$(cd $ENTRADA_HOME && ls pcap-to-parquet*)
 export ENTRADA_JAR="entrada-latest.jar"
 #start and max heap size for entrada pcap convertor
 export ENTRADA_HEAP_SIZE=4096m
 
 #security if Kerberos is enabled, otherwise keep empty
-# export KRB_USER=""
-# export KEYTAB_FILE="my.keytab"
+export KRB_USER=""
+export KEYTAB_FILE="my.keytab"
 
 #error mail recipient
 export ERROR_MAIL=""
@@ -86,14 +85,14 @@ export PARALLEL_JOBS=3
 
 #HDFS directories for table files
 export HDFS_DNS_STAGING="$HDFS_HOME/staging"
-# export HDFS_ICMP_STAGING="$HDFS_HOME/icmp-staging"
+export HDFS_ICMP_STAGING="$HDFS_HOME/icmp-staging"
 export HDFS_DNS_QUERIES="$HDFS_HOME/queries"
-# export HDFS_ICMP_PACKETS="$HDFS_HOME/icmp"
+export HDFS_ICMP_PACKETS="$HDFS_HOME/icmp"
 export S3_DNS_STAGING="$S3_HOME/staging"
 export S3_DNS_QUERIES="$S3_HOME/queries"
 
 # table names
 export DNS_STAGING_TABLE="dns.staging"
-# export IMPALA_ICMP_STAGING_TABLE="icmp.staging"
+export IMPALA_ICMP_STAGING_TABLE="icmp.staging"
 export DNS_DWH_TABLE="dns.queries"
-# export IMPALA_ICMP_DWH_TABLE="icmp.packets"
+export IMPALA_ICMP_DWH_TABLE="icmp.packets"

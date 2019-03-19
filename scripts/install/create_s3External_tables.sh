@@ -37,7 +37,7 @@ do
 
     # split the table name into db and table names and replace the placeholders
     #edit: removed ICMP parts
-    for TABLE in DNS_STAGING_TABLE DNS_DWH_TABLE
+    for TABLE in DNS_STAGING_TABLE DNS_DWH_TABLE IMPALA_ICMP_DWH_TABLE IMPALA_ICMP_STAGING_TABLE
     do
         IFS='.';
         array=(${!TABLE})
@@ -48,7 +48,7 @@ do
         script=${script//_${TABLE}_DB_/$DB}
         script=${script//_${TABLE}_TAB_/$TAB}
     done
-    for LOC in S3_DNS_STAGING S3_DNS_QUERIES
+    for LOC in S3_DNS_STAGING S3_DNS_QUERIES S3_ICMP_STAGING S3_ICMP_PACKETS
     do
         script=${script//_${LOC}_/${!LOC}}
     done

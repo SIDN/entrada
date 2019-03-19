@@ -88,8 +88,11 @@ export HDFS_DNS_STAGING="$HDFS_HOME/staging"
 export HDFS_ICMP_STAGING="$HDFS_HOME/icmp-staging"
 export HDFS_DNS_QUERIES="$HDFS_HOME/queries"
 export HDFS_ICMP_PACKETS="$HDFS_HOME/icmp"
+
 export S3_DNS_STAGING="$S3_HOME/staging"
 export S3_DNS_QUERIES="$S3_HOME/queries"
+export S3_ICMP_STAGING="$S3_HOME/icmp/staging"
+export S3_ICMP_PACKETS="$S3_HOME/icmp/packets"
 
 # table names
 export DNS_STAGING_TABLE="dns.staging"

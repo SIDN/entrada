@@ -102,19 +102,23 @@ echo 1 > $PID
 #Make sure cleanup() is called when script is done processing or crashed.
 trap cleanup EXIT
 
-#edit: check if s3 data location exists
-hdfs dfs -test -d "$S3_DNS_STAGING"
-if [ $? -ne "0" ]
-then
-  echo "[$(date)] : hdfs root path $S3_DNS_STAGING does not exist, stop"
-  exit 0
-fi
+
 
 #transform pcap data to parquet data
 java -Xms$ENTRADA_HEAP_SIZE -Xmx$ENTRADA_HEAP_SIZE -Dentrada_log_dir=$ENTRADA_LOG_DIR -cp $ENTRADA_HOME/$ENTRADA_JAR $CLASS $NAMESERVER $CONFIG_FILE $DATA_DIR/processing $DATA_DIR/processed $TMP_DIR
 #if Java process exited ok, continue
 if [ $? -eq 0 ]
 then
+
+  #edit: check if s3 data location exists
+  #when hdfs not available keep converting data and upload
+  #this data when hdfs is available.
+  hdfs dfs -test -d "$S3_DNS_STAGING"
+  if [ $? -ne "0" ]
+  then
+    echo "[$(date)] : hdfs root path $S3_DNS_STAGING does not exist, stop"
+  exit 0
+  fi
 
   #check if parquet files were created
   if [ ! -d "$OUTPUT_DIR/$NORMALIZED_NAMESERVER/dnsdata" ];
@@ -131,29 +135,40 @@ then
   find . -name '.*.crc' -print0 | xargs -0 --no-run-if-empty rm
   find . -name '.*.tmp' -print0 | xargs -0 --no-run-if-empty rm
 
+  ####
+  #### DNS data section
+  ####
+
   #fix date partition format, remove leading zero otherwize impala partions with int type will not work
   #at the start of the new year there may be 2 distinct years in the data.
   cd dnsdata
   remove_zeroes
 
-  echo "[$(date)] :upload the parquet files to hdfs $S3_DNS_STAGING"
+  echo "[$(date)] :upload the parquet files to $S3_DNS_STAGING"
 
   #edit: recursively move all directories and files into the staging folder on S3
   aws s3 mv --recursive ./ $S3_DNS_STAGING/ --exclude ".metadata*"
   #edit: automatically detect any new partitions as long as the naming convention of the parent folders is correct
   hive -e "MSCK REPAIR TABLE $DNS_STAGING_TABLE"
 
-  #edit: entirely removed the original part which did the move to staging since s3 is used instead of hdfs for storage
+  ####
+  #### ICMP data section
+  ####
 
-  #edit: this fails in hive, should be looked into if its necessary or not
-  # echo "[$(date)] :Issue refresh"
-  # hive -S -e "refresh $DNS_STAGING_TABLE;"
-  # if [ $? -ne 0 ]
-  # then
-  #   #send mail to indicate error
-  #   echo "[$(date)] :Refresh metadata $DNS_STAGING_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
-  # fi
-  
+  #fix date partition format, remove leading zero otherwize impala partions with int type will not work
+  cd ../icmpdata
+  remove_zeroes
+
+  echo "[$(date)] :upload the parquet files to $ICMP_DNS_STAGING"
+
+  #edit: recursively move all directories and files into the staging folder on S3
+  aws s3 mv --recursive ./ $S3_ICMP_STAGING/ --exclude ".metadata*"
+  #edit: automatically detect any new partitions as long as the naming convention of the parent folders is correct
+  hive -e "MSCK REPAIR TABLE $ICMP_STAGING_TABLE"
+
+  #edit: entirely removed the original parts which did the moves to staging since s3 is used for storage
+
+  #delete local parquet data
   if [ -d $OUTPUT_DIR/$NORMALIZED_NAMESERVER ];
    then
       echo "rm -rf $OUTPUT_DIR/$NORMALIZED_NAMESERVER"

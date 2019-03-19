@@ -2,17 +2,17 @@
  * ENTRADA, a big data platform for network data analytics
  *
  * Copyright (C) 2016 SIDN [https://www.sidn.nl]
- * 
+ *
  * This file is part of ENTRADA.
- * 
+ *
  * ENTRADA is free software: you can redistribute it and/or modify it under the terms of the GNU
  * General Public License as published by the Free Software Foundation, either version 3 of the
  * License, or (at your option) any later version.
- * 
+ *
  * ENTRADA is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
  * Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License along with ENTRADA. If not, see
  * [<http://www.gnu.org/licenses/].
  *
@@ -184,12 +184,16 @@ public class LoaderThread extends AbstractStoppableThread {
         throw new RuntimeException("creating archive dir: " + archiveDir.getAbsolutePath());
       }
     }
-    if (file.renameTo(
-        new File(archiveDir.getPath() + System.getProperty("file.separator") + file.getName()))) {
-      LOGGER.info(file.getName() + " is archived!");
-    } else {
-      throw new RuntimeException("Error moving " + file.getName() + " to the archive");
-    }
+    File newFile = new File(archiveDir.getPath() + System.getProperty("file.separator") + file.getName());
+    try {
+		if (Files.move(Paths.get(file.getAbsolutePath()), Paths.get(newFile.getAbsolutePath())) != null) {
+			LOGGER.info(pcap + " is archived!");
+		} else {
+			throw new RuntimeException("Error moving " + file.getName() + " to the archive");
+		}
+	} catch (IOException e) {
+		throw new RuntimeException("Error moving " + pcap + " to the archive: " + e);
+	}
   }
 
   /**
@@ -518,7 +522,7 @@ public class LoaderThread extends AbstractStoppableThread {
 
   /**
    * wraps the inputstream with a decompressor based on a filename ending
-   * 
+   *
    * @param in The input stream to wrap with a decompressor
    * @param filename The filename from which we guess the correct decompressor
    * @return the compressor stream wrapped around the inputstream. If no decompressor is found,

@@ -159,7 +159,7 @@ then
   cd ../icmpdata
   remove_zeroes
 
-  echo "[$(date)] :upload the parquet files to $ICMP_DNS_STAGING"
+  echo "[$(date)] :upload the parquet files to $S3_ICMP_STAGING"
 
   #edit: recursively move all directories and files into the staging folder on S3
   aws s3 mv --recursive ./ $S3_ICMP_STAGING/ --exclude ".metadata*"

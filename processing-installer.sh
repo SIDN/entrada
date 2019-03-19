@@ -12,7 +12,9 @@ sudo mkdir -p $PROCESSING_DIR
 sudo mkdir $DATA_DIR/processed
 sudo ln -s $PROCESSING_DIR $DATA_DIR/processing
 
-
+# Turns out aws does mounts disks asigned before startup, so no need for below code
+# (it won't do anything and it's for an old version of the config)
+#
 # # Find an unpartitioned disk and mount it on $DATA_DIR. Will use whichever unpartitioned
 # # disk it finds first, so if more than 2 EBS volumes are attached it's possible it might
 # # pick any device which isnt root.

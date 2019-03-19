@@ -36,7 +36,7 @@ source entrada-latest/scripts/run/config.sh 2> /dev/null
 sudo chown -R hadoop:hadoop ./
 sudo chmod -R 770 ./
 
-echo "[$(date)] : Creating tables"
+echo "[$(date)] : Creating tables - if metadata already exists these scripts will not change anything"
 sh ./entrada-latest/scripts/install/create_s3External_tables.sh
 sh ./entrada-latest/scripts/install/create_domain_stats_table_S3.sh
 sh ./entrada-latest/scripts/install/get_s3data.sh

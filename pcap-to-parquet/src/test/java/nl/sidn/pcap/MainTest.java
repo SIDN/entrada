@@ -38,4 +38,19 @@ public class MainTest {
     main.run(args);
   }
 
+
+  // @Test
+  public void testRun2() {
+    Main main = new Main();
+
+    ClassLoader classLoader = getClass().getClassLoader();
+
+    String[] args =
+        {"name_server_here", classLoader.getResource("test-settings.properties").getFile(),
+            "/Users/maartenwullink/sidn/development/tmp/pcap/",
+            "/Users/maartenwullink/sidn/development/tmp/pcap/parquet",
+            "/Users/maartenwullink/sidn/development/tmp/entrada/"};
+    main.run(args);
+  }
+
 }

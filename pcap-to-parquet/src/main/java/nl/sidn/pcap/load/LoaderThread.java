@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -186,11 +187,8 @@ public class LoaderThread extends AbstractStoppableThread {
     }
     File newFile = new File(archiveDir.getPath() + System.getProperty("file.separator") + file.getName());
     try {
-		if (Files.move(Paths.get(file.getAbsolutePath()), Paths.get(newFile.getAbsolutePath())) != null) {
-			LOGGER.info(pcap + " is archived!");
-		} else {
-			throw new RuntimeException("Error moving " + file.getName() + " to the archive");
-		}
+		Files.move(Paths.get(file.getAbsolutePath()), Paths.get(newFile.getAbsolutePath()));
+        LOGGER.info(pcap + " is archived!");
 	} catch (IOException e) {
 		throw new RuntimeException("Error moving " + pcap + " to the archive: " + e);
 	}

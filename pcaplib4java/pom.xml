@@ -49,6 +49,12 @@
 			<version>1.0.3</version>
 		</dependency>
 
+		<!-- this is required but not directly used -->
+		<dependency>
+			<groupId>com.esotericsoftware.kryo</groupId>
+			<artifactId>kryo</artifactId>
+			<version>2.22</version>
+		</dependency>
 	</dependencies>
 
 	<build>

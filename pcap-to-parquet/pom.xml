@@ -4,7 +4,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>nl.sidn</groupId>
 	<artifactId>pcap-to-parquet</artifactId>
-	<version>0.1.1</version>
+	<version>0.1.2</version>
 	<name>pcap-to-parquet</name>
 
 	<parent>
@@ -82,27 +82,23 @@
 			<artifactId>guava</artifactId>
 			<version>11.0.2</version>
 		</dependency>
+		
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-log4j12</artifactId>
 			<version>1.7.7</version>
 		</dependency>
-		<dependency>
-			<groupId>com.google.code.findbugs</groupId>
-			<artifactId>annotations</artifactId>
-			<version>2.0.1</version>
-		</dependency>
 
 		<dependency>
 			<groupId>nl.sidn</groupId>
 			<artifactId>pcap-lib</artifactId>
-			<version>0.1.1</version>
+			<version>0.1.2</version>
 		</dependency>
 
 		<dependency>
 			<groupId>nl.sidn</groupId>
 			<artifactId>dnslib</artifactId>
-			<version>0.1.1</version>
+			<version>0.1.2</version>
 		</dependency>
 
 		<dependency>

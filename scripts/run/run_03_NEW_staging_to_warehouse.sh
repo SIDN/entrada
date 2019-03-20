@@ -23,7 +23,7 @@ allObjs=${allObjs//$S3_DNS_STAGING\//}
 # remove the source path itself
 allObjs=${allObjs//$S3_DNS_STAGING/}
 # finds any parquet files and returns their full path
-files=$(hdfs dfs -find s3://markus-emr-entrada/entrada/staging/ -name *.parquet)
+files=$(hdfs dfs -find $S3_HOME/staging/ -name *.parquet)
 
 pathCount=$(echo $allObjs | wc -w)
 # go through backwards to avoid trying deleting a folder that's a subdirectory of a folder removed in a previous iteration

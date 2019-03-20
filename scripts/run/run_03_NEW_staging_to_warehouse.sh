@@ -40,4 +40,8 @@ do
 done
 
 # Drop all partitions and then repair metadata by finding those that still exist
-# in the filesystem
+# in the filesystem.
+hive -e "
+ALTER TABLE staging DROP PARTITION(year>'0', month>'0', day>'0', server>'0');
+MSCK REPAIR TABLE staging;
+"

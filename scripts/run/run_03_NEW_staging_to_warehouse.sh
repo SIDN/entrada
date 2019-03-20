@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-#
-#
+# info about
+# this script
 
 # get values for today's date
 y=$(date -u "+%Y")
@@ -9,6 +9,7 @@ m=$(date -u "+%m")
 m=${m#0}
 d=$(date -u "+%d")
 
+# Move all files in staging (except for the current day) to queries
 s3-dist-cp /
     --src s3://dnspcaps/staging/ /
     --dest s3://dnspcaps/queries /

@@ -17,7 +17,7 @@ day=$(date --date="$DAYS_AGO days ago" +"%-d")
 year=$(date --date="$DAYS_AGO days ago" +"%Y")
 month=$(date --date="$DAYS_AGO days ago" +"%-m")
 
-impala-shell $IMPALA_OPTS -i $IMPALA_NODE -V -q "
+hive -e "
 WITH domain_query_counts AS (
 select domainname, count(1) as counts,year, month, day
 from dns.queries
@@ -49,8 +49,6 @@ and q.domainname = c.domainname
 and q.domainname = asn.domainname;
 
 
-COMPUTE INCREMENTAL STATS $TARGET_TABLE partition(year=$year, month=$month, day=$day);"
-
-
-
-
+ANALYZE TABLE $TARGET_TABLE partition(year=$year, month=$month, day=$day) COMPUTE STATISTICS;
+ANALYZE TABLE $TARGET_TABLE partition(year=$year, month=$month, day=$day) COMPUTE STATISTICS for columns;"
+#edit: cant use Impala's COMPUTE STATS, need to use both of the commands above instead

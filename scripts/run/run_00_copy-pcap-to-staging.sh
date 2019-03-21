@@ -95,13 +95,16 @@ do
       continue
     fi
 
+    file_name=$(basename $f)
+
+    echo "check if $file_name is a new file"
     #check if the file is not allready processed
-    if ! [[ $( grep $f $HISTORY_FILE) ]]
+    if ! [[ $( grep $file_name $HISTORY_FILE) ]]
     then
-        echo "[$(date)] : cp $f -> $OUTPUT_DIR"
-        cp $f $OUTPUT_DIR && count=$((count+1)) && echo $f >> $HISTORY_FILE
+        echo "[$(date)] : cp $file_name -> $OUTPUT_DIR"
+        cp $f $OUTPUT_DIR && count=$((count+1)) && echo $file_name >> $HISTORY_FILE
         if [ "$DELETE_INPUT_PCAP_FILES" = true ] ; then
-            echo "[$(date)] : rm $f"
+            echo "[$(date)] : rm $file_name"
             rm $f
         fi
     fi

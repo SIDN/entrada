@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # This bootstrap script is made to install a modified version of ENTRADA
-# on the Amazon Web Services service, Elastic Map Reduce v5.20.0.
+# on the Amazon Web Services service, Elastic Map Reduce.
 #
 # ENTRADA, a big data platform for network data analytics
 # Copyright (C) 2016 SIDN [https://www.sidn.nl]

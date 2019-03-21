@@ -42,10 +42,10 @@ export IMPALA_NODE="" #edit: no need for this anymore
 export HDFS_HOME="/user/hive/entrada"
 
 #S3 locations for storing data
-export S3_HOME="s3://dnspcaps"
-export S3_BUCKET="dnspcaps"
-export S3_PATH=""
-export S3_ARCHIVE="s3://dnspcaps/archive"
+export S3_HOME="s3://example/path/to/home"
+export S3_BUCKET="example"
+export S3_PATH="path/to/home"
+export S3_ARCHIVE="s3://example/archive"
 ##
 
 #root directory for data input/output

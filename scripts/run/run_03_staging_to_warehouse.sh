@@ -1,191 +1,48 @@
 #!/usr/bin/env bash
 
-# ENTRADA, a big data platform for network data analytics
-# 
-# Copyright (C) 2016 SIDN [https://www.sidn.nl]
-#  
-# This file is part of ENTRADA.
-# 
-# ENTRADA is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-# 
-# ENTRADA is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#  
-# You should have received a copy of the GNU General Public License
-# along with ENTRADA.  If not, see [<http://www.gnu.org/licenses/].
+# info about
+# this script
 
-IMPALA_OPTS=
+# get values for today's date
+y=$(date -u "+%Y")
+m=$(date -u "+%m")
+m=${m#0}
+d=$(date -u "+%d")
 
-#use kerberos user "hdfs"
-if [ -f "$KEYTAB_FILE" ];
-then
-   kinit $KRB_USER -k -t $KEYTAB_FILE
-   IMPALA_OPTS=-k
-fi
+# Move all files in staging (except for the current day) to queries
+s3-dist-cp /
+    --src s3://dnspcaps/staging/ /
+    --dest s3://dnspcaps/queries /
+    # below regex merges and copies all files for every partition but ignores the current day
+    --groupBy '.*/(?!year=$y/month=$m/day=$d/)year=([0-9]+)/month=([0-9]+)/day=([0-9]+)/server=(.*)/.*(\.parquet)' /
+    --deleteOnSuccess
 
-runasImpala(){
-  export HADOOP_USER_NAME=impala
-}
+allObjs=$(hdfs dfs -find $S3_DNS_STAGING)
+# remove the start of all paths
+allObjs=${allObjs//$S3_DNS_STAGING\//}
+# remove the source path itself
+allObjs=${allObjs//$S3_DNS_STAGING/}
+# finds any parquet files and returns their full path
+files=$(hdfs dfs -find $S3_HOME/staging/ -name *.parquet)
 
-runasSuperuser(){
-  export HADOOP_USER_NAME=hdfs
-}
-
-#-----------------------------
-# Main script
-#-----------------------------
-
-runasImpala
-
-####
-#### DNS data section
-####
-
-#get date in utc
-current_date=$(date -u "+%Y%m%d")
-
-#Data is beeing appended to the partition of this day, only process older partitions 
-for partition in $(impala-shell $IMPALA_OPTS -i $IMPALA_NODE -q "select year,month,day,server 
-                    from $IMPALA_DNS_STAGING_TABLE 
-                    where (concat(cast(year as string),lpad(cast(month as string),2,\"0\"),lpad(cast(day as string),2,\"0\"))) < \"$current_date\"
-                    group by year,month,day,server
-                    order by year,month,day,server desc;" --output_delimiter=, --quiet --delimited)
+pathCount=$(echo $allObjs | wc -w)
+# go through backwards to avoid trying deleting a folder that's a subdirectory of a folder removed in a previous iteration
+for ((i=$pathCount;i>=1;i--))
 do
-    year=$(echo $partition | cut -d, -f 1)
-    month=$(echo $partition | cut -d, -f 2)
-    day=$(echo $partition | cut -d, -f 3)
-    server=$(echo $partition | cut -d, -f 4)
-
-    echo "[$(date)] : Move $IMPALA_DNS_STAGING_TABLE table partition year=$year, month=$month, day=$day, server=$server to $IMPALA_DNS_DWH_TABLE"
-
-    #insert all the staging data for yesterday into the datawarehouse table
-    #skip the duplicate "svr" column.
-    impala-shell $IMPALA_OPTS -i $IMPALA_NODE -V -q  "insert into $IMPALA_DNS_DWH_TABLE partition(year, month, day, server) select 
-         id, unixtime, time, qname, domainname,
-         len, frag, ttl, ipv,
-         prot, src, srcp, dst,
-         dstp, udp_sum, dns_len, aa,
-         tc, rd, ra, z, ad, cd,
-         ancount, arcount, nscount, qdcount,
-         opcode, rcode, qtype, qclass,
-         country, asn, edns_udp, edns_version,
-         edns_do, edns_ping, edns_nsid, edns_dnssec_dau,
-         edns_dnssec_dhu, edns_dnssec_n3u,
-         edns_client_subnet, edns_other,
-         edns_client_subnet_asn,
-         edns_client_subnet_country,
-         labels,res_len,time_micro,resp_frag,proc_time,is_google,is_opendns,
-         dns_res_len,server_location,cast(unixtime as timestamp),
-         edns_padding,pcap_file,edns_keytag_count,edns_keytag_list,q_tc,q_ra,q_ad,q_rcode,
-         year,month,day,server
-         from $IMPALA_DNS_STAGING_TABLE where year=$year and month=$month and day=$day and server=\"$server\";"
-
-    if [ $? -ne 0 ]
+    # get a path from $allObjs
+    path=$(echo $allObjs | cut -d" " -f $i)
+    # check if the path is a part of any file's path
+    if [[ $files != *$path* ]]
     then
-        #send mail to indicate error
-        echo "[$(date)] : insert data into $IMPALA_DNS_DWH_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
-        exit 1
+        # if not, remove it
+        echo "Removing $path"
+        aws s3 rm $S3_HOME/staging/$path
     fi
-
-    #drop partition from the staging table (unlink parquet files)
-    echo "[$(date)] : drop $IMPALA_DNS_STAGING_TABLE partition (year=$year,month=$month,day=$day,server=$server)"
-    impala-shell $IMPALA_OPTS -c --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_DNS_STAGING_TABLE drop partition (year=$year,month=$month,day=$day, server=\"$server\");"
-
-    #delete staging parquet data from hdfs
-    runasSuperuser
-    echo "[$(date)] : delete the staging parquet files from hdfs $HDFS_DNS_STAGING/year=$year/month=$month/day=$day/server=$server"
-    hdfs dfs -rm -r -f $HDFS_DNS_STAGING/year=$year/month=$month/day=$day/server=$server  
-    runasImpala
-
-    #refresh impala metadata for staging table
-    echo "[$(date)] : issue refresh for $IMPALA_DNS_STAGING_TABLE"
-    impala-shell $IMPALA_OPTS --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_DNS_STAGING_TABLE;"
-
-    #update the table statistics
-    #use the partion spec here, if we don't then Impala we analyze the entire table after adding
-    #a new column, this might take very long in case of a large table. 
-    impala-shell $IMPALA_OPTS -c --quiet -i $IMPALA_NODE -q "COMPUTE INCREMENTAL STATS $IMPALA_DNS_DWH_TABLE PARTITION (year=$year,month=$month,day=$day, server=\"$server\");" 
-
-done
- 
-####
-#### ICMP data section
-####
-
-#Data is beeing appended to the partition of this day, only process older partitions 
-for partition in $(impala-shell $IMPALA_OPTS -i $IMPALA_NODE -q "select year,month,day
-                   from $IMPALA_ICMP_STAGING_TABLE
-                   where (concat(cast(year as string),lpad(cast(month as string),2,\"0\"),lpad(cast(day as string),2,\"0\"))) < \"$current_date\"
-                   group by year,month,day
-                   order by year,month,day desc;" --output_delimiter=, --quiet --delimited)
-do
-    year=$(echo $partition | cut -d, -f 1)
-    month=$(echo $partition | cut -d, -f 2)
-    day=$(echo $partition | cut -d, -f 3)
-
-    echo "[$(date)] : Move $IMPALA_ICMP_STAGING_TABLE table partition year=$year, month=$month, day=$day to $IMPALA_ICMP_DWH_TABLE"
-
-    #skip the duplicate "svr" column.
-    impala-shell $IMPALA_OPTS -i $IMPALA_NODE -V -q  "insert into $IMPALA_ICMP_DWH_TABLE partition(year, month, day) select 
-          unixtime,icmp_type,
-          icmp_code,icmp_echo_client_type,ip_ttl,
-          ip_v,ip_src,
-          ip_dst,ip_country,
-          ip_asn,ip_len,
-          l4_prot,l4_srcp,
-          l4_dstp,orig_ip_ttl,
-          orig_ip_v,orig_ip_src,
-          orig_ip_dst,orig_l4_prot,
-          orig_l4_srcp,orig_l4_dstp,
-          orig_udp_sum,orig_ip_len,
-          orig_icmp_type,orig_icmp_code,
-          orig_icmp_echo_client_type,
-          orig_dns_id,orig_dns_qname,
-          orig_dns_domainname,orig_dns_len,
-          orig_dns_aa,orig_dns_tc,
-          orig_dns_rd,orig_dns_ra,
-          orig_dns_z,orig_dns_ad,
-          orig_dns_cd,orig_dns_ancount,
-          orig_dns_arcount,orig_dns_nscount,
-          orig_dns_qdcount,orig_dns_rcode,
-          orig_dns_qtype,orig_dns_opcode,
-          orig_dns_qclass,orig_dns_edns_udp,
-          orig_dns_edns_version,orig_dns_edns_do,
-          orig_dns_labels,svr,time_micro, server_location,cast(unixtime as timestamp),
-          pcap_file,year,month,day
-         from $IMPALA_ICMP_STAGING_TABLE where year=$year and month=$month and day=$day;"
-
-    if [ $? -ne 0 ]
-    then
-        #send mail to indicate error
-        echo "[$(date)] : insert data into $IMPALA_ICMP_DWH_TABLE failed" | mail -s "Impala error" $ERROR_MAIL
-        exit 1
-    fi
-
-    #delete partition from staging
-    echo "[$(date)] : drop $IMPALA_ICMP_STAGING_TABLE partition (year=$year,month=$month,day=$day)"
-    impala-shell $IMPALA_OPTS -c --quiet -i $IMPALA_NODE -V -q "alter table $IMPALA_ICMP_STAGING_TABLE drop partition (year=$year,month=$month,day=$day);"
-
-    #delete staging data from hdfs
-    runasSuperuser
-    echo "[$(date)] : delete the staging parquet files from hdfs $HDFS_ICMP_STAGING/year=$year/month=$month/day=$day"
-    hdfs dfs -rm -r -f $HDFS_ICMP_STAGING/year=$year/month=$month/day=$day
-    runasImpala
-
-    #refresh impala metadata
-    echo "[$(date)] : issue refresh for $IMPALA_ICMP_STAGING_TABLE"
-    impala-shell $IMPALA_OPTS --quiet -i $IMPALA_NODE -V -q "refresh $IMPALA_ICMP_STAGING_TABLE;"
-
-    #update the table statistics 
-    impala-shell $IMPALA_OPTS --quiet -i $IMPALA_NODE -q "COMPUTE INCREMENTAL STATS $IMPALA_ICMP_DWH_TABLE PARTITION (year=$year,month=$month,day=$day);" 
 done
 
-   
-echo "[$(date)] : done moving data from staging to queries table"
-
-
+# Drop all partitions and then repair metadata by finding those that still exist
+# in the filesystem.
+hive -e "
+ALTER TABLE staging DROP PARTITION(year>'0', month>'0', day>'0', server>'0');
+MSCK REPAIR TABLE staging;
+"

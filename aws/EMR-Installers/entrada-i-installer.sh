@@ -17,7 +17,7 @@ sudo yum -y update
 
 #install git and parallel
 echo "[$(date)] : Downloading prerequisites"
-sudo yum install -y git parallel curl
+sudo yum install -y parallel curl
 sudo python3 -m pip install boto3
 
 sudo chmod 770 -R /home/hadoop
@@ -25,7 +25,9 @@ sudo chmod 770 -R /home/hadoop
 #download the package, config and crontab
 echo "[$(date)] : Downloading Entrada I"
 cd /home/hadoop
-sudo git clone https://EMR_CodeCommit-at-845534697080:R9GGhQEz2rcrMfYFmmX9TSTlNbbZnNKHzMBeiXb1OUs=@git-codecommit.eu-west-1.amazonaws.com/v1/repos/entrada-i entrada-latest
+sudo wget https://github.com/SIDN/entrada/releases/download/v0.0.1a/entrada-aws-0.1.2.tar.gz
+tar -xzvf entrada-aws-0.1.2.tar.gz
+ln -s entrada-0.1.2 entrada-latest
 sudo aws s3 cp $config entrada-latest/scripts/run/config.sh
 
 #load config

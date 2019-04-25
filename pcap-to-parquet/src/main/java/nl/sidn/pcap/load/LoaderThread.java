@@ -220,7 +220,12 @@ public class LoaderThread extends AbstractStoppableThread {
   }
 
   public void read(String file) {
-    createReader(file);
+    // try to open file, if file is not good pcap handle exception and fail fast.
+    if (!createReader(file)) {
+      LOGGER.error("Skip bad input file: " + file);
+      return;
+    }
+
     long readStart = System.currentTimeMillis();
     LOGGER.info("Start reading packet queue");
 
@@ -543,7 +548,7 @@ public class LoaderThread extends AbstractStoppableThread {
     throw new IOException("Could not open file with unknown extension: " + filenameLower);
   }
 
-  public void createReader(String file) {
+  public boolean createReader(String file) {
     LOGGER.info("Start loading queue from file:" + file);
     fileCount++;
     try {
@@ -564,8 +569,10 @@ public class LoaderThread extends AbstractStoppableThread {
       pcapReader.init(dis);
     } catch (IOException e) {
       LOGGER.error("Error opening pcap file: " + file, e);
-      throw new RuntimeException("Error opening pcap file: " + file);
+      return false;
     }
+
+    return true;
   }
 
   private void scan() {

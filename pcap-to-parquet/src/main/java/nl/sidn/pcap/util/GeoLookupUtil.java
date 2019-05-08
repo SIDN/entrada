@@ -19,18 +19,18 @@
  */
 package nl.sidn.pcap.util;
 
-import java.io.File;
-import java.io.IOException;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import com.google.common.net.InetAddresses;
 import com.maxmind.db.CHMCache;
 import com.maxmind.geoip2.DatabaseReader;
 import com.maxmind.geoip2.model.AsnResponse;
-import com.maxmind.geoip2.model.CityResponse;
 import com.maxmind.geoip2.model.CountryResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.File;
+import java.io.IOException;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 /**
  * Utility class to lookup IP adress information such as country and asn. Uses the maxmind database
@@ -98,25 +98,10 @@ public class GeoLookupUtil {
     return response.getCountry().getIsoCode();
   }
 
-  public String lookupCity(String ip) {
-    CityResponse response = null;
-
-    try {
-      response = geoReader.city(InetAddress.getByName(ip));
-    } catch (Exception e) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("No city found for: " + ip);
-      }
-      return null;
-    }
-
-    return response.getCity().getName();
-  }
-
   public String lookupASN(byte[] ip) {
     InetAddress inetAddr;
     try {
-      inetAddr = InetAddresses.fromLittleEndianByteArray(ip);
+      inetAddr = InetAddress.getByAddress(ip);
     } catch (Exception e) {
       if (LOGGER.isDebugEnabled()) {
         LOGGER.debug("Invalid IP address: " + ip);

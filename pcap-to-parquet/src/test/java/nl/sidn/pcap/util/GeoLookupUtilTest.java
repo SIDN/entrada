@@ -19,12 +19,16 @@
  */
 package nl.sidn.pcap.util;
 
-import java.net.InetAddress;
-import java.net.UnknownHostException;
+import com.google.common.collect.Lists;
+import com.google.common.net.InetAddresses;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import com.google.common.net.InetAddresses;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+
+import static org.junit.Assert.assertEquals;
 
 public class GeoLookupUtilTest {
 
@@ -40,33 +44,117 @@ public class GeoLookupUtilTest {
   }
 
   @Test
-  public void testAsnLookupIpv4() throws UnknownHostException {
+  public void testAsnLookupIpv4() {
     InetAddress addr = InetAddresses.forString("94.198.159.1");
     String asn = geo.lookupASN(addr);
     Assert.assertEquals("1140", asn);
   }
 
   @Test
-  public void testAsnLookupIpv6() throws UnknownHostException {
+  public void testAsnLookupIpv6() {
     InetAddress addr = InetAddresses.forString("2a00:d78::147:94:198:152");
     String asn = geo.lookupASN(addr);
     Assert.assertEquals("1140", asn);
   }
 
   @Test
-  public void testGeoLookupIpv4() throws UnknownHostException {
+  public void testGeoLookupIpv4() {
     InetAddress addr = InetAddresses.forString("94.198.159.1");
     String country = geo.lookupCountry(addr);
     Assert.assertEquals("NL", country);
   }
 
   @Test
-  public void testGeoLookupIpv6() throws UnknownHostException {
+  public void testGeoLookupIpv6() {
     InetAddress addr = InetAddresses.forString("2a00:d78::147:94:198:152");
     String country = geo.lookupCountry(addr);
     Assert.assertEquals("NL", country);
   }
 
+  @Test
+  public void lookup() {
+    String ip = "81.164.126.240";
+    assertEquals("BE", geo.lookupCountry(ip));
+    assertEquals("6848", geo.lookupASN(ip));
 
+    ip = "8.8.8.8";
+    assertEquals("US", geo.lookupCountry(ip));
+    assertEquals("15169", geo.lookupASN(ip));
+
+    ip = "212.114.98.233";
+    assertEquals("NL", geo.lookupCountry(ip));
+    assertEquals("12859", geo.lookupASN(ip));
+
+    ip = "74.80.115.0";
+    assertEquals("CN", geo.lookupCountry(ip));
+    assertEquals("715", geo.lookupASN(ip));
+
+    ip = "74.80.89.0";
+    assertEquals("DE", geo.lookupCountry(ip));
+    assertEquals("715", geo.lookupASN(ip));
+
+    ip = "2620:0171:00F7:0000::";
+    assertEquals("ZA", geo.lookupCountry(ip));
+    assertEquals("42", geo.lookupASN(ip));
+
+    ip = "2001:0500:0015:0600::";
+    assertEquals("US", geo.lookupCountry(ip));
+    assertEquals("715", geo.lookupASN(ip));
+  }
+
+
+  @Test
+  public void lookupBytes() throws UnknownHostException {
+    InetAddress address = InetAddresses.forString("74.80.89.0");
+
+    assertEquals("DE", geo.lookupCountry(address));
+    assertEquals("715", geo.lookupASN(address));
+    byte[] bytes = address.getAddress();
+    assertEquals("DE", geo.lookupCountry(bytes));
+    assertEquals("715", geo.lookupASN(bytes));
+
+    // Both should be equivalent
+    address = InetAddress.getByName("74.80.89.0");
+
+    assertEquals("DE", geo.lookupCountry(address));
+    assertEquals("715", geo.lookupASN(address));
+    bytes = address.getAddress();
+    assertEquals("DE", geo.lookupCountry(bytes));
+    assertEquals("715", geo.lookupASN(bytes));
+  }
+
+  @Test
+  public void testLookupAsn() {
+    for (String ip : Lists.newArrayList("185.20.63.0", "2001:0500:0015:0600::")) {
+      InetAddress address = InetAddresses.forString(ip);
+      byte[] bytes = address.getAddress();
+
+      String byString = geo.lookupASN(ip);
+      String byBytes = geo.lookupASN(bytes);
+      String byAddress = geo.lookupASN(address);
+
+      System.out.println("byString = " + byString);
+      System.out.println("byBytes = " + byBytes);
+      System.out.println("byAddress = " + byAddress);
+
+      assertEquals(byAddress, byString);
+      assertEquals(byAddress, byBytes);
+    }
+  }
+
+  @Test
+  public void testLookupCountry() {
+    String ip = "185.20.63.0";
+    InetAddress address = InetAddresses.forString(ip);
+    byte[] bytes = address.getAddress();
+
+    String byString = geo.lookupCountry(ip);
+    String byBytes = geo.lookupCountry(bytes);
+    String byAddress = geo.lookupCountry(address);
+
+    System.out.println("byString = " + byString);
+    System.out.println("byBytes = " + byBytes);
+    System.out.println("byAddress = " + byAddress);
+  }
 
 }

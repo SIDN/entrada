@@ -48,6 +48,10 @@ public class GeoLookupUtilTest {
     InetAddress addr = InetAddresses.forString("94.198.159.1");
     String asn = geo.lookupASN(addr);
     Assert.assertEquals("1140", asn);
+
+    byte[] addrByte = addr.getAddress();
+    asn = geo.lookupASN(addrByte);
+    Assert.assertEquals("1140", asn);
   }
 
   @Test
@@ -61,6 +65,10 @@ public class GeoLookupUtilTest {
   public void testGeoLookupIpv4() {
     InetAddress addr = InetAddresses.forString("94.198.159.1");
     String country = geo.lookupCountry(addr);
+    Assert.assertEquals("NL", country);
+
+    byte[] addrByte = addr.getAddress();
+    country = geo.lookupCountry(addr);
     Assert.assertEquals("NL", country);
   }
 

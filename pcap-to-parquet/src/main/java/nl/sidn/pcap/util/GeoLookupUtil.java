@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
 
 /**
  * Utility class to lookup IP adress information such as country and asn. Uses the maxmind database
@@ -63,29 +62,20 @@ public class GeoLookupUtil {
   }
 
   public String lookupCountry(String ip) {
+    InetAddress inetAddr;
     try {
-      return lookupCountry(InetAddress.getByName(ip));
-    } catch (UnknownHostException e) {
+      inetAddr = InetAddresses.forString(ip);
+    } catch (Exception e) {
       if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("No country found for: " + ip);
+        LOGGER.debug("Invalid IP address: " + ip);
       }
       return null;
     }
-  }
-
-  public String lookupCountry(byte[] ip) {
-    try {
-      return lookupCountry(InetAddress.getByAddress(ip));
-    } catch (UnknownHostException e) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("No country found for: " + ip);
-      }
-      return null;
-    }
+    return lookupCountry(inetAddr);
   }
 
   public String lookupCountry(InetAddress addr) {
-    CountryResponse response = null;
+    CountryResponse response;
 
     try {
       response = geoReader.country(addr);
@@ -96,19 +86,6 @@ public class GeoLookupUtil {
       return null;
     }
     return response.getCountry().getIsoCode();
-  }
-
-  public String lookupASN(byte[] ip) {
-    InetAddress inetAddr;
-    try {
-      inetAddr = InetAddress.getByAddress(ip);
-    } catch (Exception e) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Invalid IP address: " + ip);
-      }
-      return null;
-    }
-    return lookupASN(inetAddr);
   }
 
   public String lookupASN(InetAddress ip) {

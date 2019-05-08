@@ -48,10 +48,6 @@ public class GeoLookupUtilTest {
     InetAddress addr = InetAddresses.forString("94.198.159.1");
     String asn = geo.lookupASN(addr);
     Assert.assertEquals("1140", asn);
-
-    byte[] addrByte = addr.getAddress();
-    asn = geo.lookupASN(addrByte);
-    Assert.assertEquals("1140", asn);
   }
 
   @Test
@@ -117,36 +113,26 @@ public class GeoLookupUtilTest {
 
     assertEquals("DE", geo.lookupCountry(address));
     assertEquals("715", geo.lookupASN(address));
-    byte[] bytes = address.getAddress();
-    assertEquals("DE", geo.lookupCountry(bytes));
-    assertEquals("715", geo.lookupASN(bytes));
 
     // Both should be equivalent
     address = InetAddress.getByName("74.80.89.0");
 
     assertEquals("DE", geo.lookupCountry(address));
     assertEquals("715", geo.lookupASN(address));
-    bytes = address.getAddress();
-    assertEquals("DE", geo.lookupCountry(bytes));
-    assertEquals("715", geo.lookupASN(bytes));
   }
 
   @Test
   public void testLookupAsn() {
     for (String ip : Lists.newArrayList("185.20.63.0", "2001:0500:0015:0600::")) {
       InetAddress address = InetAddresses.forString(ip);
-      byte[] bytes = address.getAddress();
 
       String byString = geo.lookupASN(ip);
-      String byBytes = geo.lookupASN(bytes);
       String byAddress = geo.lookupASN(address);
 
       System.out.println("byString = " + byString);
-      System.out.println("byBytes = " + byBytes);
       System.out.println("byAddress = " + byAddress);
 
       assertEquals(byAddress, byString);
-      assertEquals(byAddress, byBytes);
     }
   }
 
@@ -154,15 +140,14 @@ public class GeoLookupUtilTest {
   public void testLookupCountry() {
     String ip = "185.20.63.0";
     InetAddress address = InetAddresses.forString(ip);
-    byte[] bytes = address.getAddress();
 
     String byString = geo.lookupCountry(ip);
-    String byBytes = geo.lookupCountry(bytes);
     String byAddress = geo.lookupCountry(address);
 
     System.out.println("byString = " + byString);
-    System.out.println("byBytes = " + byBytes);
     System.out.println("byAddress = " + byAddress);
+
+    assertEquals(byAddress, byString);
   }
 
 }

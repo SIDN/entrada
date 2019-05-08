@@ -2,46 +2,28 @@
  * ENTRADA, a big data platform for network data analytics
  *
  * Copyright (C) 2016 SIDN [https://www.sidn.nl]
- * 
+ *
  * This file is part of ENTRADA.
- * 
+ *
  * ENTRADA is free software: you can redistribute it and/or modify it under the terms of the GNU
  * General Public License as published by the Free Software Foundation, either version 3 of the
  * License, or (at your option) any later version.
- * 
+ *
  * ENTRADA is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even
  * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
  * Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License along with ENTRADA. If not, see
  * [<http://www.gnu.org/licenses/].
  *
  */
 package nl.sidn.pcap.parquet;
 
-import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.GenericRecordBuilder;
-import org.apache.commons.lang3.StringUtils;
-import org.kitesdk.data.PartitionStrategy;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import com.google.common.base.Joiner;
 import nl.sidn.dnslib.message.Header;
 import nl.sidn.dnslib.message.Message;
 import nl.sidn.dnslib.message.Question;
-import nl.sidn.dnslib.message.records.edns0.ClientSubnetOption;
-import nl.sidn.dnslib.message.records.edns0.DNSSECOption;
-import nl.sidn.dnslib.message.records.edns0.EDNS0Option;
-import nl.sidn.dnslib.message.records.edns0.KeyTagOption;
-import nl.sidn.dnslib.message.records.edns0.NSidOption;
-import nl.sidn.dnslib.message.records.edns0.OPTResourceRecord;
-import nl.sidn.dnslib.message.records.edns0.PaddingOption;
-import nl.sidn.dnslib.message.records.edns0.PingOption;
+import nl.sidn.dnslib.message.records.edns0.*;
 import nl.sidn.dnslib.types.OpcodeType;
 import nl.sidn.dnslib.types.RcodeType;
 import nl.sidn.dnslib.types.ResourceRecordType;
@@ -54,6 +36,19 @@ import nl.sidn.pcap.packet.Packet;
 import nl.sidn.pcap.support.PacketCombination;
 import nl.sidn.pcap.util.Settings;
 import nl.sidn.stats.MetricManager;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.GenericRecordBuilder;
+import org.apache.commons.lang3.StringUtils;
+import org.kitesdk.data.PartitionStrategy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.net.InetAddress;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 
@@ -86,7 +81,7 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
   /**
    * Get the question, from the request packet if not available then from the response, which should
    * be the same.
-   * 
+   *
    * @param reqMessage
    * @param respMessage
    * @return
@@ -113,7 +108,7 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 
   /**
    * create 1 parquet record which combines values from the query and the response
-   * 
+   *
    * @param packet
    */
   @Override
@@ -371,7 +366,7 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 
   /**
    * Write EDNS0 option (if any are present) to file.
-   * 
+   *
    * @param message
    * @param builder
    */
@@ -397,7 +392,7 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 
   /**
    * Write EDNS0 option (if any are present) to file.
-   * 
+   *
    * @param message
    * @param builder
    */
@@ -430,23 +425,13 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
           String clientCountry = null;
           String clientASN = null;
           if (scOption.getInetAddress() != null) {
-            byte[] addrBytes = scOption.getInetAddress().getAddress();
-            if (scOption.isIPv4()) {
-              try {
-                clientCountry = geoLookup.lookupCountry(addrBytes);
-                clientASN = geoLookup.lookupASN(addrBytes);
-              } catch (Exception e) {
-                LOGGER.error("Could not convert IPv4 addr to bytes, invalid address? :"
-                    + scOption.getAddress());
-              }
-            } else {
-              try {
-                clientCountry = geoLookup.lookupCountry(addrBytes);
-                clientASN = geoLookup.lookupASN(addrBytes);
-              } catch (Exception e) {
-                LOGGER.error("Could not convert IPv6 addr to bytes, invalid address? :"
-                    + scOption.getAddress());
-              }
+            InetAddress addr = scOption.getInetAddress();
+            try {
+              clientCountry = geoLookup.lookupCountry(addr);
+              clientASN = geoLookup.lookupASN(addr);
+            } catch (Exception e) {
+              LOGGER.error("Could not convert " + (scOption.isIPv4() ? "IPv4" : "IPv6") + " addr to bytes, invalid address? :"
+                  + scOption.getAddress());
             }
           }
           builder.set("edns_client_subnet", scOption.export())

@@ -1,13 +1,23 @@
 #!/usr/bin/env bash
 
-# This bootstrap script is made to install a modified version of ENTRADA
-# on the Amazon Web Services service, Elastic Map Reduce.
+#    This installer is made to install a modified version of ENTRADA on the
+#    Amazon Web Services service, Elastic Map Reduce.
 #
-# ENTRADA, a big data platform for network data analytics
-# Copyright (C) 2016 SIDN [https://www.sidn.nl]
+#    Copyright (C) 2019 Internetstiftelsen [https:/internetstiftelsen.se/en]
 #
-# some other text idk
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
 #
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU General Public License for more details.
+#
+#    You should have received a copy of the GNU General Public License
+#    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+
 
 echo "[$(date)] : Starting Entrada AWS installation"
 

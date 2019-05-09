@@ -21,18 +21,18 @@
  */	
 package nl.sidn.pcap.util;
 
+import nl.sidn.dnslib.util.DomainParent;
+import nl.sidn.pcap.support.ServerInfo;
+import org.apache.commons.lang3.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
-
-import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import nl.sidn.dnslib.util.DomainParent;
 
 /**
  * Utility class for reading the entrada config file and making the
@@ -163,37 +163,6 @@ public class Settings {
 		}
 		//no anycast location encoded in name
 		serverInfo.setName(name);
-	}
-
-
-	public class ServerInfo{
-		private String fullname;
-		private String name;
-		private String location;
-		
-		public String getFullname() {
-			return fullname;
-		}
-		public void setFullname(String fullname) {
-			this.fullname = fullname;
-		}
-		public String getName() {
-			return name;
-		}
-		public void setName(String name) {
-			this.name = name;
-		}
-		public String getLocation() {
-			return location;
-		}
-		public void setLocation(String location) {
-			this.location = location;
-		}
-		
-		public boolean hasAnycastLocation(){
-			return StringUtils.isNotBlank(location);
-		}
-		
 	}
 	
 	public static void createTldSuffixes() {

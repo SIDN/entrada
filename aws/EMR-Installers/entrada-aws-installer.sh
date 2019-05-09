@@ -9,7 +9,7 @@
 # some other text idk
 #
 
-echo "[$(date)] : Starting Entrada I installation"
+echo "[$(date)] : Starting Entrada AWS installation"
 
 config=$1
 
@@ -44,5 +44,5 @@ sh ./entrada-latest/scripts/install/create_domain_stats_table_S3.sh
 sh ./entrada-latest/scripts/install/get_s3data.sh
 echo "[$(date)] : Table creation finished"
 
-echo "[$(date)] : Entrada I installation complete"
+echo "[$(date)] : Entrada AWS installation complete"
 exit 0

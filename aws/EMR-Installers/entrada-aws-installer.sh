@@ -33,7 +33,7 @@ sudo aws s3 cp $config entrada-latest/scripts/run/config.sh
 #load config
 echo "[$(date)] : Loading config"
 source entrada-latest/scripts/run/config.sh 2> /dev/null
-#will throw error because of $NAMESERVERS, this can be disregarded however
+#will throw error because of $NAMESERVERS, however this can be disregarded
 
 sudo chown -R hadoop:hadoop ./
 sudo chmod -R 770 ./

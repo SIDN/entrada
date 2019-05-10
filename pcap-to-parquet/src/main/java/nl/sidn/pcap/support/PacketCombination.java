@@ -23,7 +23,6 @@ package nl.sidn.pcap.support;
 
 import nl.sidn.dnslib.message.Message;
 import nl.sidn.pcap.packet.Packet;
-import nl.sidn.pcap.util.Settings.ServerInfo;
 
 public class PacketCombination {
 

@@ -19,28 +19,6 @@
  */
 package nl.sidn.pcap.load;
 
-import java.io.DataInputStream;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.zip.GZIPInputStream;
-import org.apache.commons.compress.compressors.xz.XZCompressorInputStream;
-import org.apache.commons.io.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
@@ -52,18 +30,22 @@ import nl.sidn.dnslib.types.ResourceRecordType;
 import nl.sidn.pcap.PcapReader;
 import nl.sidn.pcap.SequencePayload;
 import nl.sidn.pcap.decoder.ICMPDecoder;
-import nl.sidn.pcap.packet.DNSPacket;
-import nl.sidn.pcap.packet.Datagram;
-import nl.sidn.pcap.packet.DatagramPayload;
-import nl.sidn.pcap.packet.Packet;
-import nl.sidn.pcap.packet.TCPFlow;
-import nl.sidn.pcap.support.AbstractStoppableThread;
-import nl.sidn.pcap.support.MessageWrapper;
-import nl.sidn.pcap.support.PacketCombination;
-import nl.sidn.pcap.support.RequestKey;
+import nl.sidn.pcap.packet.*;
+import nl.sidn.pcap.support.*;
 import nl.sidn.pcap.util.Settings;
-import nl.sidn.pcap.util.Settings.ServerInfo;
 import nl.sidn.stats.MetricManager;
+import org.apache.commons.compress.compressors.xz.XZCompressorInputStream;
+import org.apache.commons.io.FileUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
+import java.util.zip.GZIPInputStream;
 
 public class LoaderThread extends AbstractStoppableThread {
 

@@ -36,10 +36,13 @@ public class GeoLookupUtilTest {
 
   @Before
   public void setup() {
+    String userHome = System.getProperty("user.home");
+    String path = userHome + "/sidn/development/tmp/entrada/";
+    // make sure you have a maxmind folder in $HOME/sidn/development/tmp/entrada/ with the correct .mmdb files
+    System.out.println("path = " + path);
     ClassLoader classLoader = getClass().getClassLoader();
     Settings.setPath(classLoader.getResource("test-settings.properties").getFile());
-    Settings.getInstance().setSetting(Settings.STATE_LOCATION,
-        "/Users/maartenwullink/sidn/development/tmp/entrada/");
+    Settings.getInstance().setSetting(Settings.STATE_LOCATION, path);
     geo = new GeoLookupUtil();
   }
 

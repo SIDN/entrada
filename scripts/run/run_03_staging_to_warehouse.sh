@@ -18,6 +18,9 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # Note this script needs to be used in an EMR cluster with Hive to work
+S3_DNS_STAGING=$1
+S3_DNS_QUERIES=$2
+DATABASE=$3
 
 # get values for today's date
 y=$(date -u "+%Y")
@@ -27,8 +30,8 @@ d=$(date -u "+%d")
 
 # Move all files in staging (except for the current day) to queries
 s3-dist-cp /
-    --src s3://dnspcaps/staging/ /
-    --dest s3://dnspcaps/queries/ /
+    --src $S3_DNS_STAGING /
+    --dest $S3_DNS_QUERIES /
     # below regex merges and copies all files for every partition but ignores the current day
     --groupBy '.*/(?!year=$y/month=$m/day=$d/)year=([0-9]+)/month=([0-9]+)/day=([0-9]+)/server=(.*)/.*(\.parquet)' /
     --deleteOnSuccess
@@ -59,6 +62,6 @@ done
 # Drop all partitions and then repair metadata by finding those that still exist
 # in the filesystem.
 hive -e "
-ALTER TABLE staging DROP PARTITION(year>'0', month>'0', day>'0', server>'0');
-MSCK REPAIR TABLE staging;
+ALTER TABLE $DATABASE.staging DROP PARTITION(year>'0', month>'0', day>'0', server>'0');
+MSCK REPAIR TABLE $DATABASE.staging;
 "

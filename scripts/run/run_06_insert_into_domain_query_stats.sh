@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# This program is not used in the current version of Entrada AWS however it
+# should be fully functional.
+
 DAYS_AGO=$1
 
 IMPALA_OPTS=

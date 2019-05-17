@@ -29,12 +29,8 @@ m=${m#0}
 d=$(date -u "+%d")
 
 # Move all files in staging (except for the current day) to queries
-s3-dist-cp /
-    --src $S3_DNS_STAGING /
-    --dest $S3_DNS_QUERIES /
-    # below regex merges and copies all files for every partition but ignores the current day
-    --groupBy '.*/(?!year=$y/month=$m/day=$d/)year=([0-9]+)/month=([0-9]+)/day=([0-9]+)/server=(.*)/.*(\.parquet)' /
-    --deleteOnSuccess
+s3-dist-cp --src $S3_DNS_STAGING --dest $S3_DNS_QUERIES --groupBy '.*/(?!year=$y/month=$m/day=$d/)year=([0-9]+)/month=([0-9]+)/day=([0-9]+)/server=(.*)/.*(\.parquet)' --deleteOnSuccess
+# The above groupBy regex merges and copies all files for every partition but ignores the current day
 
 allObjs=$(hdfs dfs -find $S3_DNS_STAGING)
 # remove the start of all paths

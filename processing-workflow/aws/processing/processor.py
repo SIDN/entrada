@@ -83,14 +83,12 @@ def clean_key_parent(key: pathlib.Path):
     return nameserver.replace("-", "")
 
 
-def update(jar: str, tmp: str):
+def update(tmp: str):
     """Update data used for enriching when processing pcap files.
 
     Uses entrada to find ip-addresses of OpenDNS and Google resolvers
 
     Args:
-        jar: Name of the Entrada jar.
-
         tmp: The location used as tmp storage for entrada
     """
 
@@ -98,7 +96,7 @@ def update(jar: str, tmp: str):
     subprocess.call([
         "java",
         "-cp",
-        str_path("entrada", jar),
+        str_path("entrada/entrada-latest.jar"),
         "nl.sidn.pcap.Update",
         str_path("entrada/entrada-settings.properties"),
         tmp
@@ -132,7 +130,7 @@ def remove_zeroes(source_dir):
                             new_day = day.parents[0].joinpath('day=' + day.name[-1])
                             os.renames(str(day), new_day)
 
-
+                            
 def check_key(bucket: str, key: str):
     """Check if any object can be found by filtering the bucket with the given key.
 
@@ -423,7 +421,7 @@ def find_keys(bucket_name):
     return key_list
 
 
-def process(nameserver: str, jar_name, processing, processed, tmp):
+def process(nameserver: str, processing, processed, tmp):
     """Use ENTRADA to process all pcap files for the nameserver given.
 
     When run in parallel logs get jumbled if they are continuously printed, therefore output is saved and printed in one
@@ -431,8 +429,6 @@ def process(nameserver: str, jar_name, processing, processed, tmp):
 
     Args:
         nameserver: The nameserver to be processed.
-
-        jar_name: The name of the Entrada Jar.
 
         processing:
         processed:
@@ -444,7 +440,7 @@ def process(nameserver: str, jar_name, processing, processed, tmp):
         [
             "java",
             "-cp",
-            f"entrada/{jar_name}",
+            str_path("entrada/entrada-latest.jar"),
             "nl.sidn.pcap.Main",
             nameserver,
             str_path("entrada/entrada-settings.properties"),
@@ -493,7 +489,7 @@ async def processing_handler(queue, *args):
 
 async def main(
         processing_dir: pathlib.Path, home_dir: pathlib.Path, bucket: str,
-        jar_name: str, database: str, input_structure: str):
+        database: str, input_structure: str):
     """Locate and process any files in "s3://{bucket}/input".
 
     Args:
@@ -505,8 +501,6 @@ async def main(
 
         bucket: Name of the bucket to use. This bucket needs to contain all prerequisite files and will be used both as
         source and destination during processing.
-
-        jar_name: Name of the entrada pcap-to-parquet jar which should be located in "./entrada/".
 
         database: Name of the AWS Glue Data Catalog database that is used as metastore for the data.
 
@@ -532,7 +526,7 @@ async def main(
             if obj.is_dir():
                 shutil.rmtree(obj)
 
-        update(jar_name, str(tmp))
+        update(str(tmp))
 
         # -- --
         # -- Download preparations --
@@ -600,7 +594,7 @@ async def main(
         await asyncio.gather(
             *[
                 processing_handler(
-                    processing_queue, jar_name, processing, processed, tmp
+                    processing_queue, processing, processed, tmp
                 ) for _ in range(processor_count)
             ]  # Same principle as when downloading.
         )
@@ -635,14 +629,18 @@ async def main(
 
 
 if __name__ == '__main__':
-    config = {
-        "processing_dir": Path("/mnt/processing/"),
-        "home_dir": Path(__file__).parents[0],
-        "bucket": "pcap-processing-test",
-        "jar_name": "pcap-to-parquet-0.1.2-jar-with-dependencies.jar",
-        "database": "processing_test",
-        "input_structure": "date_nameserver"
-    }
+    config_file = Path(__file__).parents[0] / Path("processing_config.json")
+    with config_file.open() as f:
+        config = json.load(f)
+    config.update(
+        {
+            "processing_dir": "/mnt/processing/",
+            "home_dir": Path(__file__).parents[0],
+            #"bucket": "pcap-processing-test",
+            #"database": "processing_test",
+            #"input_structure": "date_nameserver"
+        }
+    )
 
     while True:
         if not asyncio.run(main(**config)):

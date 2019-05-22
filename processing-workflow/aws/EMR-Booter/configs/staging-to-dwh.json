@@ -1,0 +1,48 @@
+{
+  "Name": "Staging-to-DWH-Migrator",
+  "ReleaseLabel": "emr-5.23.0",
+  "LogUri": "s3://{bucket}/logs/staging-to-dwh_{date}",
+  "JobFlowRole": "{env[EMR_EC2_DefaultRole]}",
+  "ServiceRole": "{env[EMR_DefaultRole]}",
+  "VisibleToAllUsers": true,
+  "EbsRootVolumeSize": 30,
+  "Instances": {
+    "KeepJobFlowAliveWhenNoSteps": false,
+    "InstanceGroups": [
+      {
+        "Name": "Master",
+        "Market": "ON_DEMAND",
+        "InstanceRole": "MASTER",
+        "InstanceType": "m5.xlarge",
+        "InstanceCount": 1,
+        "Configurations": []
+      }
+    ]
+  },
+  "Applications": [
+    {
+      "Name": "Hadoop"
+    },
+    {
+      "Name": "Hive"
+    }
+  ],
+  "Configurations": [
+    {
+      "Classification": "hive-site",
+      "Properties": {
+        "hive.metastore.client.factory.class": "com.amazonaws.glue.catalog.metastore.AWSGlueDataCatalogHiveClientFactory"
+      }
+    }
+  ],
+  "Steps": [
+    {
+      "Name": "Data migration",
+      "ActionOnFailure": "CANCEL_AND_WAIT",
+      "HadoopJarStep": {
+        "Jar": "s3://eu-west-1.elasticmapreduce/libs/script-runner/script-runner.jar",
+        "Args": ["s3://{bucket}/steps/staging_to_dwh.sh", "s3://{bucket}/staging", "s3://{bucket}/queries", "{env[DATABASE]}"]
+      }
+    }
+  ]
+}

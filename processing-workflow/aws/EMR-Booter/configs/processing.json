@@ -1,0 +1,75 @@
+{
+  "Name": "Processor",
+  "ReleaseLabel": "emr-5.21.0",
+  "LogUri": "s3://{event[Bucket]}/logs/processing_{date}",
+  "JobFlowRole": "EMR_EC2_DefaultRole",
+  "ServiceRole": "EMR_DefaultRole",
+  "VisibleToAllUsers": true,
+  "EbsRootVolumeSize": 30,
+  "Instances": {
+    "InstanceGroups": [
+      {
+        "Name": "Master",
+        "Market": "ON_DEMAND",
+        "InstanceRole": "MASTER",
+        "InstanceType": "m5.xlarge",
+        "InstanceCount": 1,
+        "Configurations": [],
+        "EbsConfiguration": {
+          "EbsBlockDeviceConfigs": [
+            {
+              "VolumeSpecification": {
+                "VolumeType": "gp2",
+                "SizeInGB": 20
+              },
+              "VolumesPerInstance": 1
+            }
+          ]
+        }
+      }
+    ],
+    "KeepJobFlowAliveWhenNoSteps": true,
+    "EmrManagedMasterSecurityGroup": "sg-0be5a45e727feeaad",
+    "EmrManagedSlaveSecurityGroup": "sg-00894327bc2c389ec"
+  },
+  "Applications": [
+    {
+      "Name": "Hadoop"
+    },
+    {
+      "Name": "Hive"
+    }
+  ],
+  "Steps": [
+    {
+      "Name": "Entrada-i Installer",
+      "ActionOnFailure": "CANCEL_AND_WAIT",
+      "HadoopJarStep": {
+        "Jar": "s3://eu-west-1.elasticmapreduce/libs/script-runner/script-runner.jar",
+        "Args": ["s3://{event[Bucket]}/steps/entrada-i-installer.sh", "s3://{event[Bucket]}/config.sh"]
+      }
+    },
+    {
+      "Name": "Processing Installer",
+      "ActionOnFailure": "CANCEL_AND_WAIT",
+      "HadoopJarStep": {
+        "Jar": "s3://eu-west-1.elasticmapreduce/libs/script-runner/script-runner.jar",
+        "Args": ["s3://{event[Bucket]}/steps/processing-installer.sh"]
+      }
+    },
+    {
+      "Name": "Process",
+      "ActionOnFailure": "CANCEL_AND_WAIT",
+      "HadoopJarStep": {
+        "Jar": "s3://eu-west-1.elasticmapreduce/libs/script-runner/script-runner.jar",
+        "Args": ["s3://{event[Bucket]}/steps/processing.sh"]
+      }
+    }
+  ],
+  "Tags": [
+    {
+      "Key": "aws:cloudformation:stack-name",
+      "Value": "{event[StackName]}"
+    }
+  ]
+}

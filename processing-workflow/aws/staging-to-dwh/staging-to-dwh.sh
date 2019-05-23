@@ -18,9 +18,11 @@
 #    along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 # Note this script needs to be used in an EMR cluster with Hive to work
-S3_DNS_STAGING=$1
-S3_DNS_QUERIES=$2
-DATABASE=$3
+S3_STAGING=$1
+S3_QUERIES=$2
+STAGING_TABLE=$3
+QUERIES_TABLE=$4
+DATABASE=$5
 
 # get values for today's date
 y=$(date -u "+%Y")
@@ -30,7 +32,7 @@ d=$(date -u "+%d")
 
 # Move all files in staging (except for the current day) to queries
 echo "Starting data migration"
-s3-dist-cp --src $S3_DNS_STAGING --dest $S3_DNS_QUERIES --groupBy '.*/(?!year=$y/month=$m/day=$d/)(y)ear=([0-9]+)/(m)onth=([0-9]+)/(d)ay=([0-9]+)/server=(.*)/.*(\.parquet)' --deleteOnSuccess
+s3-dist-cp --src $S3_STAGING --dest $S3_QUERIES --groupBy '.*/(?!year=$y/month=$m/day=$d/)(y)ear=([0-9]+)/(m)onth=([0-9]+)/(d)ay=([0-9]+)/server=(.*)/.*(\.parquet)' --deleteOnSuccess
 # The above groupBy regex merges and copies all files for every partition but ignores the current day
 echo "Data migration complete"
 
@@ -61,8 +63,8 @@ echo "Data migration complete"
 # in the filesystem.
 echo "Updating partitions"
 hive -e "
-ALTER TABLE $DATABASE.staging DROP PARTITION(year>'0', month>'0', day>'0', server>'0');
-MSCK REPAIR TABLE $DATABASE.staging;
-MSCK REPAIR TABLE $DATABASE.queries;
+ALTER TABLE $DATABASE.$STAGING_TABLE DROP PARTITION(year>'0', month>'0', day>'0', server>'0');
+MSCK REPAIR TABLE $DATABASE.$STAGING_TABLE;
+MSCK REPAIR TABLE $DATABASE.$QUERIES_TABLE;
 "
 echo "Done"

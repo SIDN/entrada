@@ -37,11 +37,19 @@
   ],
   "Steps": [
     {
-      "Name": "Data migration",
-      "ActionOnFailure": "CANCEL_AND_WAIT",
+      "Name": "DNS data migration",
+      "ActionOnFailure": "TERMINATE_CLUSTER",
       "HadoopJarStep": {
         "Jar": "s3://eu-west-1.elasticmapreduce/libs/script-runner/script-runner.jar",
-        "Args": ["s3://{bucket}/entrada/staging-to-dwh.sh", "s3://{bucket}/staging", "s3://{bucket}/queries", "{env[DATABASE]}"]
+        "Args": ["s3://{bucket}/entrada/staging-to-dwh.sh", "s3://{bucket}/staging", "s3://{bucket}/queries", "staging", "queries", "{env[DATABASE]}"]
+      }
+    },
+    {
+      "Name": "ICMP data migration",
+      "ActionOnFailure": "TERMINATE_CLUSTER",
+      "HadoopJarStep": {
+        "Jar": "s3://eu-west-1.elasticmapreduce/libs/script-runner/script-runner.jar",
+        "Args": ["s3://{bucket}/entrada/staging-to-dwh.sh", "s3://{bucket}/icmpstaging", "s3://{bucket}/icmpqueries", "icmpstaging", "icmpqueries", "{env[DATABASE]}"]
       }
     }
   ]

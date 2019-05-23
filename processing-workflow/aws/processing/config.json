@@ -1,0 +1,7 @@
+{
+  "processing_dir": "/mnt/processing/",
+  "home_dir": "/home/entrada/processing",
+  "bucket": "example-bucket",
+  "database": "example-database",
+  "input_structure": "date_nameserver"
+}

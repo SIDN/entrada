@@ -41,7 +41,7 @@
       "ActionOnFailure": "CANCEL_AND_WAIT",
       "HadoopJarStep": {
         "Jar": "s3://eu-west-1.elasticmapreduce/libs/script-runner/script-runner.jar",
-        "Args": ["s3://{bucket}/steps/staging_to_dwh.sh", "s3://{bucket}/staging", "s3://{bucket}/queries", "{env[DATABASE]}"]
+        "Args": ["s3://{bucket}/entrada/staging-to-dwh.sh", "s3://{bucket}/staging", "s3://{bucket}/queries", "{env[DATABASE]}"]
       }
     }
   ]

@@ -27,6 +27,7 @@ import errno
 import datetime
 import shutil
 import pathlib
+import sys
 
 from pathlib import Path
 from enum import Enum
@@ -130,7 +131,7 @@ def remove_zeroes(source_dir):
                             new_day = day.parents[0].joinpath('day=' + day.name[-1])
                             os.renames(str(day), new_day)
 
-                            
+
 def check_key(bucket: str, key: str):
     """Check if any object can be found by filtering the bucket with the given key.
 
@@ -629,7 +630,8 @@ async def main(
 
 
 if __name__ == '__main__':
-    config_file = Path(__file__).parents[0] / Path("processing_config.json")
+    home = sys.argv[1]
+    config_file = Path(home, "config.json")
     with config_file.open() as f:
         config = json.load(f)
     config.update(

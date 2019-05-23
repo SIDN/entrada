@@ -1,5 +1,5 @@
-## Scripts
-This project contains workflow scripts used to automate Entrada processing steps.
+## Processing-workflow
+This project contains programs which handle the Entrada processing workflow.
 
 ## License
 

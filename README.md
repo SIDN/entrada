@@ -1,7 +1,7 @@
 # entrada-aws
 Modified version of ENTRADA with a rewritten workflow made to be used in AWS.
 
-Although this release SHOULD be stable enough for a production environment it has not been tested enough to guarantee this, please submit any issues you encounter.
+Although this branch SHOULD be stable enough for a production environment it has not been tested enough to guarantee this, please submit any issues you encounter.
 
 ## Changes
 While fitting Entrada into AWS the system was altered in many ways. The main change is mostly moving away from directly using clusters. 

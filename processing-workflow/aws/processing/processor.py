@@ -645,6 +645,21 @@ if __name__ == '__main__':
     )
 
     while True:
-        if not asyncio.run(main(**config)):
-            time.sleep(60)
-            # If main returned true (found and processed files) then don't sleep since there might be more files.
+        if not Path(home, "tmp/").exists():
+            os.makedirs(Path(home, "tmp/"))
+        # Update geo ip database to ensure it exists.
+        subprocess.call(
+            [
+                "sh",
+                str_path(home, "entrada/run_update_geo_ip_db.sh"),
+                str_path(home, "tmp/"
+            ]
+        )
+
+        # Run processing for around 1-3 days before updating database again.
+        # The database gets updated once a week, but running this every few days
+        # will make sure it's up to date most of the time.
+        for _ in range(1000):
+            if not asyncio.run(main(**config)):
+                time.sleep(60)
+                # If main returned true (found and processed files) then don't sleep since there might be more files.

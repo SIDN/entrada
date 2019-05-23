@@ -24,9 +24,9 @@
 # Update the Maxmind GEO-IP databases
 #
 ############################################################
-
+TMP_DIR=$1
 MAXMIND_DIR=$TMP_DIR/maxmind
-#database are updated on the first Tuesday of each month. 
+#database are updated on the first Tuesday of each month.
 COUNTRY_URL=http://geolite.maxmind.com/download/geoip/database/GeoLite2-Country.mmdb.gz
 ASN_URL=http://geolite.maxmind.com/download/geoip/database/GeoLite2-ASN.tar.gz
 

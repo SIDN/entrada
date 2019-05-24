@@ -591,7 +591,7 @@ async def main(
         for nameserver in nameserver_list:
             await processing_queue.put(nameserver)
 
-        processor_count = 5
+        processor_count = 3
         await asyncio.gather(
             *[
                 processing_handler(

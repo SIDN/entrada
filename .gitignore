@@ -1,5 +1,6 @@
 .DS_Store
 .idea
+__pycache__
 pcap-to-parquet/target/
 dnslib4java/target/
 pcaplib4java/target/

@@ -644,9 +644,10 @@ if __name__ == '__main__':
         }
     )
 
+    if not Path(home, "tmp/").exists():
+        os.makedirs(Path(home, "tmp/"))
+
     while True:
-        if not Path(home, "tmp/").exists():
-            os.makedirs(Path(home, "tmp/"))
         # Update geo ip database to ensure it exists.
         subprocess.call(
             [
@@ -655,11 +656,17 @@ if __name__ == '__main__':
                 str_path(home, "tmp/")
             ]
         )
+        last_update = datetime.datetime.today().date()
 
-        # Run processing for around 1-3 days before updating database again.
-        # The database gets updated once a week, but running this every few days
-        # will make sure it's up to date most of the time.
-        for _ in range(1000):
+        while True:
             if not asyncio.run(main(**config)):
                 time.sleep(60)
                 # If main returned true (found and processed files) then don't sleep since there might be more files.
+
+            date = datetime.datetime.today().date()
+            is_thursday = date.weekday() == 3
+            is_first_of_month = date.day < 8
+            if is_thursday and is_first_of_month and last_update != date:
+                break
+                # The database gets updated the first tuesday each month, download it the first thursday of every month
+                # to guarantee it has been uploaded. Also make sure it hasn't already been downloaded today.

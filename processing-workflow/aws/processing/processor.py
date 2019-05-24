@@ -634,15 +634,6 @@ if __name__ == '__main__':
     config_file = Path(home, "config.json")
     with config_file.open() as f:
         config = json.load(f)
-    config.update(
-        {
-            # "processing_dir": "/mnt/processing/",
-            # "home_dir": Path(__file__).parents[0],
-            # "bucket": "pcap-processing-test",
-            # "database": "processing_test",
-            # "input_structure": "date_nameserver"
-        }
-    )
 
     if not Path(home, "tmp/").exists():
         os.makedirs(Path(home, "tmp/"))

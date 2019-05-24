@@ -636,11 +636,11 @@ if __name__ == '__main__':
         config = json.load(f)
     config.update(
         {
-            #"processing_dir": "/mnt/processing/",
-            #"home_dir": Path(__file__).parents[0],
-            #"bucket": "pcap-processing-test",
-            #"database": "processing_test",
-            #"input_structure": "date_nameserver"
+            # "processing_dir": "/mnt/processing/",
+            # "home_dir": Path(__file__).parents[0],
+            # "bucket": "pcap-processing-test",
+            # "database": "processing_test",
+            # "input_structure": "date_nameserver"
         }
     )
 
@@ -652,7 +652,7 @@ if __name__ == '__main__':
             [
                 "sh",
                 str_path(home, "entrada/run_update_geo_ip_db.sh"),
-                str_path(home, "tmp/"
+                str_path(home, "tmp/")
             ]
         )
 

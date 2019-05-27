@@ -654,10 +654,10 @@ if __name__ == '__main__':
                 time.sleep(60)
                 # If main returned true (found and processed files) then don't sleep since there might be more files.
 
-            date = datetime.datetime.today().date()
-            is_thursday = date.weekday() == 3
-            is_first_of_month = date.day < 8
-            if is_thursday and is_first_of_month and last_update != date:
+            today = datetime.datetime.today().date()
+            is_thursday = today.weekday() == 3
+            is_first_of_month = today.day < 8
+            if is_thursday and is_first_of_month and last_update != today:
                 break
                 # The database gets updated the first tuesday each month, download it the first thursday of every month
                 # to guarantee it has been uploaded. Also make sure it hasn't already been downloaded today.

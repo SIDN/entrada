@@ -523,9 +523,10 @@ async def main(
         log(f"Found {len(key_list)} files in input")
 
         # Clear old directories.
-        for obj in processed.iterdir():
-            if obj.is_dir():
-                shutil.rmtree(obj)
+        if processed.exists():
+            for obj in processed.iterdir():
+                if obj.is_dir():
+                    shutil.rmtree(obj)
 
         update(str(tmp))
 

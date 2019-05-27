@@ -84,12 +84,13 @@ def clean_key_parent(key: pathlib.Path):
     return nameserver.replace("-", "")
 
 
-def update(tmp: str):
+def update(home_dir: pathlib.Path, tmp: str):
     """Update data used for enriching when processing pcap files.
 
     Uses entrada to find ip-addresses of OpenDNS and Google resolvers
 
     Args:
+        home_dir: The home directory of entrada processing
         tmp: The location used as tmp storage for entrada
     """
 
@@ -97,9 +98,9 @@ def update(tmp: str):
     subprocess.call([
         "java",
         "-cp",
-        str_path("entrada/entrada-latest.jar"),
+        str_path(home_dir, "entrada/entrada-latest.jar"),
         "nl.sidn.pcap.Update",
-        str_path("entrada/entrada-settings.properties"),
+        str_path(home_dir, "entrada/entrada-settings.properties"),
         tmp
     ])
 
@@ -422,7 +423,7 @@ def find_keys(bucket_name):
     return key_list
 
 
-def process(nameserver: str, processing, processed, tmp):
+def process(nameserver: str, home_dir, processing, processed, tmp):
     """Use ENTRADA to process all pcap files for the nameserver given.
 
     When run in parallel logs get jumbled if they are continuously printed, therefore output is saved and printed in one
@@ -431,6 +432,7 @@ def process(nameserver: str, processing, processed, tmp):
     Args:
         nameserver: The nameserver to be processed.
 
+        home_dir:
         processing:
         processed:
         tmp:
@@ -441,10 +443,10 @@ def process(nameserver: str, processing, processed, tmp):
         [
             "java",
             "-cp",
-            str_path("entrada/entrada-latest.jar"),
+            str_path(home_dir, "entrada/entrada-latest.jar"),
             "nl.sidn.pcap.Main",
             nameserver,
-            str_path("entrada/entrada-settings.properties"),
+            str_path(home_dir, "entrada/entrada-settings.properties"),
             str(processing), str(processed),
             str(tmp)
         ]
@@ -528,7 +530,7 @@ async def main(
                 if obj.is_dir():
                     shutil.rmtree(obj)
 
-        update(str(tmp))
+        update(home_dir, str(tmp))
 
         # -- --
         # -- Download preparations --
@@ -596,7 +598,7 @@ async def main(
         await asyncio.gather(
             *[
                 processing_handler(
-                    processing_queue, processing, processed, tmp
+                    processing_queue, home_dir, processing, processed, tmp
                 ) for _ in range(processor_count)
             ]  # Same principle as when downloading.
         )

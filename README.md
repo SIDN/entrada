@@ -17,6 +17,6 @@ Although a large part of the resources used can be created with the cloudformati
 
 1. Create a bucket which will be used for storage of data and programs (an existing bucket can be used as well).
 2. Create a Glue Data Catalog database and create tables in Athena using the Sql statements provided in processing-workflow/database.
-3. Create the following directories in the top level of your bucket, "archive". "athena", "entrada", "icmp", "input", "queries" and "staging".
+3. Create the following directories in the top level of your bucket, "archive". "athena", "entrada", "icmpqueries", "icmpstaging", "input", "queries" and "staging".
 4. Download and upload the contents of the release to "s3://bucket/entrada/"
 5. Set up lifecycle rules to delete archived pcap files, they are archived using glacier which has a storage time of 90 days no matter when removed that is the minimum amount to pay.

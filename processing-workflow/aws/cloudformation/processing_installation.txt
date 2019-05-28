@@ -130,8 +130,8 @@ echo Installing Boto3 and AWS CLI
 python3.7 -m pip install boto3 awscli
 
 echo Configuring AWS CLI
-aws configure set aws_access_key_id AKIA4JXOLSZ4GKVAYV7M
-aws configure set aws_secret_access_key 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
+aws configure set aws_access_key_id $KEY_ID
+aws configure set aws_secret_access_key $KEY_SECRET
 aws configure set region eu-west-1
 
 echo Installing Java

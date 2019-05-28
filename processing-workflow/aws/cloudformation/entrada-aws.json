@@ -1,0 +1,871 @@
+{
+    "AWSTemplateFormatVersion": "2010-09-09",
+    "Description": "An AWS Serverless Specification template describing your function.",
+    "Resources": {
+        "EMRBooter": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+                "Code": {
+                    "S3Bucket": {
+                        "Ref": "Bucket"
+                    },
+                    "S3Key": "entrada/EMR-Booter.zip"
+                },
+                "Environment": {
+                    "Variables": {
+                        "DATABASE": {
+                            "Ref": "Database"
+                        },
+                        "EMR_EC2_DefaultRole": {
+                            "Ref": "EMREC2DefaultRole"
+                        },
+                        "EMR_DefaultRole": {
+                            "Ref": "EMRDefaultRole"
+                        }
+                    }
+                },
+                "Description": "",
+                "MemorySize": 128,
+                "Handler": "booter.main",
+                "Role": {
+                    "Fn::GetAtt": [
+                        "BooterRole",
+                        "Arn"
+                    ]
+                },
+                "Timeout": 3,
+                "Runtime": "python3.7"
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "e4b4a014-c1ea-4649-a414-06b5ed554e85"
+                }
+            }
+        },
+        "BooterRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "Policies": [
+                    {
+                        "PolicyName": "EMRFullAccess_BasicLambda",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Action": [
+                                        "logs:CreateLogGroup",
+                                        "logs:CreateLogStream",
+                                        "logs:PutLogEvents",
+                                        "cloudwatch:*",
+                                        "cloudformation:CreateStack",
+                                        "cloudformation:DescribeStackEvents",
+                                        "ec2:AuthorizeSecurityGroupIngress",
+                                        "ec2:AuthorizeSecurityGroupEgress",
+                                        "ec2:CancelSpotInstanceRequests",
+                                        "ec2:CreateRoute",
+                                        "ec2:CreateSecurityGroup",
+                                        "ec2:CreateTags",
+                                        "ec2:DeleteRoute",
+                                        "ec2:DeleteTags",
+                                        "ec2:DeleteSecurityGroup",
+                                        "ec2:DescribeAvailabilityZones",
+                                        "ec2:DescribeAccountAttributes",
+                                        "ec2:DescribeInstances",
+                                        "ec2:DescribeKeyPairs",
+                                        "ec2:DescribeRouteTables",
+                                        "ec2:DescribeSecurityGroups",
+                                        "ec2:DescribeSpotInstanceRequests",
+                                        "ec2:DescribeSpotPriceHistory",
+                                        "ec2:DescribeSubnets",
+                                        "ec2:DescribeVpcAttribute",
+                                        "ec2:DescribeVpcs",
+                                        "ec2:DescribeRouteTables",
+                                        "ec2:DescribeNetworkAcls",
+                                        "ec2:CreateVpcEndpoint",
+                                        "ec2:ModifyImageAttribute",
+                                        "ec2:ModifyInstanceAttribute",
+                                        "ec2:RequestSpotInstances",
+                                        "ec2:RevokeSecurityGroupEgress",
+                                        "ec2:RunInstances",
+                                        "ec2:TerminateInstances",
+                                        "elasticmapreduce:*",
+                                        "iam:GetPolicy",
+                                        "iam:GetPolicyVersion",
+                                        "iam:ListRoles",
+                                        "iam:PassRole",
+                                        "kms:List*",
+                                        "s3:*",
+                                        "sdb:*",
+                                        "support:CreateCase",
+                                        "support:DescribeServices",
+                                        "support:DescribeSeverityLevels"
+                                    ],
+                                    "Resource": "*",
+                                    "Effect": "Allow"
+                                },
+                                {
+                                    "Action": "iam:CreateServiceLinkedRole",
+                                    "Resource": "*",
+                                    "Effect": "Allow",
+                                    "Condition": {
+                                        "StringLike": {
+                                            "iam:AWSServiceName": [
+                                                "elasticmapreduce.amazonaws.com",
+                                                "elasticmapreduce.amazonaws.com.cn"
+                                            ]
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ],
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Action": [
+                                "sts:AssumeRole"
+                            ],
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "lambda.amazonaws.com"
+                                ]
+                            }
+                        }
+                    ]
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "77454013-1f1b-4326-994a-e15a2f8af895"
+                }
+            }
+        },
+        "StagingToDWH": {
+            "Type": "AWS::Events::Rule",
+            "Properties": {
+                "Description": "Triggers the DWH Import bootstrap, 04:00 every day",
+                "ScheduleExpression": "cron(0 4 * * ? *)",
+                "Targets": [
+                    {
+                        "Input": {
+                            "Fn::Join": [
+                                "",
+                                [
+                                    "{\"Mode\":\"staging-to-dwh\",\"Bucket\":\"",
+                                    {
+                                        "Ref": "Bucket"
+                                    },
+                                    "\",\"EMRconfig\":{\"Name\":\"",
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    },
+                                    "-Staging-to-DWH-migrator\", \"EC2KeyName\":\"",
+                                    {
+                                        "Ref": "KeyPair"
+                                    },
+                                    "\"}}"
+                                ]
+                            ]
+                        },
+                        "Id": "DwhImportBootstrap",
+                        "Arn": {
+                            "Fn::GetAtt": [
+                                "EMRBooter",
+                                "Arn"
+                            ]
+                        }
+                    }
+                ],
+                "Name": {
+                    "Fn::Join": [
+                        "-",
+                        [
+                            {
+                                "Ref": "AWS::StackName"
+                            },
+                            "Staging-to-DWH-Schedule"
+                        ]
+                    ]
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "66a0d3ad-e4ff-4aaa-8d4c-82daf5839559"
+                }
+            }
+        },
+        "StagingToDWHPermission": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+                "Action": "lambda:invokeFunction",
+                "Principal": "events.amazonaws.com",
+                "FunctionName": {
+                    "Ref": "EMRBooter"
+                },
+                "SourceArn": {
+                    "Fn::GetAtt": [
+                        "StagingToDWH",
+                        "Arn"
+                    ]
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "a652d597-5ce8-4f52-a405-a325e9241726"
+                }
+            }
+        },
+        "EMREC2DefaultRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "elasticmapreduce.amazonaws.com"
+                                ]
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": "AmazonElasticMapReduceforEC2Role",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Resource": "*",
+                                    "Action": [
+                                        "cloudwatch:*",
+                                        "dynamodb:*",
+                                        "ec2:Describe*",
+                                        "elasticmapreduce:Describe*",
+                                        "elasticmapreduce:ListBootstrapActions",
+                                        "elasticmapreduce:ListClusters",
+                                        "elasticmapreduce:ListInstanceGroups",
+                                        "elasticmapreduce:ListInstances",
+                                        "elasticmapreduce:ListSteps",
+                                        "kinesis:CreateStream",
+                                        "kinesis:DeleteStream",
+                                        "kinesis:DescribeStream",
+                                        "kinesis:GetRecords",
+                                        "kinesis:GetShardIterator",
+                                        "kinesis:MergeShards",
+                                        "kinesis:PutRecord",
+                                        "kinesis:SplitShard",
+                                        "rds:Describe*",
+                                        "s3:*",
+                                        "sdb:*",
+                                        "sns:*",
+                                        "sqs:*",
+                                        "glue:CreateDatabase",
+                                        "glue:UpdateDatabase",
+                                        "glue:DeleteDatabase",
+                                        "glue:GetDatabase",
+                                        "glue:GetDatabases",
+                                        "glue:CreateTable",
+                                        "glue:UpdateTable",
+                                        "glue:DeleteTable",
+                                        "glue:GetTable",
+                                        "glue:GetTables",
+                                        "glue:GetTableVersions",
+                                        "glue:CreatePartition",
+                                        "glue:BatchCreatePartition",
+                                        "glue:UpdatePartition",
+                                        "glue:DeletePartition",
+                                        "glue:BatchDeletePartition",
+                                        "glue:GetPartition",
+                                        "glue:GetPartitions",
+                                        "glue:BatchGetPartition",
+                                        "glue:CreateUserDefinedFunction",
+                                        "glue:UpdateUserDefinedFunction",
+                                        "glue:DeleteUserDefinedFunction",
+                                        "glue:GetUserDefinedFunction",
+                                        "glue:GetUserDefinedFunctions"
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "c0fa9f24-c457-48e9-91ee-4bc185c2e8c2"
+                }
+            }
+        },
+        "EMRDefaultRole": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+                "AssumeRolePolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                        {
+                            "Effect": "Allow",
+                            "Principal": {
+                                "Service": [
+                                    "elasticmapreduce.amazonaws.com"
+                                ]
+                            },
+                            "Action": "sts:AssumeRole"
+                        }
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": "AmazonElasticMapReduceRole",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Resource": "*",
+                                    "Action": [
+                                        "ec2:AuthorizeSecurityGroupEgress",
+                                        "ec2:AuthorizeSecurityGroupIngress",
+                                        "ec2:CancelSpotInstanceRequests",
+                                        "ec2:CreateNetworkInterface",
+                                        "ec2:CreateSecurityGroup",
+                                        "ec2:CreateTags",
+                                        "ec2:DeleteNetworkInterface",
+                                        "ec2:DeleteSecurityGroup",
+                                        "ec2:DeleteTags",
+                                        "ec2:DescribeAvailabilityZones",
+                                        "ec2:DescribeAccountAttributes",
+                                        "ec2:DescribeDhcpOptions",
+                                        "ec2:DescribeImages",
+                                        "ec2:DescribeInstanceStatus",
+                                        "ec2:DescribeInstances",
+                                        "ec2:DescribeKeyPairs",
+                                        "ec2:DescribeNetworkAcls",
+                                        "ec2:DescribeNetworkInterfaces",
+                                        "ec2:DescribePrefixLists",
+                                        "ec2:DescribeRouteTables",
+                                        "ec2:DescribeSecurityGroups",
+                                        "ec2:DescribeSpotInstanceRequests",
+                                        "ec2:DescribeSpotPriceHistory",
+                                        "ec2:DescribeSubnets",
+                                        "ec2:DescribeTags",
+                                        "ec2:DescribeVpcAttribute",
+                                        "ec2:DescribeVpcEndpoints",
+                                        "ec2:DescribeVpcEndpointServices",
+                                        "ec2:DescribeVpcs",
+                                        "ec2:DetachNetworkInterface",
+                                        "ec2:ModifyImageAttribute",
+                                        "ec2:ModifyInstanceAttribute",
+                                        "ec2:RequestSpotInstances",
+                                        "ec2:RevokeSecurityGroupEgress",
+                                        "ec2:RunInstances",
+                                        "ec2:TerminateInstances",
+                                        "ec2:DeleteVolume",
+                                        "ec2:DescribeVolumeStatus",
+                                        "ec2:DescribeVolumes",
+                                        "ec2:DetachVolume",
+                                        "iam:GetRole",
+                                        "iam:GetRolePolicy",
+                                        "iam:ListInstanceProfiles",
+                                        "iam:ListRolePolicies",
+                                        "iam:PassRole",
+                                        "s3:CreateBucket",
+                                        "s3:Get*",
+                                        "s3:List*",
+                                        "sdb:BatchPutAttributes",
+                                        "sdb:Select",
+                                        "sqs:CreateQueue",
+                                        "sqs:Delete*",
+                                        "sqs:GetQueue*",
+                                        "sqs:PurgeQueue",
+                                        "sqs:ReceiveMessage",
+                                        "cloudwatch:PutMetricAlarm",
+                                        "cloudwatch:DescribeAlarms",
+                                        "cloudwatch:DeleteAlarms",
+                                        "application-autoscaling:RegisterScalableTarget",
+                                        "application-autoscaling:DeregisterScalableTarget",
+                                        "application-autoscaling:PutScalingPolicy",
+                                        "application-autoscaling:DeleteScalingPolicy",
+                                        "application-autoscaling:Describe*"
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": "iam:CreateServiceLinkedRole",
+                                    "Resource": "arn:aws:iam::*:role/aws-service-role/spot.amazonaws.com/AWSServiceRoleForEC2Spot*",
+                                    "Condition": {
+                                        "StringLike": {
+                                            "iam:AWSServiceName": "spot.amazonaws.com"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "d70d0562-0442-43c2-b28d-aed8d7607c23"
+                }
+            }
+        },
+        "Processor": {
+            "Type": "AWS::EC2::Instance",
+            "Properties": {
+                "InstanceType": {
+                    "Ref": "ProcessorInstanceType"
+                },
+                "KeyName": {
+                    "Ref": "KeyPair"
+                },
+                "ImageId": {
+                    "Ref": "AMI"
+                },
+                "AvailabilityZone": {
+                    "Ref": "ProcessingAZ"
+                },
+                "Tags": [
+                    {
+                        "Key": "Name",
+                        "Value": {
+                            "Fn::Join": [
+                                " ",
+                                [
+                                    {
+                                        "Ref": "AWS::StackName"
+                                    },
+                                    "Processor"
+                                ]
+                            ]
+                        }
+                    }
+                ],
+                "BlockDeviceMappings": [
+                    {
+                        "DeviceName": "/dev/sda1",
+                        "Ebs": {
+                            "VolumeSize": "16",
+                            "VolumeType": "gp2",
+                            "DeleteOnTermination": "true"
+                        }
+                    },
+                    {
+                        "DeviceName": "/dev/sdb",
+                        "Ebs": {
+                            "VolumeSize": "8",
+                            "VolumeType": "gp2",
+                            "DeleteOnTermination": "true"
+                        }
+                    }
+                ],
+                "UserData": {
+                    "Fn::Base64": {
+                        "Fn::Join": [
+                            "",
+                            [
+                                "#!bin/bash\n",
+                                "useradd -m entrada\n",
+                                "apt update -y\n",
+                                "apt install zip unzip -y\n",
+                                "\n",
+                                "echo Downloading Python prerequisites\n",
+                                "apt install build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev -y\n",
+                                "\n",
+                                "cd /home/entrada\n",
+                                "echo Downloading Python Source\n",
+                                "wget https://www.python.org/ftp/python/3.7.3/Python-3.7.3.tar.xz\n",
+                                "tar -xf Python-3.7.3.tar.xz\n",
+                                "cd Python-3.7.3/\n",
+                                "\n",
+                                "echo Compiling and optimizing Python\n",
+                                "./configure # --enable-optimizations\n",
+                                "make -j\n",
+                                "make altinstall\n",
+                                "\n",
+                                "echo Installing Boto3 and AWS CLI\n",
+                                "python3.7 -m pip install boto3 awscli\n",
+                                "\n",
+                                "echo Configuring AWS CLI\n",
+                                "aws configure set aws_access_key_id ",
+                                {
+                                    "Ref": "ProcessingKey"
+                                },
+                                "\n",
+                                "aws configure set aws_secret_access_key ",
+                                {
+                                    "Fn::GetAtt": [
+                                        "ProcessingKey",
+                                        "SecretAccessKey"
+                                    ]
+                                },
+                                "\n",
+                                "aws configure set region ",
+                                {
+                                    "Ref": "AWS::Region"
+                                },
+                                "\n",
+                                "\n",
+                                "echo Installing Java\n",
+                                "apt-get install default-jre -y\n",
+                                "\n",
+                                "echo Setting up secondary disk\n",
+                                "echo 'type=83' | sfdisk /dev/nvme0n1 \n",
+                                "mkfs.ext4 /dev/nvme0n1p1 \n",
+                                "mkdir /mnt/processing \n",
+                                "echo /dev/nvme0n1p1 /mnt/processing ext4 defaults 0 2 >> /etc/fstab \n",
+                                "mount -a\n",
+                                "\n",
+                                "echo Creating processing configuration\n",
+                                "mkdir /home/entrada/processing\n",
+                                "echo \"{",
+                                "\\\"bucket\\\":\\\"",
+                                {
+                                    "Ref": "Bucket"
+                                },
+                                "\\\",",
+                                "\\\"database\\\":\\\"",
+                                {
+                                    "Ref": "Database"
+                                },
+                                "\\\",",
+                                "\\\"input_structure\\\":\\\"",
+                                {
+                                    "Ref": "InputStructure"
+                                },
+                                "\\\",",
+                                "\\\"home_dir\\\":\\\"/home/entrada/processing\\\",",
+                                "\\\"processing_dir\\\":\\\"/mnt/processing\\\"",
+                                "}\"",
+                                " > /home/entrada/processing/config.json \n",
+                                "\n",
+                                "echo Downloading Entrada AWS Processor\n",
+                                "cd /home/entrada/processing \n",
+                                "aws s3 cp s3://",
+                                {
+                                    "Ref": "Bucket"
+                                },
+                                "/entrada/processing.zip ./processing.zip \n",
+                                "unzip ./processing.zip \n",
+                                "cp processor.py /usr/bin/entrada_processor.py \n",
+                                "chmod +x /usr/bin/entrada_processor.py\n",
+                                "\n",
+                                "echo Creating unit file entrada.service\n",
+                                "printf \"",
+                                "[Unit]\n",
+                                "Description=Entrada processing service.\n\n",
+                                "[Service]\n",
+                                "Type=simple\n",
+                                "ExecStart=/usr/local/bin/python3.7 -u /usr/bin/entrada_processor.py /home/entrada/processing\n\n",
+                                "[Install]\n",
+                                "WantedBy=multi-user.target\n",
+                                "\" > /etc/systemd/system/entrada.service\n",
+                                "\n",
+                                "systemctl start entrada.service \n",
+                                "systemctl enable entrada.service \n",
+                                "\n",
+                                "echo Giving Entrada ownership over relevant directories\n",
+                                "chown entrada /home/entrada/processing -R\n",
+                                "chown entrada /mnt/processing -R\n",
+                                "\n"
+                            ]
+                        ]
+                    }
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "a25df612-4092-47e1-9904-4d2e4d7d51f9"
+                }
+            }
+        },
+        "ProcessingUser": {
+            "Type": "AWS::IAM::User",
+            "Properties": {
+                "UserName": {
+                    "Fn::Join": [
+                        "_",
+                        [
+                            {
+                                "Ref": "AWS::StackName"
+                            },
+                            "Processing_User"
+                        ]
+                    ]
+                },
+                "Policies": [
+                    {
+                        "PolicyName": "EntradaProcessing",
+                        "PolicyDocument": {
+                            "Version": "2012-10-17",
+                            "Statement": [
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "s3:GetBucket*",
+                                        "s3:GetObject*",
+                                        "s3:ListBucket*",
+                                        "s3:PutObject*",
+                                        "s3:DeleteObject*"
+                                    ],
+                                    "Resource": [
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:aws:s3:::",
+                                                    {
+                                                        "Ref": "Bucket"
+                                                    }
+                                                ]
+                                            ]
+                                        },
+                                        {
+                                            "Fn::Join": [
+                                                "",
+                                                [
+                                                    "arn:aws:s3:::",
+                                                    {
+                                                        "Ref": "Bucket"
+                                                    },
+                                                    "/*"
+                                                ]
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "Effect": "Allow",
+                                    "Action": [
+                                        "athena:StartQueryExecution"
+                                    ],
+                                    "Resource": [
+                                        "*"
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                ]
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "9e8a936d-72e0-43eb-8b16-359c92360b3d"
+                }
+            }
+        },
+        "ProcessingKey": {
+            "Type": "AWS::IAM::AccessKey",
+            "Properties": {
+                "UserName": {
+                    "Ref": "ProcessingUser"
+                }
+            },
+            "Metadata": {
+                "AWS::CloudFormation::Designer": {
+                    "id": "3b149f91-a7cb-4b82-a2d7-ae0eed51e493"
+                }
+            }
+        }
+    },
+    "Metadata": {
+        "AWS::CloudFormation::Designer": {
+            "77454013-1f1b-4326-994a-e15a2f8af895": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 330,
+                    "y": 240
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "e4b4a014-c1ea-4649-a414-06b5ed554e85": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 210,
+                    "y": 240
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "66a0d3ad-e4ff-4aaa-8d4c-82daf5839559": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 210,
+                    "y": 120
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "a652d597-5ce8-4f52-a405-a325e9241726": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 210,
+                    "y": 60
+                },
+                "z": 1,
+                "embeds": [],
+                "isassociatedwith": [
+                    "e4b4a014-c1ea-4649-a414-06b5ed554e85"
+                ]
+            },
+            "c0fa9f24-c457-48e9-91ee-4bc185c2e8c2": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 270,
+                    "y": 360
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "d70d0562-0442-43c2-b28d-aed8d7607c23": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 210,
+                    "y": 360
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "9e8a936d-72e0-43eb-8b16-359c92360b3d": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": -150,
+                    "y": 240
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "3b149f91-a7cb-4b82-a2d7-ae0eed51e493": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": -30,
+                    "y": 240
+                },
+                "z": 1,
+                "embeds": []
+            },
+            "a25df612-4092-47e1-9904-4d2e4d7d51f9": {
+                "size": {
+                    "width": 60,
+                    "height": 60
+                },
+                "position": {
+                    "x": 90,
+                    "y": 240
+                },
+                "z": 1,
+                "embeds": []
+            }
+        },
+        "AWS::CloudFormation::Interface": {
+            "ParameterGroups": [
+                {
+                    "Label": {
+                        "default": "Resource Configuration"
+                    },
+                    "Parameters": [
+                        "ProcessingAZ",
+                        "ProcessorInstanceType",
+                        "AMI",
+                        "KeyPair"
+                    ]
+                },
+                {
+                    "Label": {
+                        "default": "Processing Configuration"
+                    },
+                    "Parameters": [
+                        "ProcessingLink",
+                        "InputStructure",
+                        "Bucket",
+                        "Database"
+                    ]
+                }
+            ],
+            "ParameterLabels": {
+                "ProcessingAZ": {
+                    "default": "Processing Availability Zone"
+                },
+                "AMI": {
+                    "default": "Ubuntu 18 AMI Id"
+                },
+                "KeyPair": {
+                    "default": "EC2 Key Pair"
+                },
+                "InputStructure": {
+                    "default": "Input Structure"
+                },
+                "ProcessorInstanceType": {
+                    "default": "Processor Instance Type"
+                }
+            }
+        }
+    },
+    "Parameters": {
+        "InputStructure": {
+            "Type": "String",
+            "Description": "The directory structure used in your input folder, eg \"input/nameserver/files\" or \"input/date/nameserver/files\"",
+            "AllowedValues": [
+                "nameserver",
+                "date_nameserver"
+            ]
+        },
+        "ProcessorInstanceType": {
+            "Type": "String",
+            "Description": "The EC2 instance type to use for processing, default: m5.large",
+            "Default": "m5.large"
+        },
+        "ProcessingAZ": {
+            "Type": "AWS::EC2::AvailabilityZone::Name",
+            "Description": "The Availability zone to create the processing instance in"
+        },
+        "KeyPair": {
+            "Type": "AWS::EC2::KeyPair::KeyName",
+            "Description": "Name of the keypair to use"
+        },
+        "Bucket": {
+            "Type": "String",
+            "Description": "The name of the S3 bucket where data and required code will be stored"
+        },
+        "Database": {
+            "Type": "String",
+            "Description": "The name of the database of which to use"
+        },
+        "AMI": {
+            "Type": "AWS::EC2::Image::Id",
+            "Description": "The Id for an Ubuntu 18 AMI in your region"
+        }
+    }
+}

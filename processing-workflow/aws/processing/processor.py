@@ -410,6 +410,7 @@ def update_metastore(database: str, bucket: str):
     except Exception as e:
         sys.stderr.write(f"Failed to update metastore with error: {e}\n")
 
+
 def find_keys(bucket_name):
     """Find and return any pcap files inside "{bucket}/input".
 

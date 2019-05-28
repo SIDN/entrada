@@ -387,19 +387,28 @@ def update_metastore(database: str, bucket: str):
     """
     athena = boto3.client("athena")
 
-    athena.start_query_execution(
-        QueryString=f"MSCK REPAIR TABLE {database}.staging",
-        ResultConfiguration={
-            "OutputLocation": f"s3://{bucket}/athena/processing_update/"
-        }
-    )
-    athena.start_query_execution(
-        QueryString=f"MSCK REPAIR TABLE {database}.icmp",
-        ResultConfiguration={
-            "OutputLocation": f"s3://{bucket}/athena/processing_update/"
-        }
-    )
+    try:
+        athena.start_query_execution(
+            QueryString=f"MSCK REPAIR TABLE {database}.staging",
+            ResultConfiguration={
+                "OutputLocation": f"s3://{bucket}/athena/processing_update/"
+            }
+        )
 
+        athena.start_query_execution(
+            QueryString=f"MSCK REPAIR TABLE {database}.icmp",
+            ResultConfiguration={
+                "OutputLocation": f"s3://{bucket}/athena/processing_update/"
+            }
+        )
+    except athena.exceptions.InvalidRequestException as e:
+        sys.stderr.write(
+            f"Failed to update metastore with error: {e}\n" +
+            "This is usually caused by an invalid database name, " +
+            "please check your configuration is correct.\n"
+        )
+    except Exception as e:
+        sys.stderr.write(f"Failed to update metastore with error: {e}\n")
 
 def find_keys(bucket_name):
     """Find and return any pcap files inside "{bucket}/input".

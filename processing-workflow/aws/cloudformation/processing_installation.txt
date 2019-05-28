@@ -1,0 +1,175 @@
+The json formatted code in the template:
+[
+    "#!bin/bash\n",
+    "useradd -m entrada\n",
+    "apt update -y\n",
+    "apt install zip unzip -y\n",
+    "\n",
+    "echo Downloading Python prerequisites\n",
+    "apt install build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev -y\n",
+    "\n",
+    "cd /home/entrada\n",
+    "echo Downloading Python Source\n",
+    "wget https://www.python.org/ftp/python/3.7.3/Python-3.7.3.tar.xz\n",
+    "tar -xf Python-3.7.3.tar.xz\n",
+    "cd Python-3.7.3/\n",
+    "\n",
+    "echo Compiling and optimizing Python\n",
+    "./configure # --enable-optimizations\n",
+    "make -j\n",
+    "make altinstall\n",
+    "\n",
+    "echo Installing Boto3 and AWS CLI\n",
+    "python3.7 -m pip install boto3 awscli\n",
+    "\n",
+    "echo Configuring AWS CLI\n",
+    "aws configure set aws_access_key_id ",
+    {
+        "Ref": "ProcessingKey"
+    },
+    "\n",
+    "aws configure set aws_secret_access_key ",
+    {
+        "Fn::GetAtt": [
+            "ProcessingKey",
+            "SecretAccessKey"
+        ]
+    },
+    "\n",
+    "aws configure set region ",
+    {
+        "Ref": "AWS::Region"
+    },
+    "\n",
+    "\n",
+    "echo Installing Java\n",
+    "apt-get install default-jre -y\n",
+    "\n",
+    "echo Setting up secondary disk\n",
+    "echo 'type=83' | sfdisk /dev/nvme0n1 \n",
+    "mkfs.ext4 /dev/nvme0n1p1 \n",
+    "mkdir /mnt/processing \n",
+    "echo /dev/nvme0n1p1 /mnt/processing ext4 defaults 0 2 >> /etc/fstab \n",
+    "mount -a\n",
+    "\n",
+    "echo Creating processing configuration\n",
+    "mkdir /home/entrada/processing\n",
+    "echo \"{",
+    "\\\"bucket\\\":\\\"",
+    {
+        "Ref": "Bucket"
+    },
+    "\\\",",
+    "\\\"database\\\":\\\"",
+    {
+        "Ref": "Database"
+    },
+    "\\\",",
+    "\\\"input_structure\\\":\\\"",
+    {
+        "Ref": "InputStructure"
+    },
+    "\\\",",
+    "\\\"home_dir\\\":\\\"/home/entrada/processing\\\",",
+    "\\\"processing_dir\\\":\\\"/mnt/processing\\\"",
+    "}\"",
+    " > /home/entrada/processing/config.json \n",
+    "\n",
+    "echo Downloading Entrada AWS Processor\n",
+    "cd /home/entrada/processing \n",
+    "aws s3 cp s3://",
+    {
+        "Ref": "Bucket"
+    },
+    "/entrada/processing.zip ./processing.zip \n",
+    "unzip ./processing.zip \n",
+    "cp processor.py /usr/bin/entrada_processor.py \n",
+    "chmod +x /usr/bin/entrada_processor.py\n",
+    "\n",
+    "echo Creating unit file entrada.service\n",
+    "printf \"",
+    "[Unit]\n",
+    "Description=Entrada processing service.\n\n",
+    "[Service]\n",
+    "Type=simple\n",
+    "ExecStart=/usr/local/bin/python3.7 -u /usr/bin/entrada_processor.py /home/entrada/processing\n\n",
+    "[Install]\n",
+    "WantedBy=multi-user.target\n",
+    "\" > /etc/systemd/system/entrada.service\n",
+    "\n",
+    "systemctl start entrada.service \n",
+    "systemctl enable entrada.service \n",
+    "\n",
+    "echo Giving Entrada ownership over relevant directories\n",
+    "chown entrada /home/entrada/processing -R\n",
+    "chown entrada /mnt/processing -R\n",
+    "\n"
+]
+
+bash equivalent:
+#!bin/bash
+useradd -m entrada
+apt update -y
+apt install zip unzip -y
+
+echo Downloading Python prerequisites
+apt install build-essential zlib1g-dev libncurses5-dev libgdbm-dev libnss3-dev libssl-dev libreadline-dev libffi-dev -y
+
+cd /home/entrada
+echo Downloading Python Source
+wget https://www.python.org/ftp/python/3.7.3/Python-3.7.3.tar.xz
+tar -xf Python-3.7.3.tar.xz
+cd Python-3.7.3/
+
+echo Compiling and optimizing Python
+./configure # --enable-optimizations
+make -j
+make altinstall
+
+echo Installing Boto3 and AWS CLI
+python3.7 -m pip install boto3 awscli
+
+echo Configuring AWS CLI
+aws configure set aws_access_key_id AKIA4JXOLSZ4GKVAYV7M
+aws configure set aws_secret_access_key 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
+aws configure set region eu-west-1
+
+echo Installing Java
+apt-get install default-jre -y
+
+echo Setting up secondary disk
+echo 'type=83' | sfdisk /dev/nvme0n1
+mkfs.ext4 /dev/nvme0n1p1
+mkdir /mnt/processing
+echo /dev/nvme0n1p1 /mnt/processing ext4 defaults 0 2 >> /etc/fstab
+mount -a
+
+echo Creating processing configuration
+mkdir /home/entrada/processing
+echo "{\"bucket\":\"pcap-processing-test\",\"database\":\"processing_test\",\"input_structure\":\"date_nameserver\",\"home_dir\":\"/home/entrada/processing\",\"processing_dir\":\"/mnt/processing\"}" > /home/entrada/processing/config.json
+
+echo Downloading Entrada AWS Processor
+cd /home/entrada/processing
+aws s3 cp s3://pcap-processing-test/entrada/processing.zip ./processing.zip
+unzip ./processing.zip
+cp processor.py /usr/bin/entrada_processor.py
+chmod +x /usr/bin/entrada_processor.py
+
+echo Creating unit file entrada.service
+printf "[Unit]
+Description=Entrada processing service.
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/python3.7 -u /usr/bin/entrada_processor.py /home/entrada/processing
+
+[Install]
+WantedBy=multi-user.target
+" > /etc/systemd/system/entrada.service
+
+systemctl start entrada.service
+systemctl enable entrada.service
+
+echo Giving Entrada ownership over relevant directories
+chown entrada /home/entrada/processing -R
+chown entrada /mnt/processing -R

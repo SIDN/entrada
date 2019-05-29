@@ -146,7 +146,7 @@ mount -a
 
 echo Creating processing configuration
 mkdir /home/entrada/processing
-echo "{\"bucket\":\"pcap-processing-test\",\"database\":\"processing_test\",\"input_structure\":\"date_nameserver\",\"home_dir\":\"/home/entrada/processing\",\"processing_dir\":\"/mnt/processing\"}" > /home/entrada/processing/config.json
+echo "{\"bucket\":\"$BUCKET\",\"database\":\"$DATABASE\",\"input_structure\":\"$INPUT_STRUCTURE\",\"home_dir\":\"/home/entrada/processing\",\"processing_dir\":\"/mnt/processing\"}" > /home/entrada/processing/config.json
 
 echo Downloading Entrada AWS Processor
 cd /home/entrada/processing

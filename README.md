@@ -16,9 +16,9 @@ Querying data is done through AWS Athena, a serverless, scalable query service w
 Although a large part of the resources used can be created with the cloudformation template provided, some prerequisites need to be manually created.
 
 1. Create a bucket which will be used for storage of data and programs (an existing bucket can be used as well).
-2. Create a Glue Data Catalog database and create tables in Athena using the Sql statements provided in processing-workflow/database.
-3. Create the following directories in the top level of your bucket, "archive". "athena", "entrada", "icmpqueries", "icmpstaging", "input", "queries" and "staging".
-4. Download and upload the contents of the release to "s3://bucket/entrada/"
+2. Create the following directories in the top level of your bucket, "archive". "athena", "entrada", "icmpqueries", "icmpstaging", "input", "queries" and "staging".
+3. Download and upload the contents of the release to "s3://bucket/entrada/"
+4. Create a Glue Data Catalog database and create tables in Athena using the Sql statements provided in the release, replace DATABASE with the name of the database and BUCKET with the name of your bucket.
 5. Set up lifecycle rules to delete archived pcap files, they are archived using glacier which has a storage time of 90 days no matter when removed that is the minimum amount to pay (note that they will not be visible in glacier due to them being created with s3).
 
 Now that the prerequisites are handled, create a cloudformation stack using the template which should be located in the entrada folder of your bucket. This will create an ec2 instance that will handle processing, a lambda function which when triggered by an event will start an EMR cluster to handle moving data from staging to the data warehouse/queries. 

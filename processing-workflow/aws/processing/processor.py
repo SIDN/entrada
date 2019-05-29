@@ -355,7 +355,7 @@ def upload(parent_dir, bucket: str, database: str, upload_name: str = ""):
 
                     # If file is icmp data change upload location
                     if Path(*upload_key.parts[:2]) == Path("staging/icmpdata"):
-                        upload_key = Path("icmp/staging/", *upload_key.partsl[2:])
+                        upload_key = Path("icmpstaging/", *upload_key.partsl[2:])
 
                     log(f"Uploading \"{abs_path}\" to \"s3://{bucket}/{upload_key.as_posix()}\".")
                     client.upload_file(
@@ -396,7 +396,7 @@ def update_metastore(database: str, bucket: str):
         )
 
         athena.start_query_execution(
-            QueryString=f"MSCK REPAIR TABLE {database}.icmp",
+            QueryString=f"MSCK REPAIR TABLE {database}.icmpstaging",
             ResultConfiguration={
                 "OutputLocation": f"s3://{bucket}/athena/processing_update/"
             }

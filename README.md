@@ -21,4 +21,6 @@ Although a large part of the resources used can be created with the cloudformati
 4. Download and upload the contents of the release to "s3://bucket/entrada/"
 5. Set up lifecycle rules to delete archived pcap files, they are archived using glacier which has a storage time of 90 days no matter when removed that is the minimum amount to pay (note that they will not be visible in glacier due to them being created with s3).
 
-Now that the prerequisites are handled, create a cloudformation stack using the template which should be located in the entrada folder of your bucket. This will create an ec2 instance that will handle processing, a lambda function which when triggered by an event will start an EMR cluster to handle moving data from staging to the data warehouse/queries. To query data use AWS Athena (you could also use an EMR cluster launched with glue data catalog as its metastore, however Athena is recommended for most if not all use cases). 
+Now that the prerequisites are handled, create a cloudformation stack using the template which should be located in the entrada folder of your bucket. This will create an ec2 instance that will handle processing, a lambda function which when triggered by an event will start an EMR cluster to handle moving data from staging to the data warehouse/queries. 
+
+To query data use AWS Athena (you could also use an EMR cluster launched with glue data catalog as its metastore, however Athena is recommended for most if not all use cases). 

@@ -162,11 +162,11 @@
                                     {
                                         "Ref": "AWS::StackName"
                                     },
-                                    "-Staging-to-DWH-migrator\", \"EC2KeyName\":\"",
+                                    "-Staging-to-DWH-migrator\", \"Instances\":{\"EC2KeyName\":\"",
                                     {
                                         "Ref": "KeyPair"
                                     },
-                                    "\"}}"
+                                    "\"}}}"
                                 ]
                             ]
                         },

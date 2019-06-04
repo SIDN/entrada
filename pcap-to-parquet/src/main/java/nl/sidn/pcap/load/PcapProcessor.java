@@ -19,58 +19,84 @@
  */
 package nl.sidn.pcap.load;
 
+import java.io.DataInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.zip.GZIPInputStream;
+import org.apache.commons.compress.compressors.xz.XZCompressorInputStream;
+import org.apache.commons.io.FileUtils;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.TreeMultimap;
+import lombok.extern.log4j.Log4j2;
 import nl.sidn.dnslib.message.Message;
 import nl.sidn.dnslib.types.MessageType;
 import nl.sidn.dnslib.types.ResourceRecordType;
+import nl.sidn.metric.MetricManager;
+import nl.sidn.metric.PersistenceManager;
 import nl.sidn.pcap.PcapReader;
 import nl.sidn.pcap.SequencePayload;
+import nl.sidn.pcap.config.Settings;
 import nl.sidn.pcap.decoder.ICMPDecoder;
-import nl.sidn.pcap.packet.*;
-import nl.sidn.pcap.support.*;
-import nl.sidn.pcap.util.Settings;
-import nl.sidn.stats.MetricManager;
-import org.apache.commons.compress.compressors.xz.XZCompressorInputStream;
-import org.apache.commons.io.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import nl.sidn.pcap.exception.ApplicationException;
+import nl.sidn.pcap.packet.DNSPacket;
+import nl.sidn.pcap.packet.Datagram;
+import nl.sidn.pcap.packet.DatagramPayload;
+import nl.sidn.pcap.packet.Packet;
+import nl.sidn.pcap.packet.TCPFlow;
+import nl.sidn.pcap.parquet.ParquetOutputHandler;
+import nl.sidn.pcap.support.MessageWrapper;
+import nl.sidn.pcap.support.PacketCombination;
+import nl.sidn.pcap.support.RequestKey;
 
-import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.util.*;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.TimeUnit;
-import java.util.zip.GZIPInputStream;
+@Log4j2
+@Component
+public class PcapProcessor {
 
-public class LoaderThread extends AbstractStoppableThread {
+  private static final String DECODER_STATE_FILE = "pcap-decoder-state";
+  private static final int DEFAULT_PCAP_READER_BUFFER_SIZE = 65536;
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(LoaderThread.class);
+  // config options from application.properties
+  @Value("${entrada.cache.timeout}")
+  private int cacheTimeoutConfig;
 
-  private static String DECODER_STATE_FILE = "pcap-decoder-state";
-  private static int DEFAULT_PCAP_READER_BUFFER_SIZE = 65536;
+  @Value("${entrada.cache.timeout.tcp.flows}")
+  private int cacheTimeoutTCPConfig;
+
+  @Value("${entrada.cache.timeout.ip.fragmented}")
+  private int cacheTimeoutIPFragConfig;
+
+  @Value("${entrada.buffer.pcap.reader}")
+  private int bufferSizeConfig;
 
   private PcapReader pcapReader;
-
   protected Map<RequestKey, MessageWrapper> requestCache = new HashMap<>();
-
-  private BlockingQueue<PacketCombination> sharedQueue;
 
   private List<String> processedFiles = new ArrayList<>();
   private List<String> inputFiles = new ArrayList<>();
 
-  private String inputDir;
-  private String outputDir;
-  private String stateDir;
-
-  private DataInputStream dis;
+  private Settings settings;
+  private MetricManager metricManager;
+  private PersistenceManager persistenceManager;
+  private ParquetOutputHandler outputHandler;
 
   private int multiCounter;
-  private ServerInfo current_server = Settings.getInstance().getServer();
 
   // metrics
   private int queryCounter;
@@ -86,82 +112,82 @@ public class LoaderThread extends AbstractStoppableThread {
   // keep list of active zone transfers
   private Map<RequestKey, Integer> activeZoneTransfers = new HashMap<>();
 
-  public LoaderThread(BlockingQueue<PacketCombination> sharedQueue, String inputDir,
-      String outputDir, String stateDir) {
-    this.sharedQueue = sharedQueue;
-    this.inputDir = inputDir;
-    this.outputDir = outputDir;
-    this.stateDir = stateDir;
-    this.cacheTimeout =
-        1000 * 60 * Integer.parseInt(Settings.getInstance().getSetting(Settings.CACHE_TIMEOUT));
+  public PcapProcessor(Settings settings, MetricManager metricManager,
+      PersistenceManager persistenceManager, ParquetOutputHandler outputHandler) {
+    this.settings = settings;
+    this.metricManager = metricManager;
+    this.persistenceManager = persistenceManager;
+    this.outputHandler = outputHandler;
+
+    // convert minutes to seconds
+    this.cacheTimeout = 1000 * 60 * cacheTimeoutConfig;
     this.pcapReader = new PcapReader();
   }
 
-  @Override
-  protected void doWork() {
+
+  public void execute() {
     // search for input files
     scan();
-    if (filesEmpty()) {
+    if (inputFiles.isEmpty()) {
       // no files found to process, stop
-      LOGGER.info("No files found, stop.");
-      // add marker packet indicating all packets are decoded
-      sharedQueue.add(PacketCombination.NULL);
+      log.info("No files found, stop.");
       return;
     }
     // get the state from the previous run
     loadState();
+    // open the output file writer
+    outputHandler.open();
     for (String file : inputFiles) {
       read(file);
       // flush expired packets after every file, to avoid a cache explosion
       purgeCache();
-      waitForEmptyQueue();
       archiveFile(file);
     }
     // save unmatched packet state to file
     // the next pcap might have the missing responses
     persistState();
 
-    LOGGER.info("--------- Done loading queue ------------");
-    LOGGER.info("Loaded " + (queryCounter + responseCounter) + " packets");
-    LOGGER.info("Loaded " + queryCounter + " query packets");
-    LOGGER.info("Loaded " + responseCounter + " response packets");
-    LOGGER.info("Loaded " + multiCounter + " messages from TCP streams with > 1 mesg");
-    LOGGER.info("Found " + noQueryFoundCounter + " response packets without request.");
-    LOGGER.info("-----------------------------------------");
+    log.info("--------- Done loading queue ------------");
+    log.info("Loaded {} packets", queryCounter + responseCounter);
+    log.info("Loaded {} query packets", queryCounter);
+    log.info("Loaded {} response packets", responseCounter);
+    log.info("Loaded {} messages from TCP streams with > 1 mesg", multiCounter);
+    log.info("Found {} response packets without request", noQueryFoundCounter);
+    log.info("-----------------------------------------");
 
     writeMetrics();
-
-    // add marker packet indicating all packets are decoded
-    // this will cause the controller thread to stop all processing.
-    sharedQueue.add(PacketCombination.NULL);
+    // close file handler(s)
+    outputHandler.close();
   }
 
   /**
    * Write the loader metrics to the metrics queue
    */
   private void writeMetrics() {
-    MetricManager mm = MetricManager.getInstance();
-    mm.send(MetricManager.METRIC_IMPORT_FILES_COUNT, fileCount);
-    mm.send(MetricManager.METRIC_IMPORT_DNS_NO_REQUEST_COUNT, noQueryFoundCounter);
-    mm.send(MetricManager.METRIC_IMPORT_DNS_TCPSTREAM_COUNT, multiCounter);
-    mm.send(MetricManager.METRIC_IMPORT_STATE_PERSIST_UDP_FLOW_COUNT,
-        pcapReader.getDatagrams().size());
-    mm.send(MetricManager.METRIC_IMPORT_STATE_PERSIST_TCP_FLOW_COUNT, pcapReader.getFlows().size());
-    mm.send(MetricManager.METRIC_IMPORT_STATE_PERSIST_DNS_COUNT, requestCache.size());
-    mm.send(MetricManager.METRIC_IMPORT_TCP_PREFIX_ERROR_COUNT, pcapReader.getTcpPrefixError());
-    mm.send(MetricManager.METRIC_IMPORT_DNS_DECODE_ERROR_COUNT, pcapReader.getDnsDecodeError());
-  }
 
-  private boolean filesEmpty() {
-    return inputFiles.size() == 0;
+    metricManager.send(MetricManager.METRIC_IMPORT_FILES_COUNT, fileCount);
+    metricManager.send(MetricManager.METRIC_IMPORT_DNS_NO_REQUEST_COUNT, noQueryFoundCounter);
+    metricManager.send(MetricManager.METRIC_IMPORT_DNS_TCPSTREAM_COUNT, multiCounter);
+    metricManager
+        .send(MetricManager.METRIC_IMPORT_STATE_PERSIST_UDP_FLOW_COUNT,
+            pcapReader.getDatagrams().size());
+    metricManager
+        .send(MetricManager.METRIC_IMPORT_STATE_PERSIST_TCP_FLOW_COUNT,
+            pcapReader.getFlows().size());
+    metricManager.send(MetricManager.METRIC_IMPORT_STATE_PERSIST_DNS_COUNT, requestCache.size());
+    metricManager
+        .send(MetricManager.METRIC_IMPORT_TCP_PREFIX_ERROR_COUNT, pcapReader.getTcpPrefixError());
+    metricManager
+        .send(MetricManager.METRIC_IMPORT_DNS_DECODE_ERROR_COUNT, pcapReader.getDnsDecodeError());
   }
 
   private void archiveFile(String pcap) {
     File file = new File(pcap);
-    File archiveDir = new File(outputDir + System.getProperty("file.separator") + "archive"
-        + System.getProperty("file.separator") + current_server.getFullname());
+    File archiveDir =
+        new File(settings.getOutputDir() + System.getProperty("file.separator") + "archive"
+            + System.getProperty("file.separator") + settings.getServerInfo().getFullname());
     if (!archiveDir.exists()) {
-      LOGGER.info(archiveDir.getName() + " does not exist, create now.");
+      log.info(archiveDir.getName() + " does not exist, create now.");
       if (!archiveDir.mkdirs()) {
         throw new RuntimeException("creating archive dir: " + archiveDir.getAbsolutePath());
       }
@@ -170,26 +196,10 @@ public class LoaderThread extends AbstractStoppableThread {
         new File(archiveDir.getPath() + System.getProperty("file.separator") + file.getName());
     try {
       Files.move(Paths.get(file.getAbsolutePath()), Paths.get(newFile.getAbsolutePath()));
-      LOGGER.info(pcap + " is archived!");
+      log.info(pcap + " is archived!");
     } catch (Exception e) {
       throw new RuntimeException("Error moving " + pcap + " to the archive: " + e);
     }
-  }
-
-  /**
-   * Avoid filling the queue with too many packets this will fill up the heap space and cause
-   * endless GC
-   */
-  private void waitForEmptyQueue() {
-    LOGGER.info("Wait until the shared queue is empty before processing the next file");
-    while (sharedQueue.size() > 0) {
-      try {
-        Thread.sleep(100);
-      } catch (InterruptedException e) {
-        LOGGER.info("Interrupted while sleeping");
-      }
-    }
-    LOGGER.info("Shared queue is empty continue with next file");
   }
 
   private String extractPcapFile(String file) {
@@ -204,12 +214,12 @@ public class LoaderThread extends AbstractStoppableThread {
   public void read(String file) {
     // try to open file, if file is not good pcap handle exception and fail fast.
     if (!createReader(file)) {
-      LOGGER.error("Skip bad input file: " + file);
+      log.error("Skip bad input file: " + file);
       return;
     }
 
     long readStart = System.currentTimeMillis();
-    LOGGER.info("Start reading packet queue");
+    log.info("Start reading packet queue");
 
     // get filename only to map parquet row to pcap file
     String fileName = extractPcapFile(file);
@@ -218,29 +228,21 @@ public class LoaderThread extends AbstractStoppableThread {
     for (Packet currentPacket : pcapReader) {
       counter++;
       if (counter % 100000 == 0) {
-        LOGGER.info("Read " + counter + " packets");
+        log.info("Read " + counter + " packets");
       }
       if (currentPacket != null && currentPacket.getIpVersion() != 0) {
 
         if ((currentPacket.getProtocol() == ICMPDecoder.PROTOCOL_ICMP_V4)
             || (currentPacket.getProtocol() == ICMPDecoder.PROTOCOL_ICMP_V6)) {
           // handle icmp
-          PacketCombination pc =
-              new PacketCombination(currentPacket, null, current_server, false, fileName);
-
-          try {
-            if (!sharedQueue.offer(pc, 5, TimeUnit.SECONDS)) {
-              LOGGER.error("timeout adding items to queue");
-            }
-          } catch (InterruptedException e) {
-            LOGGER.error("interrupted while adding ICMP item to queue");
-          }
-
+          outputHandler
+              .handle(new PacketCombination(currentPacket, null, settings.getServerInfo(), false,
+                  fileName));
         } else {
           DNSPacket dnsPacket = (DNSPacket) currentPacket;
           if (dnsPacket.getMessage() == null) {
             // skip malformed packets
-            LOGGER.debug("Drop packet with no dns message");
+            log.debug("Drop packet with no dns message");
             continue;
           }
 
@@ -252,8 +254,9 @@ public class LoaderThread extends AbstractStoppableThread {
             // get qname from request which is part of the cache lookup key
             String qname = null;
             if (msg != null && msg.getQuestions() != null && msg.getQuestions().size() > 0) {
-              qname = msg.getQuestions().get(0).getqName();
+              qname = msg.getQuestions().get(0).getQName();
             }
+
             // put request into map until we find matching response, with a key based on: query id,
             // qname, ip src, tcp/udp port
             // add time for possible timeout eviction
@@ -262,16 +265,17 @@ public class LoaderThread extends AbstractStoppableThread {
 
               // check for ixfr/axfr request
               if (msg.getQuestions().size() > 0
-                  && (msg.getQuestions().get(0).getqType() == ResourceRecordType.AXFR
-                      || msg.getQuestions().get(0).getqType() == ResourceRecordType.IXFR)) {
+                  && (msg.getQuestions().get(0).getQType() == ResourceRecordType.AXFR
+                      || msg.getQuestions().get(0).getQType() == ResourceRecordType.IXFR)) {
 
-                if (LOG.isDebugEnabled()) {
-                  LOG.debug("Detected zonetransfer for: " + dnsPacket.getFlow());
+                if (log.isDebugEnabled()) {
+                  log.debug("Detected zonetransfer for: " + dnsPacket.getFlow());
                 }
                 // keep track of ongoing zone transfer, we do not want to store all the response
                 // packets for an ixfr/axfr.
-                activeZoneTransfers.put(new RequestKey(msg.getHeader().getId(), null,
-                    dnsPacket.getSrc(), dnsPacket.getSrcPort()), 0);
+                activeZoneTransfers
+                    .put(new RequestKey(msg.getHeader().getId(), null, dnsPacket.getSrc(),
+                        dnsPacket.getSrcPort()), 0);
               }
 
               RequestKey key = new RequestKey(msg.getHeader().getId(), qname, dnsPacket.getSrc(),
@@ -307,51 +311,39 @@ public class LoaderThread extends AbstractStoppableThread {
               // missing queries
 
               if (request != null && request.getPacket() != null && request.getMessage() != null) {
-                try {
-                  if (!sharedQueue
-                      .offer(
-                          new PacketCombination(request.getPacket(), request.getMessage(),
-                              current_server, dnsPacket, msg, false, fileName),
-                          5, TimeUnit.SECONDS)) {
-                    LOGGER.error("timeout adding items to queue");
-                  }
-                } catch (InterruptedException e) {
-                  LOGGER.error("interrupted while adding items to queue");
-                }
+
+                outputHandler
+                    .handle(new PacketCombination(request.getPacket(), request.getMessage(),
+                        settings.getServerInfo(), dnsPacket, msg, false, fileName));
+
               } else {
                 // no request found, this could happen if the query was in previous pcap
                 // and was not correctly decoded, or the request timed out before server
                 // could send a response.
-                LOGGER.debug("Found no request for response");
+                log.debug("Found no request for response");
                 noQueryFoundCounter++;
-                try {
-                  if (!sharedQueue.offer(new PacketCombination(null, null, current_server,
-                      dnsPacket, msg, false, fileName), 5, TimeUnit.SECONDS)) {
-                    LOGGER.error("timeout adding items to queue");
-                  }
-                  purgeCounter++;
-                } catch (InterruptedException e) {
-                  LOGGER.error("interrupted while adding items to queue");
-                }
+
+                outputHandler
+                    .handle(new PacketCombination(null, null, settings.getServerInfo(), dnsPacket,
+                        msg, false, fileName));
               }
             }
           }
         } // end of dns packet
       }
     }
-    LOGGER.info("Processing time: " + (System.currentTimeMillis() - readStart) + "ms");
-    if (LOGGER.isDebugEnabled()) {
-      LOGGER.debug("Done with decoding, start cleanup");
+    log.info("Processing time: " + (System.currentTimeMillis() - readStart) + "ms");
+    if (log.isDebugEnabled()) {
+      log.debug("Done with decoding, start cleanup");
     }
     // clear expired cache entries
-    pcapReader.clearCache(
-        Settings.getInstance().getIntSetting(Settings.CACHE_TIMEOUT_TCP_FLOW, 1) * 60 * 1000,
-        Settings.getInstance().getIntSetting(Settings.CACHE_TIMEOUT_FRAG_IP, 1) * 60 * 1000);
+    pcapReader.clearCache(cacheTimeoutTCPConfig * 60 * 1000, cacheTimeoutIPFragConfig * 60 * 1000);
     pcapReader.close();
   }
 
   private String createStateFileName() {
-    return stateDir + "/" + DECODER_STATE_FILE + "-" + current_server.getFullname() + ".bin";
+    return settings.getStateDir() + "/" + DECODER_STATE_FILE + "-"
+        + settings.getServerInfo().getFullname() + ".bin";
   }
 
   /**
@@ -361,13 +353,15 @@ public class LoaderThread extends AbstractStoppableThread {
     Kryo kryo = new Kryo();
     Output output = null;
     String file = createStateFileName();
+
+    Map<TCPFlow, Collection<SequencePayload>> pmap = new HashMap<>();
+
     try {
       // persist tcp state
       output = new Output(new FileOutputStream(file));
       Map<TCPFlow, Collection<SequencePayload>> flows = pcapReader.getFlows().asMap();
       // convert to std java map and collection
-      Map<TCPFlow, Collection<SequencePayload>> pmap =
-          new HashMap<TCPFlow, Collection<SequencePayload>>();
+
       Iterator<TCPFlow> iter = flows.keySet().iterator();
       while (iter.hasNext()) {
         TCPFlow tcpFlow = (TCPFlow) iter.next();
@@ -383,8 +377,7 @@ public class LoaderThread extends AbstractStoppableThread {
       // persist IP datagrams
       Map<Datagram, Collection<DatagramPayload>> datagrams = pcapReader.getDatagrams().asMap();
       // convert to std java map and collection
-      Map<Datagram, Collection<DatagramPayload>> outMap =
-          new HashMap<Datagram, Collection<DatagramPayload>>();
+      Map<Datagram, Collection<DatagramPayload>> outMap = new HashMap<>();
       Iterator<Datagram> ipIter = datagrams.keySet().iterator();
       while (iter.hasNext()) {
         Datagram dg = (Datagram) ipIter.next();
@@ -402,27 +395,29 @@ public class LoaderThread extends AbstractStoppableThread {
       kryo.writeObject(output, requestCache);
 
       // persist running statistics
-      MetricManager.getInstance().getMetricPersistenceManager().persist(kryo, output);
+      persistenceManager.persist(kryo, output);
 
       output.close();
-      LOGGER.info("------------- State persistence stats --------------");
-      LOGGER.info("Data is persisted to " + file);
-      LOGGER.info("Persist " + pmap.size() + " TCP flows");
-      LOGGER.info("Persist " + pcapReader.getDatagrams().size() + " Datagrams");
-      LOGGER.info("Persist request cache " + requestCache.size() + " DNS requests");
-      LOGGER.info("----------------------------------------------------");
+
     } catch (Exception e) {
-      LOGGER.error("Error saving decoder state to file: " + file, e);
+      log.error("Error saving decoder state to file: " + file, e);
     }
 
+    log.info("------------- State persistence stats --------------");
+    log.info("Data is persisted to " + file);
+    log.info("Persist {} TCP flows", pmap.size());
+    log.info("Persist {} Datagrams", pcapReader.getDatagrams().size());
+    log.info("Persist request cache {} DNS requests", requestCache.size());
+    log.info("----------------------------------------------------");
   }
 
   @SuppressWarnings("unchecked")
   private void loadState() {
     Kryo kryo = new Kryo();
     String file = createStateFileName();
-    if (!Files.exists(Paths.get(file))) {
-      LOGGER.info("No state found at " + file);
+
+    if (!new File(file).exists()) {
+      log.info("No state found at " + file);
       return;
     }
     try {
@@ -455,18 +450,18 @@ public class LoaderThread extends AbstractStoppableThread {
       requestCache = kryo.readObject(input, HashMap.class);
 
       // read running statistics
-      MetricManager.getInstance().getMetricPersistenceManager().load(kryo, input);
+      persistenceManager.load(kryo, input);
 
       input.close();
-      LOGGER.info("------------- Loader state stats ------------------");
-      LOGGER.info("Loaded TCP state " + pcapReader.getFlows().size() + " TCP flows");
-      LOGGER.info("Loaded Datagram state " + pcapReader.getDatagrams().size() + " Datagrams");
-      LOGGER.info("Loaded Request cache " + requestCache.size() + " DNS requests");
-      LOGGER.info("----------------------------------------------------");
     } catch (Exception e) {
-      LOGGER.error("Error opening state file, continue without loading state: " + file, e);
+      log.error("Error opening state file, continue without loading state: " + file, e);
     }
 
+    log.info("------------- Loader state stats ------------------");
+    log.info("Loaded TCP state {} TCP flows", pcapReader.getFlows().size());
+    log.info("Loaded Datagram state {} Datagrams", pcapReader.getDatagrams().size());
+    log.info("Loaded Request cache {} DNS requests", requestCache.size());
+    log.info("----------------------------------------------------");
   }
 
 
@@ -485,24 +480,23 @@ public class LoaderThread extends AbstractStoppableThread {
         iter.remove();
 
         if (mw.getMessage() != null && mw.getMessage().getHeader().getQr() == MessageType.QUERY) {
-          try {
-            if (!sharedQueue.offer(new PacketCombination(mw.getPacket(), mw.getMessage(),
-                current_server, true, mw.getFilename()), 5, TimeUnit.SECONDS)) {
-              LOGGER.error("timeout adding items to queue");
-            }
-            purgeCounter++;
-          } catch (InterruptedException e) {
-            LOGGER.error("interrupted while adding items to queue");
-          }
+
+          outputHandler
+              .handle(new PacketCombination(mw.getPacket(), mw.getMessage(),
+                  settings.getServerInfo(), true, mw.getFilename()));
+
+          purgeCounter++;
+
         } else {
-          LOGGER.debug("Cached response entry timed out, request might have been missed");
+          log.debug("Cached response entry timed out, request might have been missed");
           noQueryFoundCounter++;
         }
       }
     }
 
-    LOGGER.info("Marked " + purgeCounter
-        + " expired queries from request cache to output file with rcode no response");
+    log
+        .info("Marked " + purgeCounter
+            + " expired queries from request cache to output file with rcode no response");
   }
 
   /**
@@ -516,41 +510,32 @@ public class LoaderThread extends AbstractStoppableThread {
   public InputStream getDecompressorStreamWrapper(InputStream in, String filename, int bufSize)
       throws IOException {
     String filenameLower = filename.toLowerCase();
-    if (filenameLower.endsWith(".xz")) {
-      return new XZCompressorInputStream(in);
-      // return new XZInputStream(in);
-    }
     if (filenameLower.endsWith(".pcap")) {
       return in;
-    }
-    if (filenameLower.endsWith(".gz")) {
+    } else if (filenameLower.endsWith(".gz")) {
       return new GZIPInputStream(in, bufSize);
+    } else if (filenameLower.endsWith(".xz")) {
+      return new XZCompressorInputStream(in);
     }
 
+    // unkown file type
     throw new IOException("Could not open file with unknown extension: " + filenameLower);
   }
 
   public boolean createReader(String file) {
-    LOGGER.info("Start loading queue from file:" + file);
+    log.info("Start loading queue from file:" + file);
     fileCount++;
     try {
       File f = FileUtils.getFile(file);
-      LOGGER.info("Load data for server: " + current_server.getFullname());
+      log.info("Load data for server: " + settings.getServerInfo().getFullname());
 
       FileInputStream fis = FileUtils.openInputStream(f);
-      int bufSize = Settings.getInstance().getIntSetting(Settings.BUFFER_PCAP_READER,
-          DEFAULT_PCAP_READER_BUFFER_SIZE);
-      // sanity check
-      if (bufSize <= 512) {
-        // use default
-        bufSize = DEFAULT_PCAP_READER_BUFFER_SIZE;
-      }
-      InputStream decompressor = getDecompressorStreamWrapper(fis, file, bufSize);
+      int bufSize = bufferSizeConfig > 512 ? bufferSizeConfig : DEFAULT_PCAP_READER_BUFFER_SIZE;
 
-      dis = new DataInputStream(decompressor);
-      pcapReader.init(dis);
+      InputStream decompressor = getDecompressorStreamWrapper(fis, file, bufSize);
+      pcapReader.init(new DataInputStream(decompressor));
     } catch (IOException e) {
-      LOGGER.error("Error opening pcap file: " + file, e);
+      log.error("Error opening pcap file: " + file, e);
       return false;
     }
 
@@ -558,15 +543,19 @@ public class LoaderThread extends AbstractStoppableThread {
   }
 
   private void scan() {
-    LOGGER.info("Scan for pcap files in: " + inputDir);
-    File f = null;
-    try {
-      f = FileUtils.getFile(inputDir);
-    } catch (Exception e) {
-      throw new RuntimeException("input dir error", e);
+    String inputDir = settings.getInputDir() + System.getProperty("file.separator")
+        + settings.getServerInfo().getFullname();
+
+    log.info("Scan for pcap files in: {}", inputDir);
+
+    File f = new File(inputDir);
+    if (!f.exists()) {
+      throw new ApplicationException("input directory " + inputDir + "  does not exist");
     }
+
     Iterator<File> files =
         FileUtils.iterateFiles(f, new String[] {"pcap", "pcap.gz", "pcap.xz"}, false);
+
     while (files.hasNext()) {
       File pcap = files.next();
       String fqn = pcap.getAbsolutePath();
@@ -578,7 +567,7 @@ public class LoaderThread extends AbstractStoppableThread {
     // so ordering is important.
     Collections.sort(inputFiles);
     for (String file : inputFiles) {
-      LOGGER.info("Found file: " + file);
+      log.info("Found file: " + file);
     }
   }
 

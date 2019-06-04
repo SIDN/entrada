@@ -2,27 +2,169 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
+
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>2.1.5.RELEASE</version>
+		<relativePath /> <!-- lookup parent from repository -->
+	</parent>
+
 	<groupId>nl.sidn</groupId>
 	<artifactId>pcap-to-parquet</artifactId>
 	<version>0.1.3</version>
 	<name>pcap-to-parquet</name>
+	<description>Convert PCAP files into Parquet files</description>
 
-	<parent>
-		<groupId>org.kitesdk</groupId>
-		<artifactId>kite-app-parent-cdh5</artifactId>
-		<version>1.0.0</version>
-	</parent>
+	<properties>
+		<sidn-dnslib>0.1.3-SNAPSHOT</sidn-dnslib>
+		<sidn-pcaplib>0.1.3-SNAPSHOT</sidn-pcaplib>
+		<hadoop.version>2.7.3</hadoop.version>
+		<!-- need this for eclipse bug https://github.com/spring-projects/spring-boot/issues/16846#issuecomment-492792506 -->
+		<maven-jar-plugin.version>3.1.1</maven-jar-plugin.version>
+	</properties>
 
+	<dependencies>
+
+		<dependency>
+			<groupId>nl.sidn</groupId>
+			<artifactId>dnslib</artifactId>
+			<version>${sidn-dnslib}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>nl.sidn</groupId>
+			<artifactId>pcap-lib</artifactId>
+			<version>${sidn-pcaplib}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>commons-io</groupId>
+			<artifactId>commons-io</artifactId>
+			<version>2.6</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-compress</artifactId>
+			<version>1.18</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.google.guava</groupId>
+			<artifactId>guava</artifactId>
+			<version>27.1-jre</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.maxmind.geoip2</groupId>
+			<artifactId>geoip2</artifactId>
+			<version>2.12.0</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.jsoup</groupId>
+			<artifactId>jsoup</artifactId>
+			<version>1.12.1</version>
+		</dependency>
+
+		<dependency>
+			<groupId>dnsjava</groupId>
+			<artifactId>dnsjava</artifactId>
+			<version>2.1.9</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.projectlombok</groupId>
+			<artifactId>lombok</artifactId>
+			<scope>provided</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.hadoop</groupId>
+			<artifactId>hadoop-client</artifactId>
+			<version>${hadoop.version}</version>
+			<scope>provided</scope>
+			<exclusions>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-log4j12</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.parquet</groupId>
+			<artifactId>parquet-common</artifactId>
+			<version>1.10.1</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.parquet</groupId>
+			<artifactId>parquet-encoding</artifactId>
+			<version>1.10.1</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.parquet</groupId>
+			<artifactId>parquet-column</artifactId>
+			<version>1.10.1</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.parquet</groupId>
+			<artifactId>parquet-hadoop</artifactId>
+			<version>1.10.1</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.apache.parquet</groupId>
+			<artifactId>parquet-avro</artifactId>
+			<version>1.10.1</version>
+		</dependency>
+
+		<dependency>
+			<groupId>junit</groupId>
+			<artifactId>junit</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+			<!-- need to exclude android json, this conflicts with everit json schema 
+				validation see: https://github.com/spring-projects/spring-boot/issues/9248 -->
+			<exclusions>
+				<exclusion>
+					<groupId>com.vaadin.external.google</groupId>
+					<artifactId>android-json</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-logging</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-actuator</artifactId>
+		</dependency>
+		<!-- <dependency> <groupId>io.micrometer</groupId> <artifactId>micrometer-registry-graphite</artifactId> 
+			</dependency> -->
+
+	</dependencies>
 
 	<build>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>2.5.1</version>
 				<configuration>
-					<source>1.7</source>
-					<target>1.7</target>
+					<source>1.8</source>
+					<target>1.8</target>
 					<compilerArgument>-Xlint:unchecked</compilerArgument>
 					<showDeprecation>true</showDeprecation>
 					<showWarnings>true</showWarnings>
@@ -55,94 +197,5 @@
 			</plugin>
 		</plugins>
 	</build>
-
-	<dependencies>
-
-		<dependency>
-			<groupId>junit</groupId>
-			<artifactId>junit</artifactId>
-			<version>4.12</version>
-		</dependency>
-
-
-		<dependency>
-			<groupId>commons-io</groupId>
-			<artifactId>commons-io</artifactId>
-			<version>2.4</version>
-		</dependency>
-
-		<dependency>
-			<groupId>org.apache.commons</groupId>
-			<artifactId>commons-lang3</artifactId>
-			<version>3.4</version>
-		</dependency>
-
-		<dependency>
-			<groupId>com.google.guava</groupId>
-			<artifactId>guava</artifactId>
-			<version>11.0.2</version>
-		</dependency>
-		
-		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-log4j12</artifactId>
-			<version>1.7.7</version>
-		</dependency>
-
-		<dependency>
-			<groupId>nl.sidn</groupId>
-			<artifactId>pcap-lib</artifactId>
-			<version>0.1.2</version>
-		</dependency>
-
-		<dependency>
-			<groupId>nl.sidn</groupId>
-			<artifactId>dnslib</artifactId>
-			<version>0.1.2</version>
-		</dependency>
-
-		<dependency>
-			<groupId>com.maxmind.geoip2</groupId>
-			<artifactId>geoip2</artifactId>
-			<version>2.11.0</version>
-		</dependency>
-
-		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-api</artifactId>
-			<version>1.7.7</version>
-		</dependency>
-
-		<dependency>
-			<groupId>log4j</groupId>
-			<artifactId>log4j</artifactId>
-			<version>1.2.17</version>
-		</dependency>
-
-		<dependency>
-			<groupId>org.jsoup</groupId>
-			<artifactId>jsoup</artifactId>
-			<version>1.8.3</version>
-		</dependency>
-
-		<dependency>
-			<groupId>dnsjava</groupId>
-			<artifactId>dnsjava</artifactId>
-			<version>2.1.7</version>
-		</dependency>
-
-		<dependency>
-			<groupId>com.fasterxml.jackson.core</groupId>
-			<artifactId>jackson-core</artifactId>
-			<version>2.9.3</version>
-		</dependency>
-
-		<dependency>
-			<groupId>org.apache.httpcomponents</groupId>
-			<artifactId>httpclient</artifactId>
-			<version>4.5.4</version>
-		</dependency>
-
-	</dependencies>
 
 </project>

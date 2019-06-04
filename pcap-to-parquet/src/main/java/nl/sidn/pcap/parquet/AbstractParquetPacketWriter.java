@@ -25,20 +25,14 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.Schema;
+import org.apache.avro.Schema.Parser;
 import org.apache.avro.generic.GenericRecordBuilder;
-import org.apache.commons.io.FileUtils;
-import org.kitesdk.data.Dataset;
-import org.kitesdk.data.DatasetDescriptor;
-import org.kitesdk.data.DatasetWriter;
-import org.kitesdk.data.Datasets;
-import org.kitesdk.data.Formats;
-import org.kitesdk.data.PartitionStrategy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import nl.sidn.pcap.exception.ApplicationException;
 import nl.sidn.pcap.support.PacketCombination;
 import nl.sidn.pcap.util.GeoLookupUtil;
-import nl.sidn.pcap.util.Settings;
 
 public abstract class AbstractParquetPacketWriter {
 
@@ -49,23 +43,46 @@ public abstract class AbstractParquetPacketWriter {
 
   protected int packetCounter;
   // writer vars
-  protected DatasetDescriptor descriptor;
-  protected DatasetWriter<GenericRecord> writer;
-  protected String repoLocation;
-  protected String schema;
-  protected String repoName;
+  // protected DatasetDescriptor descriptor;
+  // protected DatasetWriter<GenericRecord> writer;
+  protected ParquetPartitionWriter writer;
+  // protected String repoLocation;
+  // protected String schema;
+  // protected String repoName;
   // meta info
   protected GeoLookupUtil geoLookup;
-  protected Map<String, String> geo_ip_cache = new HashMap<String, String>();
-  protected Map<String, String> asn_cache = new HashMap<String, String>();
+  protected Map<String, String> geo_ip_cache = new HashMap<>();
+  protected Map<String, String> asn_cache = new HashMap<>();
   // metrics
   protected Set<String> countries = new HashSet<>();
 
-  public AbstractParquetPacketWriter(String repoName, String schema) {
-    geoLookup = new GeoLookupUtil();
-    this.repoLocation = Settings.getInstance().getSetting(Settings.OUTPUT_LOCATION);
-    this.schema = schema;
-    this.repoName = repoName;
+  protected Schema avroSchema;
+
+  // public AbstractParquetPacketWriter(String repoName, String schema) {
+  // geoLookup = new GeoLookupUtil();
+  // this.repoLocation = Settings.getInstance().getSetting(Settings.OUTPUT_LOCATION);
+  // this.schema = schema;
+  // this.repoName = repoName;
+  // }
+
+  public AbstractParquetPacketWriter(GeoLookupUtil geoLookup) {
+    this.geoLookup = geoLookup;
+  }
+
+  protected Schema schema(String schema) {
+    if (avroSchema != null) {
+      return avroSchema;
+    }
+
+    String f = getClass().getClassLoader().getResource(schema).getFile();
+    Parser parser = new Schema.Parser().setValidate(true);
+    try {
+      avroSchema = parser.parse(new File(f));
+    } catch (IOException e) {
+      throw new ApplicationException("Cannot load schema from file: " + f);
+    }
+
+    return avroSchema;
   }
 
 
@@ -118,46 +135,49 @@ public abstract class AbstractParquetPacketWriter {
    * 
    * @return
    */
-  protected abstract PartitionStrategy createPartitionStrategy();
+  // protected abstract String createPartition();
 
-  public void open() {
-    String server = Settings.getInstance().getServer().getFullname();
+  public void open(String location, String server, String name) {
+    // String server = Settings.getInstance().getServer().getFullname();
     // replace any non alphanumeric chars in the servername with underscore
     // kitesdk does not support this non alphas
     // https://issues.cloudera.org/browse/KITE-673
     String normalizedServer = server.replaceAll("[^A-Za-z0-9 ]", "_");
-    String path = repoLocation + System.getProperty("file.separator") + normalizedServer
-        + System.getProperty("file.separator") + repoName;
+    String path = location + System.getProperty("file.separator") + normalizedServer
+        + System.getProperty("file.separator") + name;
 
 
     LOGGER.info("Create new Parquet writer with path: " + path);
 
     /* before opening, make sure there is no (old) .metadata folder in the output dir */
-    String metadataLocation = path + System.getProperty("file.separator") + ".metadata";
-    try {
-      FileUtils.deleteDirectory(new File(metadataLocation));
-    } catch (IOException e1) {
-      throw new RuntimeException("Could not remove old .metadata directory -> " + metadataLocation);
-    }
+    // String metadataLocation = path + System.getProperty("file.separator") + ".metadata";
+    // try {
+    // FileUtils.deleteDirectory(new File(metadataLocation));
+    // } catch (IOException e1) {
+    // throw new RuntimeException("Could not remove old .metadata directory -> " +
+    // metadataLocation);
+    // }
 
-    /*
-     * create a partition for year, month and day. The parquetwriter will create a directory
-     * structure with the distinct partition values.
-     */
-    PartitionStrategy partitionStrategy = createPartitionStrategy();
-    // creat a descriptor with the parquet output format and the correct partition strategy
-    try {
-      descriptor = new DatasetDescriptor.Builder().schemaUri("resource:" + schema)
-          .format(Formats.PARQUET).partitionStrategy(partitionStrategy).build();
 
-    } catch (Exception e) {
-      throw new RuntimeException("Error while creating data descriptor", e);
-    }
-    // create a file dataset for the above descriptor
-    Dataset<GenericRecord> dataset =
-        Datasets.create("dataset:file:" + path, descriptor, GenericRecord.class);
-
-    writer = dataset.newWriter();
+    writer = new ParquetPartitionWriter(path);
+    // /*
+    // * create a partition for year, month and day. The parquetwriter will create a directory
+    // * structure with the distinct partition values.
+    // */
+    // PartitionStrategy partitionStrategy = createPartitionStrategy();
+    // // creat a descriptor with the parquet output format and the correct partition strategy
+    // try {
+    // descriptor = new DatasetDescriptor.Builder().schemaUri("resource:" + schema)
+    // .format(Formats.PARQUET).partitionStrategy(partitionStrategy).build();
+    //
+    // } catch (Exception e) {
+    // throw new RuntimeException("Error while creating data descriptor", e);
+    // }
+    // // create a file dataset for the above descriptor
+    // Dataset<GenericRecord> dataset =
+    // Datasets.create("dataset:file:" + path, descriptor, GenericRecord.class);
+    //
+    // writer = dataset.newWriter();
 
     LOGGER.info("Created new Parquet writer");
   }
@@ -167,21 +187,23 @@ public abstract class AbstractParquetPacketWriter {
    * 
    * @return
    */
-  protected GenericRecordBuilder newBuilder() {
-    return new GenericRecordBuilder(descriptor.getSchema());
+  protected GenericRecordBuilder recordBuilder(String schema) {
+    return new GenericRecordBuilder(schema(schema));
+    // return new GenericRecordBuilder(descriptor.getSchema());
   }
 
   public void close() {
     showStatus();
 
-    if (writer != null && writer.isOpen()) {
+    if (writer != null) {
       writer.close();
     }
   }
 
   protected void showStatus() {
-    LOGGER.info("---------- " + this.getClass().getSuperclass().getSimpleName()
-        + " Parquet writer status --------------------");
+    LOGGER
+        .info("---------- " + this.getClass().getSuperclass().getSimpleName()
+            + " Parquet writer status --------------------");
     LOGGER.info(packetCounter + " packets written to parquet file.");
     LOGGER.info("-----------------------------------------------------");
   }
@@ -217,6 +239,13 @@ public abstract class AbstractParquetPacketWriter {
       map.put(key, 1);
     }
   }
+
+  // /**
+  // * Create the partion strategy for the data, e.g. year, month,day
+  // *
+  // * @return
+  // */
+  // protected abstract String createPartition();
 
 }
 

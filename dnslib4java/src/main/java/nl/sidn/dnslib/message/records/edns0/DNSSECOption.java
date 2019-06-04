@@ -22,31 +22,26 @@ package nl.sidn.dnslib.message.records.edns0;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 import nl.sidn.dnslib.message.util.NetworkData;
 
 /**
  * @see http://tools.ietf.org/html/rfc6014
  *
  */
+@Data
+@EqualsAndHashCode(callSuper = true)
 public class DNSSECOption extends EDNS0Option {
 
-  public final static int OPTION_CODE_DAU = 5;
-  public final static int OPTION_CODE_DHU = 6;
-  public final static int OPTION_CODE_N3U = 7;
+  public static final int OPTION_CODE_DAU = 5;
+  public static final int OPTION_CODE_DHU = 6;
+  public static final int OPTION_CODE_N3U = 7;
 
   private List<Integer> algs;
 
   public DNSSECOption(int code, int len, NetworkData buffer) {
     super(code, len, buffer);
-  }
-
-  public List<Integer> getAlgorithms() {
-    return algs;
-  }
-
-  @Override
-  public String toString() {
-    return "DNSSECOption [algs=" + algs + ", code=" + code + ", len=" + len + "]";
   }
 
   public String export() {
@@ -55,13 +50,11 @@ public class DNSSECOption extends EDNS0Option {
 
   @Override
   public void decode(NetworkData buffer) {
-    List<Integer> algs = new ArrayList<>();
+    algs = new ArrayList<>();
     for (int i = 0; i < len; i++) {
       int alg = buffer.readUnsignedByte();
       algs.add(alg);
     }
-
-    this.algs = algs;
   }
 
 }

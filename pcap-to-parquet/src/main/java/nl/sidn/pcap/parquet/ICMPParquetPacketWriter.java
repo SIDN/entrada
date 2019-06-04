@@ -20,26 +20,31 @@
 package nl.sidn.pcap.parquet;
 
 import java.sql.Timestamp;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.commons.lang3.StringUtils;
-import org.kitesdk.data.PartitionStrategy;
+import org.springframework.stereotype.Component;
 import nl.sidn.dnslib.message.Header;
 import nl.sidn.dnslib.message.Message;
 import nl.sidn.dnslib.message.Question;
 import nl.sidn.dnslib.message.records.edns0.OPTResourceRecord;
 import nl.sidn.dnslib.util.Domaininfo;
 import nl.sidn.dnslib.util.NameUtil;
+import nl.sidn.metric.MetricManager;
+import nl.sidn.pcap.config.Settings;
 import nl.sidn.pcap.packet.DNSPacket;
 import nl.sidn.pcap.packet.ICMPPacket;
 import nl.sidn.pcap.packet.Packet;
 import nl.sidn.pcap.support.PacketCombination;
-import nl.sidn.pcap.util.Settings;
-import nl.sidn.stats.MetricManager;
+import nl.sidn.pcap.util.GeoLookupUtil;
 
+@Component
 public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
+
+  private static final String ICMP_AVRO_SCHEMA = "icmp-packet.avsc";
 
   // stats counters
   private int v4;
@@ -49,14 +54,24 @@ public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
   private Map<Integer, Integer> types_v4 = new HashMap<>();
   private Map<Integer, Integer> types_v6 = new HashMap<>();
 
-  public ICMPParquetPacketWriter(String repoName, String schema) {
-    super(repoName, schema);
+  // public ICMPParquetPacketWriter(String repoName, String schema) {
+  // super(repoName, schema);
+  // }
+
+  private Settings settings;
+  private MetricManager metricManager;
+
+  public ICMPParquetPacketWriter(Settings settings, MetricManager metricManager,
+      GeoLookupUtil geoLookup) {
+    super(geoLookup);
+    this.settings = settings;
+    this.metricManager = metricManager;
   }
 
   @Override
   public void write(PacketCombination packetCombo) {
 
-    GenericRecordBuilder builder = newBuilder();
+    GenericRecordBuilder builder = recordBuilder(ICMP_AVRO_SCHEMA);
 
     ICMPPacket icmpPacket = (ICMPPacket) packetCombo.getRequest();
 
@@ -98,25 +113,35 @@ public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
         q = dnsResponseMessage.getQuestions().get(0);
       }
       dnsResponseHdr = dnsResponseMessage.getHeader();
-      normalizedQname = q == null ? "" : filter(q.getqName());
+      normalizedQname = q == null ? "" : filter(q.getQName());
       normalizedQname = StringUtils.lowerCase(normalizedQname);
-      domaininfo = NameUtil.getDomain(normalizedQname, Settings.getTldSuffixes());
+      domaininfo = NameUtil.getDomain(normalizedQname, settings.getTldSuffixes());
     }
 
     // values from query now.
-    builder.set("svr", packetCombo.getServer().getName()).set("unixtime", icmpPacket.getTs())
-        .set("time_micro", icmpPacket.getTsmicros()).set("time", packetTime.getTime())
-        .set("icmp_type", icmpPacket.getType()).set("icmp_code", icmpPacket.getCode())
-        .set("icmp_echo_client_type", icmpPacket.getClientType()).set("ip_ttl", icmpPacket.getTtl())
-        .set("ip_v", (int) icmpPacket.getIpVersion()).set("ip_src", icmpPacket.getSrc())
-        .set("ip_dst", icmpPacket.getDst()).set("ip_country", country).set("ip_asn", asn)
-        .set("l4_prot", (int) icmpPacket.getProtocol()).set("l4_srcp", icmpPacket.getSrcPort())
-        .set("l4_dstp", icmpPacket.getDstPort()).set("ip_len", icmpPacket.getTotalLength()); // size
-                                                                                             // of
-                                                                                             // ip
-                                                                                             // packet
-                                                                                             // incl
-                                                                                             // headers
+    builder
+        .set("svr", packetCombo.getServer().getName())
+        .set("unixtime", icmpPacket.getTs())
+        .set("time_micro", icmpPacket.getTsmicros())
+        .set("time", packetTime.getTime())
+        .set("icmp_type", icmpPacket.getType())
+        .set("icmp_code", icmpPacket.getCode())
+        .set("icmp_echo_client_type", icmpPacket.getClientType())
+        .set("ip_ttl", icmpPacket.getTtl())
+        .set("ip_v", (int) icmpPacket.getIpVersion())
+        .set("ip_src", icmpPacket.getSrc())
+        .set("ip_dst", icmpPacket.getDst())
+        .set("ip_country", country)
+        .set("ip_asn", asn)
+        .set("l4_prot", (int) icmpPacket.getProtocol())
+        .set("l4_srcp", icmpPacket.getSrcPort())
+        .set("l4_dstp", icmpPacket.getDstPort())
+        .set("ip_len", icmpPacket.getTotalLength()); // size
+                                                     // of
+                                                     // ip
+                                                     // packet
+                                                     // incl
+                                                     // headers
 
     // add file name
     builder.set("pcap_file", packetCombo.getPcapFilename());
@@ -131,9 +156,11 @@ public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
 
     if (originalPacket != null && originalPacket != Packet.NULL) {
 
-      builder.set("orig_ip_ttl", originalPacket.getTtl())
+      builder
+          .set("orig_ip_ttl", originalPacket.getTtl())
           .set("orig_ip_v", (int) originalPacket.getIpVersion())
-          .set("orig_ip_src", originalPacket.getSrc()).set("orig_ip_dst", originalPacket.getDst())
+          .set("orig_ip_src", originalPacket.getSrc())
+          .set("orig_ip_dst", originalPacket.getDst())
           .set("orig_l4_prot", (int) originalPacket.getProtocol())
           .set("orig_l4_srcp", originalPacket.getSrcPort())
           .set("orig_l4_dstp", originalPacket.getDstPort())
@@ -141,21 +168,28 @@ public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
           .set("orig_ip_len", originalPacket.getTotalLength()); // size of ip packet incl headers
 
       if (originalICMPPacket != null) {
-        builder.set("orig_icmp_type", originalICMPPacket.getType())
+        builder
+            .set("orig_icmp_type", originalICMPPacket.getType())
             .set("orig_icmp_code", originalICMPPacket.getCode())
             .set("orig_icmp_echo_client_type", originalICMPPacket.getClientType());
       }
 
       if (dnsResponseMessage != null) {
         // orig dns response from icmp packet
-        builder.set("orig_dns_len", originalPacket.getPayloadLength()) // get the size from the
-                                                                       // reassembled udp header of
-                                                                       // the original udp response
-            .set("orig_dns_id", dnsResponseHdr.getId()).set("orig_dns_qname", normalizedQname)
-            .set("orig_dns_domainname", domaininfo.name).set("orig_dns_aa", dnsResponseHdr.isAa())
-            .set("orig_dns_tc", dnsResponseHdr.isTc()).set("orig_dns_rd", dnsResponseHdr.isRd())
-            .set("orig_dns_ra", dnsResponseHdr.isRa()).set("orig_dns_z", dnsResponseHdr.isZ())
-            .set("orig_dns_ad", dnsResponseHdr.isAd()).set("orig_dns_cd", dnsResponseHdr.isCd())
+        builder
+            .set("orig_dns_len", originalPacket.getPayloadLength()) // get the size from the
+                                                                    // reassembled udp header of
+                                                                    // the original udp response
+            .set("orig_dns_id", dnsResponseHdr.getId())
+            .set("orig_dns_qname", normalizedQname)
+            .set("orig_dns_domainname", domaininfo.getName())
+            .set("orig_dns_aa", dnsResponseHdr.isAa())
+            .set("orig_dns_tc", dnsResponseHdr.isTc())
+            .set("orig_dns_rd", dnsResponseHdr.isRd())
+            .set("orig_dns_ra", dnsResponseHdr.isRa())
+            .set("orig_dns_z", dnsResponseHdr.isZ())
+            .set("orig_dns_ad", dnsResponseHdr.isAd())
+            .set("orig_dns_cd", dnsResponseHdr.isCd())
             .set("orig_dns_ancount", (int) dnsResponseHdr.getAnCount())
             .set("orig_dns_arcount", (int) dnsResponseHdr.getArCount())
             .set("orig_dns_nscount", (int) dnsResponseHdr.getNsCount())
@@ -163,27 +197,35 @@ public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
             .set("orig_dns_rcode", dnsResponseHdr.getRawRcode())
             .set("orig_dns_opcode", dnsResponseHdr.getRawOpcode())
             // set edns0 defaults
-            .set("orig_dns_edns_udp", null).set("orig_dns_edns_version", null)
-            .set("orig_dns_edns_do", null).set("orig_dns_labels", domaininfo.labels);
+            .set("orig_dns_edns_udp", null)
+            .set("orig_dns_edns_version", null)
+            .set("orig_dns_edns_do", null)
+            .set("orig_dns_labels", domaininfo.getLabels());
 
         if (q != null) {
           // unassinged, private or unknown, get raw value
-          builder.set("orig_dns_qtype", q.getqTypeValue());
+          builder.set("orig_dns_qtype", q.getQTypeValue());
           // unassinged, private or unknown, get raw value
-          builder.set("orig_dns_qclass", q.getqClassValue());
+          builder.set("orig_dns_qclass", q.getQClassValue());
         }
 
         OPTResourceRecord opt = dnsResponseMessage.getPseudo();
         if (opt != null) {
-          builder.set("orig_dns_edns_udp", (int) opt.getUdpPlayloadSize())
+          builder
+              .set("orig_dns_edns_udp", (int) opt.getUdpPlayloadSize())
               .set("orig_dns_edns_version", (int) opt.getVersion())
-              .set("orig_dns_edns_do", opt.getDnssecDo());
+              .set("orig_dns_edns_do", opt.isDnssecDo());
         }
       }
     }
 
     GenericRecord record = builder.build();
-    writer.write(record);
+    Calendar cal = Calendar.getInstance();
+    cal.setTimeInMillis(icmpPacket.getTs());
+
+    writer
+        .write(record, schema(ICMP_AVRO_SCHEMA), cal.get(Calendar.YEAR), cal.get(Calendar.MONTH),
+            cal.get(Calendar.DAY_OF_MONTH));
 
     // write stats
     if (icmpPacket.isIPv4()) {
@@ -201,28 +243,22 @@ public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
     }
   }
 
-
-  @Override
-  protected PartitionStrategy createPartitionStrategy() {
-    return new PartitionStrategy.Builder().year("time").month("time").day("time").build();
-  }
-
   @Override
   public void writeMetrics() {
-    MetricManager mm = MetricManager.getInstance();
-    mm.send(MetricManager.METRIC_ICMP_V4, v4);
-    mm.send(MetricManager.METRIC_ICMP_V4, v6);
-    writeMetrics(mm, types_v4, MetricManager.METRIC_ICMP_PREFIX_TYPE_V4);
-    writeMetrics(mm, types_v6, MetricManager.METRIC_ICMP_PREFIX_TYPE_V6);
-    mm.send(MetricManager.METRIC_ICMP_ERROR, typeError);
-    mm.send(MetricManager.METRIC_ICMP_INFO, typeInfo);
+    metricManager.send(MetricManager.METRIC_ICMP_V4, v4);
+    metricManager.send(MetricManager.METRIC_ICMP_V4, v6);
+    writeMetrics(metricManager, types_v4, MetricManager.METRIC_ICMP_PREFIX_TYPE_V4);
+    writeMetrics(metricManager, types_v6, MetricManager.METRIC_ICMP_PREFIX_TYPE_V6);
+    metricManager.send(MetricManager.METRIC_ICMP_ERROR, typeError);
+    metricManager.send(MetricManager.METRIC_ICMP_INFO, typeInfo);
   }
 
   protected void writeMetrics(MetricManager mm, Map<Integer, Integer> map, String prefix) {
-    for (Integer key : map.keySet()) {
-      Integer value = map.get(key);
-      mm.send(prefix + "." + value + ".count", value.intValue());
-    }
+    map
+        .entrySet()
+        .stream()
+        .forEach(entry -> mm
+            .send(prefix + "." + entry.getValue() + ".count", entry.getValue().intValue()));
   }
 
 

@@ -22,6 +22,7 @@
 package nl.sidn.pcap.support;
 
 import nl.sidn.dnslib.message.Message;
+import nl.sidn.pcap.config.ServerInfo;
 import nl.sidn.pcap.packet.Packet;
 
 public class PacketCombination {

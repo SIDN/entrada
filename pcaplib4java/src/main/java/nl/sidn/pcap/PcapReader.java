@@ -30,9 +30,8 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 import org.apache.commons.codec.binary.Hex;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 import com.google.common.collect.Multimap;
+import lombok.extern.log4j.Log4j2;
 import nl.sidn.pcap.decoder.DNSDecoder;
 import nl.sidn.pcap.decoder.ICMPDecoder;
 import nl.sidn.pcap.decoder.IPDecoder;
@@ -48,8 +47,8 @@ import nl.sidn.pcap.packet.TCPFlow;
  * Read all data from a pcap file and decode all the packets
  *
  */
+@Log4j2
 public class PcapReader implements Iterable<Packet> {
-  public static final Log LOG = LogFactory.getLog(PcapReader.class);
 
   // needs no explanation
   public static final int DNS_PORT = 53;
@@ -108,7 +107,7 @@ public class PcapReader implements Iterable<Packet> {
       // place we check caughtEOF.
       //
       if (caughtEOF) {
-        LOG.warn("Skipping empty file");
+        log.warn("Skipping empty file");
         return;
       }
       throw new IOException("Couldn't read PCAP header");
@@ -150,12 +149,12 @@ public class PcapReader implements Iterable<Packet> {
       }
     }
 
-    LOG.info("------------- Cache purge stats --------------");
-    LOG.info("TCP flow cache size: " + flows.size());
-    LOG.info("IP datagram cache size: " + ipDecoder.getDatagrams().size());
-    LOG.info("Expired (to be removed) TCP flows: " + expiredList.size());
-    LOG.info("Expired (to be removed) IP datagrams: " + dgExpiredList.size());
-    LOG.info("----------------------------------------------------");
+    log.info("------------- Cache purge stats --------------");
+    log.info("TCP flow cache size: " + flows.size());
+    log.info("IP datagram cache size: " + ipDecoder.getDatagrams().size());
+    log.info("Expired (to be removed) TCP flows: " + expiredList.size());
+    log.info("Expired (to be removed) IP datagrams: " + dgExpiredList.size());
+    log.info("----------------------------------------------------");
 
     // remove flows with expired packets
     for (TCPFlow tcpFlow : expiredList) {
@@ -172,7 +171,7 @@ public class PcapReader implements Iterable<Packet> {
     try {
       is.close();
     } catch (IOException e) {
-      LOG.error("Error closing inputstream", e);
+      log.error("Error closing inputstream", e);
     }
   }
 
@@ -194,8 +193,8 @@ public class PcapReader implements Iterable<Packet> {
     int ipStart = findIPStart(packetData);
 
     if (ipStart == -1) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug(Hex.encodeHexString(packetData));
+      if (log.isDebugEnabled()) {
+        log.debug(Hex.encodeHexString(packetData));
       }
       return Packet.NULL;
     }
@@ -203,8 +202,8 @@ public class PcapReader implements Iterable<Packet> {
     // decode the ip layer
     Packet packet = ipDecoder.decode(packetData, ipStart);
     if (packet == Packet.NULL) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug(Hex.encodeHexString(packetData));
+      if (log.isDebugEnabled()) {
+        log.debug(Hex.encodeHexString(packetData));
       }
       // decode failed
       return packet;
@@ -280,16 +279,16 @@ public class PcapReader implements Iterable<Packet> {
             tcpOrUdpPayloadIndex += msgLen;
           } else {
             // invalid msg len
-            if (LOG.isDebugEnabled()) {
-              LOG.debug(
+            if (log.isDebugEnabled()) {
+              log.debug(
                   "Invalid TCP payload length, msgLen= " + msgLen + " tcpOrUdpPayload.length= "
                       + tcpOrUdpPayload.length + " ack=" + packet.isTcpFlagAck());
             }
             break;
           }
         }
-        if (LOG.isDebugEnabled() && dnsBytes.size() > 1) {
-          LOG.debug("multiple msg in TCP stream");
+        if (log.isDebugEnabled() && dnsBytes.size() > 1) {
+          log.debug("multiple msg in TCP stream");
         }
       } else if (PROTOCOL_UDP == packet.getProtocol()) {
         // found UDP protocol
@@ -301,8 +300,8 @@ public class PcapReader implements Iterable<Packet> {
       if (packet.getFragOffset() == 0 && packet.getSrcPort() != PcapReader.DNS_PORT
           && packet.getDstPort() != PcapReader.DNS_PORT) {
         // not a dns packet
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("NON DNS protocol: " + packet);
+        if (log.isDebugEnabled()) {
+          log.debug("NON DNS protocol: " + packet);
         }
         return Packet.NULL;
       }
@@ -324,8 +323,8 @@ public class PcapReader implements Iterable<Packet> {
          * 
          * ignore the error and skip the packet.
          */
-        if (LOG.isDebugEnabled()) {
-          LOG.debug("Packet payload could not be decoded (malformed packet?) details: " + packet);
+        if (log.isDebugEnabled()) {
+          log.debug("Packet payload could not be decoded (malformed packet?) details: " + packet);
         }
         dnsDecodeError++;
       }
@@ -365,8 +364,9 @@ public class PcapReader implements Iterable<Packet> {
         return LinkType.LOOP;
       case 113:
         return LinkType.LINUX_SLL;
+      default:
+        return null;
     }
-    return null;
   }
 
   protected int findIPStart(byte[] packet) {
@@ -408,7 +408,7 @@ public class PcapReader implements Iterable<Packet> {
       caughtEOF = true;
       return false;
     } catch (IOException e) {
-      LOG.error("Error while reading " + buf.length + " bytes from buffer");
+      log.error("Error while reading " + buf.length + " bytes from buffer");
       return false;
     }
   }
@@ -437,7 +437,7 @@ public class PcapReader implements Iterable<Packet> {
           try {
             next = nextPacket();
           } catch (Throwable e) {
-            LOG.error("PCAP decode error: ", e);
+            log.error("PCAP decode error: ", e);
             next = Packet.NULL;
           }
         } while (next == Packet.NULL);
@@ -446,6 +446,8 @@ public class PcapReader implements Iterable<Packet> {
 
     @Override
     public boolean hasNext() {
+      // fetchNext will keep result in "next" var so that when next() is
+      // called the data does not have to be parsed a 2nd time
       fetchNext();
       if (next != null)
         return true;
@@ -453,9 +455,9 @@ public class PcapReader implements Iterable<Packet> {
       // no more data left
       int remainingFlows = tcpDecoder.getFlows().size() + ipDecoder.getDatagrams().size();
       if (remainingFlows > 0) {
-        LOG.warn("Still " + remainingFlows + " flows queued. Missing packets to finish assembly?");
-        LOG.warn("Packets processed: " + packetCounter);
-        LOG.warn("Messages decoded:  " + dnsDecoder.getMessageCounter());
+        log.warn("Still " + remainingFlows + " flows queued. Missing packets to finish assembly?");
+        log.warn("Packets processed: " + packetCounter);
+        log.warn("Messages decoded:  " + dnsDecoder.getMessageCounter());
       }
 
       return false;
@@ -467,6 +469,7 @@ public class PcapReader implements Iterable<Packet> {
       try {
         return next;
       } finally {
+        // make sure to set next to null so the next packet is read from the stream
         next = null;
       }
     }

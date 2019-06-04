@@ -24,6 +24,7 @@ import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
+import nl.sidn.dnslib.exception.DnsEncodeException;
 
 
 public class NetworkData {
@@ -126,7 +127,7 @@ public class NetworkData {
       writeBuffer.writeChar(c);
       writerIndex += 2;
     } catch (IOException e) {
-      throw new RuntimeException("Error while writing data", e);
+      throw new DnsEncodeException("Error while writing data", e);
     }
   }
 
@@ -135,7 +136,7 @@ public class NetworkData {
       writeBuffer.write(b);
       writerIndex++;
     } catch (IOException e) {
-      throw new RuntimeException("Error while writing data", e);
+      throw new DnsEncodeException("Error while writing data", e);
     }
   }
 
@@ -144,7 +145,7 @@ public class NetworkData {
       writeBuffer.write(b);
       writerIndex = writerIndex + b.length;
     } catch (IOException e) {
-      throw new RuntimeException("Error while writing data", e);
+      throw new DnsEncodeException("Error while writing data", e);
     }
   }
 
@@ -153,7 +154,7 @@ public class NetworkData {
       writeBuffer.writeInt((int) i);
       writerIndex += 4;
     } catch (IOException e) {
-      throw new RuntimeException("Error while writing data", e);
+      throw new DnsEncodeException("Error while writing data", e);
     }
   }
 

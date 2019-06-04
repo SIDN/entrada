@@ -22,24 +22,37 @@ package nl.sidn.pcap.util;
 import java.io.File;
 import java.util.Iterator;
 import org.apache.commons.io.FileUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.log4j.Log4j2;
+import nl.sidn.pcap.exception.ApplicationException;
 
-
+@Log4j2
 public class FileUtil {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(FileUtil.class);
+  private FileUtil() {}
 
   public static int countFiles(String inputDir) {
-    LOGGER.info("Scan for pcap files in: " + inputDir);
-    File f = FileUtils.getFile(inputDir);
-    Iterator<File> files =
-        FileUtils.iterateFiles(f, new String[] {"pcap", "pcap.gz", "pcap.xz"}, false);
+    log.info("Scan for pcap files in: " + inputDir);
+
     int filecount = 0;
-    while (files.hasNext()) {
-      files.next();
-      filecount++;
+    File f = FileUtils.getFile(inputDir);
+
+    if (!f.exists()) {
+      log.error("Directory {} does not exist, maybe this is due to a server name config error?",
+          inputDir);
+      return 0;
     }
+
+    Iterator<File> files;
+    try {
+      files = FileUtils.iterateFiles(f, new String[] {"pcap", "pcap.gz", "pcap.xz"}, false);
+      while (files.hasNext()) {
+        files.next();
+        filecount++;
+      }
+    } catch (Exception e) {
+      throw new ApplicationException("Scanning for new files failed", e);
+    }
+
     return filecount;
   }
 

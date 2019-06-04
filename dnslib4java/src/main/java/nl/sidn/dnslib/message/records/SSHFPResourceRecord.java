@@ -5,101 +5,69 @@
  * 
  * This file is part of ENTRADA.
  * 
- * ENTRADA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * ENTRADA is free software: you can redistribute it and/or modify it under the terms of the GNU
+ * General Public License as published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
  * 
- * ENTRADA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * ENTRADA is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even
+ * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+ * Public License for more details.
  * 
- * You should have received a copy of the GNU General Public License
- * along with ENTRADA.  If not, see [<http://www.gnu.org/licenses/].
+ * You should have received a copy of the GNU General Public License along with ENTRADA. If not, see
+ * [<http://www.gnu.org/licenses/].
  *
- */	
+ */
 package nl.sidn.dnslib.message.records;
 
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
-
 import org.apache.commons.codec.binary.Hex;
-
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 import nl.sidn.dnslib.message.util.NetworkData;
 
+@Data
+@EqualsAndHashCode(callSuper = true)
 public class SSHFPResourceRecord extends AbstractResourceRecord {
-	
-	private static final long serialVersionUID = 1L;
-	
-	private short algorithm;
-	private short fingerprintType;
-	private byte[] fingerprint;
 
-	
+  private static final long serialVersionUID = 1L;
 
-	@Override
-	public void decode(NetworkData buffer) {
-		super.decode(buffer);
-			
-		algorithm = buffer.readUnsignedByte();
-		
-		fingerprintType = buffer.readUnsignedByte();
-		
-		fingerprint = new byte[rdLength-2];
-		buffer.readBytes(fingerprint);
-	}
+  private short algorithm;
+  private short fingerprintType;
+  private byte[] fingerprint;
 
-	@Override
-	public void encode(NetworkData buffer) {
-		super.encode(buffer);
-		
-		//write rdlength
-		buffer.writeChar(rdLength);
-		
-		buffer.writeBytes(rdata);
-	}
 
-	public short getAlgorithm() {
-		return algorithm;
-	}
 
-	public void setAlgorithm(short algorithm) {
-		this.algorithm = algorithm;
-	}
+  @Override
+  public void decode(NetworkData buffer) {
+    super.decode(buffer);
 
-	public short getFingerprintType() {
-		return fingerprintType;
-	}
+    algorithm = buffer.readUnsignedByte();
 
-	public void setFingerprintType(short fingerprintType) {
-		this.fingerprintType = fingerprintType;
-	}
+    fingerprintType = buffer.readUnsignedByte();
 
-	public byte[] getFingerprint() {
-		return fingerprint;
-	}
+    fingerprint = new byte[rdLength - 2];
+    buffer.readBytes(fingerprint);
+  }
 
-	public void setFingerprint(byte[] fingerprint) {
-		this.fingerprint = fingerprint;
-	}
+  @Override
+  public void encode(NetworkData buffer) {
+    super.encode(buffer);
 
-	@Override
-	public String toString() {
-		return "SSHFPResourceRecord [algorithm=" + algorithm
-				+ ", fingerprintType=" + fingerprintType + "]";
-	}
-	
-	@Override
-	public JsonObject toJSon(){
-		JsonObjectBuilder builder = super.createJsonBuilder();
-		return builder.
-			add("rdata", Json.createObjectBuilder().
-				add("algorithm", algorithm).
-				add("fptype", fingerprintType).
-				add("fingerprint", Hex.encodeHexString(fingerprint))).
-			build();
-	}
-	
+    // write rdlength
+    buffer.writeChar(rdLength);
+
+    buffer.writeBytes(rdata);
+  }
+
+  @Override
+  public JsonObject toJSon() {
+    JsonObjectBuilder builder = super.createJsonBuilder();
+    return builder
+        .add("rdata", Json.createObjectBuilder().add("algorithm", algorithm)
+            .add("fptype", fingerprintType).add("fingerprint", Hex.encodeHexString(fingerprint)))
+        .build();
+  }
+
 }

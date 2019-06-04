@@ -22,8 +22,8 @@ package nl.sidn.pcap.ip;
 import java.net.UnknownHostException;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 import org.xbill.DNS.Cache;
 import org.xbill.DNS.Lookup;
 import org.xbill.DNS.Record;
@@ -31,7 +31,8 @@ import org.xbill.DNS.Resolver;
 import org.xbill.DNS.SimpleResolver;
 import org.xbill.DNS.TXTRecord;
 import org.xbill.DNS.Type;
-import nl.sidn.pcap.util.Settings;
+import lombok.extern.log4j.Log4j2;
+import nl.sidn.pcap.config.Settings;
 
 /**
  * check if an IP address is a Google open resolver. This check uses the list from the Google
@@ -40,14 +41,22 @@ import nl.sidn.pcap.util.Settings;
  * @author maarten
  * 
  */
+@Log4j2
+@Component
 public final class GoogleResolverCheck extends AbstractNetworkCheck {
 
-  private static String GOOGLE_RESOLVER_IP_FILENAME = "google-resolvers";
-  protected static final Logger LOGGER = LoggerFactory.getLogger(GoogleResolverCheck.class);
+  private static final String GOOGLE_RESOLVER_IP_FILENAME = "google-resolvers";
+
+  @Value("${entrada.resolver.list.google}")
+  private String hostname;
+
+  public GoogleResolverCheck(Settings settings) {
+    super(settings);
+  }
 
   @Override
   protected void init() {
-    String hostname = Settings.getInstance().getSetting(Settings.RESOLVER_LIST_GOOGLE);
+    // String hostname = Settings.getInstance().getSetting(Settings.RESOLVER_LIST_GOOGLE);
     try {
       Resolver resolver = new SimpleResolver();
       // dns resolvers may take a long time to return a response.
@@ -63,10 +72,10 @@ public final class GoogleResolverCheck extends AbstractNetworkCheck {
       }
 
       if (subnets.size() == 0) {
-        LOGGER.error("No Google resolvers found.");
+        log.error("No Google resolvers found.");
       }
     } catch (Exception e) {
-      LOGGER.error("Problem while adding Google resolvers.", e);
+      log.error("Problem while adding Google resolvers.", e);
     }
   }
 
@@ -76,13 +85,13 @@ public final class GoogleResolverCheck extends AbstractNetworkCheck {
     for (String line : lines) {
       String[] parts = StringUtils.split(line, " ");
       if (parts.length == 2) {
-        LOGGER.info("Add Google resolver IP range: " + parts[0]);
+        log.info("Add Google resolver IP range: " + parts[0]);
 
         try {
           bit_subnets.add(Subnet.createInstance(parts[0]));
           subnets.add(parts[0]);
         } catch (UnknownHostException e) {
-          LOGGER.error("Problem while adding Google resolver IP range: " + parts[0] + e);
+          log.error("Problem while adding Google resolver IP range: " + parts[0] + e);
         }
       }
     }

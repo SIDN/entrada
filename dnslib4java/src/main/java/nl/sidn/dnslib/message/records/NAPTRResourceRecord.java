@@ -22,13 +22,16 @@ package nl.sidn.dnslib.message.records;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 import nl.sidn.dnslib.message.util.DNSStringUtil;
 import nl.sidn.dnslib.message.util.NetworkData;
 
+@Data
+@EqualsAndHashCode(callSuper = true)
 public class NAPTRResourceRecord extends AbstractResourceRecord {
 
-  private static final long serialVersionUID = 1L;
-
+  private static final long serialVersionUID = 6981260851592320670L;
   private char order;
   private char preference;
   private String flags;
@@ -80,17 +83,6 @@ public class NAPTRResourceRecord extends AbstractResourceRecord {
     DNSStringUtil.writeLabelData(regexp, buffer);
 
     DNSStringUtil.writeName(replacement, buffer);
-  }
-
-  public String getCacheId() {
-    return null;
-  }
-
-  @Override
-  public String toString() {
-    return "NAPTRResourceRecord [" + super.toString() + ", order=" + (int) order + ", preference="
-        + (int) preference + ", flags=" + flags + ", services=" + services + ", regexp=" + regexp
-        + ", replacement=" + replacement + ", length=" + length + "]";
   }
 
   @Override

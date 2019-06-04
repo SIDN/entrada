@@ -31,6 +31,7 @@ import nl.sidn.dnslib.message.records.dnssec.DSResourceRecord;
 
 public class KeyUtil {
 
+  private KeyUtil() {}
 
   private static char KEY_ZONE_FLAG_MASK = 0x0100; // 0000 0001 0000 0000
   private static char KEY_ZONE_SEP_FLAG_MASK = 0x0101; // 0000 0001 0000 0001
@@ -119,12 +120,8 @@ public class KeyUtil {
   }
 
   public static boolean isKeyandDSmatch(DNSKEYResourceRecord key, DSResourceRecord ds) {
-    if (key.getAlgorithm() == ds.getAlgorithm() && key.getKeytag() == ds.getKeytag()
-        && key.getName().equalsIgnoreCase(ds.getName())) {
-      return true;
-    }
-
-    return false;
+    return (key.getAlgorithm() == ds.getAlgorithm() && key.getKeytag() == ds.getKeytag()
+        && key.getName().equalsIgnoreCase(ds.getName()));
   }
 
 }

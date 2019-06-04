@@ -22,6 +22,7 @@ package nl.sidn.pcap.util;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import nl.sidn.pcap.config.Settings;
 import nl.sidn.pcap.ip.GoogleResolverCheck;
 
 public class GoogleResolverCheckTest {

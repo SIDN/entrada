@@ -25,8 +25,12 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import com.google.common.net.InetAddresses;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 import nl.sidn.dnslib.message.util.NetworkData;
 
+@Data
+@EqualsAndHashCode(callSuper = true)
 public class AAAAResourceRecord extends AbstractResourceRecord {
 
   private static final long serialVersionUID = 1L;
@@ -39,15 +43,6 @@ public class AAAAResourceRecord extends AbstractResourceRecord {
 
   private String address;
   private byte[] ipv6Bytes;
-
-  public String getAddress() {
-    return address;
-  }
-
-  public void setAddress(String address) {
-    this.address = address;
-  }
-
 
   @Override
   public void decode(NetworkData buffer) {
@@ -77,15 +72,6 @@ public class AAAAResourceRecord extends AbstractResourceRecord {
     buffer.writeChar(rdLength);
 
     buffer.writeBytes(ipv6Bytes);
-  }
-
-  @Override
-  public String toString() {
-    return super.toString() + " AAAAResourceRecord [address=" + address + "]";
-  }
-
-  public String getCacheId() {
-    return address;
   }
 
   @Override

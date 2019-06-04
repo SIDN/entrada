@@ -47,9 +47,9 @@ import nl.sidn.dnslib.exception.DnsEncodeException;
 public class DNSStringUtil {
 
   // max length of a rfc1035 character-string (excluding length byte)
-  private static int MAX_CHARACTER_STRING_LENGTH = 255;
+  private static final int MAX_CHARACTER_STRING_LENGTH = 255;
 
-  private static int MAX_POINTER_CHAIN_LENGTH = 10; // TODO: what is the optimal value?
+  private static final int MAX_POINTER_CHAIN_LENGTH = 10; // TODO: what is the optimal value?
   /*
    * 
    * 4.1.4. Message compression
@@ -233,7 +233,7 @@ public class DNSStringUtil {
       // write root with zero byte
       dos.writeByte(0);
     } catch (IOException e) {
-      throw new RuntimeException("Error while wrting name", e);
+      throw new DnsEncodeException("Error while writing name", e);
     }
 
     return bos.toByteArray();

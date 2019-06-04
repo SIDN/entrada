@@ -1,18 +1,21 @@
-package nl.sidn.stats;
+package nl.sidn.metric;
 
 import java.util.HashMap;
 import java.util.Map;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
-import nl.sidn.pcap.util.Settings;
+import lombok.extern.log4j.Log4j2;
 
+@Log4j2
+@Component
 public class PersistenceManager {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(PersistenceManager.class);
   private MetricManager metricManager;
+  @Value("${entrada.cache.timeout}")
+  private int timeout;
 
   public PersistenceManager(MetricManager metricManager) {
     this.metricManager = metricManager;
@@ -24,7 +27,7 @@ public class PersistenceManager {
     Map<String, Metric> metricCache = metricManager.getMetricCache();
     // get the max ttl for cache items, add 10 minutes just to be safe
     // in cases where transporting the file to entrada takes longer
-    int cacheTimeoutInSecs = (Settings.getInstance().getIntSetting("cache.timeout") + 10) * 60;
+    int cacheTimeoutInSecs = (timeout + 10) * 60;
     long now = System.currentTimeMillis();
 
     Map<String, Metric> newMap = new HashMap<>();
@@ -44,23 +47,20 @@ public class PersistenceManager {
         expired++;
       }
     }
-    LOGGER.info("Found " + expired + " expired cache entries");
+    log.info("Found " + expired + " expired cache entries");
     // contains only the "live" metrics
     kryo.writeObject(output, newMap);
 
-    LOGGER.info("Persist statistics cache with " + newMap.size() + " metrics");
+    log.info("Persist statistics cache with " + newMap.size() + " metrics");
   }
 
   public void load(Kryo kryo, Input input) {
     Map<String, Metric> metricCache = kryo.readObject(input, HashMap.class);
-    for (String key : metricCache.keySet()) {
-      Metric m = metricCache.get(key);
-      if (m != null) {
-        // mark metric as non-alive, so if not updated this run, then it will not be persisted again
-        m.setAlive(false);
-      }
-    }
-    LOGGER.info("Loaded statistics cache " + metricCache.size() + " metrics");
+
+    // mark metric as non-alive, so if not updated this run, then it will not be persisted again
+    metricCache.entrySet().stream().forEach(e -> e.getValue().setAlive(false));
+
+    log.info("Loaded statistics cache " + metricCache.size() + " metrics");
     metricManager.setMetricCache(metricCache);
   }
 

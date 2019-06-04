@@ -5,30 +5,24 @@
  * 
  * This file is part of ENTRADA.
  * 
- * ENTRADA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * ENTRADA is free software: you can redistribute it and/or modify it under the terms of the GNU
+ * General Public License as published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
  * 
- * ENTRADA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * ENTRADA is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even
+ * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+ * Public License for more details.
  * 
- * You should have received a copy of the GNU General Public License
- * along with ENTRADA.  If not, see [<http://www.gnu.org/licenses/].
+ * You should have received a copy of the GNU General Public License along with ENTRADA. If not, see
+ * [<http://www.gnu.org/licenses/].
  *
- */	
+ */
 package nl.sidn.dnslib.util;
 
-public class Domaininfo{
-	public String name;
-	public int labels;
-	
-	public Domaininfo(String name, int labels) {
-		this.name = name;
-		this.labels = labels;
-	}
-	
-	
+import lombok.Value;
+
+@Value
+public class Domaininfo {
+  private String name;
+  private int labels;
 }

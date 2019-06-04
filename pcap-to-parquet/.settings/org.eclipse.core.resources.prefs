@@ -1,5 +1,6 @@
 eclipse.preferences.version=1
-encoding//src/jvm=UTF-8
-encoding//src/main/java/nl/sidn/pcap/parquet/ICMPParquetPacketWriter.java=UTF-8
-encoding//src/test/java/nl/sidn/pcap/MainTest.java=UTF-8
-encoding//test/jvm=UTF-8
+encoding//src/main/java=UTF-8
+encoding//src/main/resources=UTF-8
+encoding//src/test/java=UTF-8
+encoding//src/test/resources=UTF-8
+encoding/<project>=UTF-8

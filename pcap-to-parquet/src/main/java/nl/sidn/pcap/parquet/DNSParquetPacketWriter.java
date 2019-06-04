@@ -19,42 +19,49 @@
  */
 package nl.sidn.pcap.parquet;
 
+import java.net.InetAddress;
+import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.avro.generic.GenericRecordBuilder;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.stereotype.Component;
 import com.google.common.base.Joiner;
 import nl.sidn.dnslib.message.Header;
 import nl.sidn.dnslib.message.Message;
 import nl.sidn.dnslib.message.Question;
-import nl.sidn.dnslib.message.records.edns0.*;
+import nl.sidn.dnslib.message.records.edns0.ClientSubnetOption;
+import nl.sidn.dnslib.message.records.edns0.DNSSECOption;
+import nl.sidn.dnslib.message.records.edns0.EDNS0Option;
+import nl.sidn.dnslib.message.records.edns0.KeyTagOption;
+import nl.sidn.dnslib.message.records.edns0.NSidOption;
+import nl.sidn.dnslib.message.records.edns0.OPTResourceRecord;
+import nl.sidn.dnslib.message.records.edns0.PaddingOption;
+import nl.sidn.dnslib.message.records.edns0.PingOption;
 import nl.sidn.dnslib.types.OpcodeType;
 import nl.sidn.dnslib.types.RcodeType;
 import nl.sidn.dnslib.types.ResourceRecordType;
 import nl.sidn.dnslib.util.Domaininfo;
 import nl.sidn.dnslib.util.NameUtil;
+import nl.sidn.metric.MetricManager;
 import nl.sidn.pcap.PcapReader;
+import nl.sidn.pcap.config.Settings;
 import nl.sidn.pcap.ip.GoogleResolverCheck;
 import nl.sidn.pcap.ip.OpenDNSResolverCheck;
 import nl.sidn.pcap.packet.Packet;
 import nl.sidn.pcap.support.PacketCombination;
-import nl.sidn.pcap.util.Settings;
-import nl.sidn.stats.MetricManager;
-import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.GenericRecordBuilder;
-import org.apache.commons.lang3.StringUtils;
-import org.kitesdk.data.PartitionStrategy;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import nl.sidn.pcap.util.GeoLookupUtil;
 
-import java.net.InetAddress;
-import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+@Component
 public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 
-  private static final Logger LOGGER = LoggerFactory.getLogger(DNSParquetPacketWriter.class);
-
   private static final int RCODE_QUERY_WITHOUT_RESPONSE = -1;
+
+  private static final String DNS_AVRO_SCHEMA = "dns-query.avsc";
 
   // metrics
   private long responseBytes = 0;
@@ -69,14 +76,27 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
   private int ipv4QueryCount = 0;
   private int ipv6QueryCount = 0;
 
-  private MetricManager metricManager;
-  private GoogleResolverCheck googleCheck = new GoogleResolverCheck();
-  private OpenDNSResolverCheck openDNSCheck = new OpenDNSResolverCheck();
 
-  public DNSParquetPacketWriter(String repoName, String schema) {
-    super(repoName, schema);
-    metricManager = MetricManager.getInstance();
+  private Settings settings;
+  private MetricManager metricManager;
+  private GoogleResolverCheck googleCheck;
+  private OpenDNSResolverCheck openDNSCheck;
+
+  public DNSParquetPacketWriter(Settings settings, GoogleResolverCheck googleCheck,
+      OpenDNSResolverCheck openDNSCheck, MetricManager metricManager, GeoLookupUtil geoLookup) {
+
+    super(geoLookup);
+    this.settings = settings;
+    this.googleCheck = googleCheck;
+    this.openDNSCheck = openDNSCheck;
+    this.metricManager = metricManager;
   }
+
+
+  // public DNSParquetPacketWriter(String repoName, String schema) {
+  // super(repoName, schema);
+  // metricManager = MetricManager.getInstance();
+  // }
 
   /**
    * Get the question, from the request packet if not available then from the response, which should
@@ -114,7 +134,7 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
   @Override
   public void write(PacketCombination combo) {
 
-    GenericRecordBuilder builder = newBuilder();
+    GenericRecordBuilder builder = recordBuilder(DNS_AVRO_SCHEMA);
 
     packetCounter++;
     if (packetCounter % STATUS_COUNT == 0) {
@@ -143,9 +163,9 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
     Timestamp ts = new Timestamp((time * 1000));
 
     // get the qname domain name details
-    String normalizedQname = question == null ? "" : filter(question.getqName());
+    String normalizedQname = question == null ? "" : filter(question.getQName());
     normalizedQname = StringUtils.lowerCase(normalizedQname);
-    Domaininfo domaininfo = NameUtil.getDomain(normalizedQname, Settings.getTldSuffixes());
+    Domaininfo domaininfo = NameUtil.getDomain(normalizedQname, settings.getTldSuffixes());
     // check to see it a response was found, if not then save -1 value
     // otherwise use the rcode returned by the server in the response.
     // no response might be caused by rate limiting
@@ -169,9 +189,13 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
       // use rcode from response
       rcode = responseHeader.getRawRcode();
 
-      builder.set("id", responseHeader.getId()).set("opcode", responseHeader.getRawOpcode())
-          .set("aa", responseHeader.isAa()).set("tc", responseHeader.isTc())
-          .set("ra", responseHeader.isRa()).set("ad", responseHeader.isAd())
+      builder
+          .set("id", responseHeader.getId())
+          .set("opcode", responseHeader.getRawOpcode())
+          .set("aa", responseHeader.isAa())
+          .set("tc", responseHeader.isTc())
+          .set("ra", responseHeader.isRa())
+          .set("ad", responseHeader.isAd())
           .set("ancount", (int) responseHeader.getAnCount())
           .set("arcount", (int) responseHeader.getArCount())
           .set("nscount", (int) responseHeader.getNsCount())
@@ -207,13 +231,15 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 
     // values from request OR response now
     // if no request found in the request then use values from the response.
-    builder.set("rcode", rcode)
+    builder
+        .set("rcode", rcode)
         .set("unixtime", reqTransport != null ? reqTransport.getTs() : respTransport.getTs())
         .set("time", ts.getTime())
         .set("time_micro",
             reqTransport != null ? reqTransport.getTsmicros() : respTransport.getTsmicros())
-        .set("qname", normalizedQname).set("domainname", domaininfo.name)
-        .set("labels", domaininfo.labels)
+        .set("qname", normalizedQname)
+        .set("domainname", domaininfo.getName())
+        .set("labels", domaininfo.getLabels())
         .set("src", reqTransport != null ? reqTransport.getSrc() : respTransport.getDst())
         .set("len", reqTransport != null ? reqTransport.getTotalLength() : null)
         .set("ttl", reqTransport != null ? reqTransport.getTtl() : null)
@@ -232,11 +258,17 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
     // get values from the request only.
     // may overwrite values from the response
     if (reqTransport != null && requestHeader != null) {
-      builder.set("id", requestHeader.getId()).set("opcode", requestHeader.getRawOpcode())
-          .set("rd", requestHeader.isRd()).set("z", requestHeader.isZ())
-          .set("cd", requestHeader.isCd()).set("qdcount", (int) requestHeader.getQdCount())
-          .set("id", requestHeader.getId()).set("q_tc", requestHeader.isTc())
-          .set("q_ra", requestHeader.isRa()).set("q_ad", requestHeader.isAd())
+      builder
+          .set("id", requestHeader.getId())
+          .set("opcode", requestHeader.getRawOpcode())
+          .set("rd", requestHeader.isRd())
+          .set("z", requestHeader.isZ())
+          .set("cd", requestHeader.isCd())
+          .set("qdcount", (int) requestHeader.getQdCount())
+          .set("id", requestHeader.getId())
+          .set("q_tc", requestHeader.isTc())
+          .set("q_ra", requestHeader.isRa())
+          .set("q_ad", requestHeader.isAd())
           .set("q_rcode", requestHeader.getRawRcode());
 
       // ip fragments in the request
@@ -276,7 +308,12 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 
     // create the actual record and write to parquet file
     GenericRecord record = builder.build();
-    writer.write(record);
+    Calendar cal = Calendar.getInstance();
+    cal.setTimeInMillis(ts.getTime());
+
+    writer
+        .write(record, schema(DNS_AVRO_SCHEMA), cal.get(Calendar.YEAR), cal.get(Calendar.MONTH),
+            cal.get(Calendar.DAY_OF_MONTH), combo.getServer().getName());
 
     // create metrics
     updateMetricMap(rcodes, rcode);
@@ -287,8 +324,9 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 
     // if packet was expired and dropped from cache then increase stats for this
     if (combo.isExpired()) {
-      metricManager.sendAggregated(MetricManager.METRIC_IMPORT_CACHE_EXPPIRED_DNS_QUERY_COUNT, 1,
-          time, false);
+      metricManager
+          .sendAggregated(MetricManager.METRIC_IMPORT_CACHE_EXPPIRED_DNS_QUERY_COUNT, 1, time,
+              false);
     }
   }
 
@@ -315,7 +353,9 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
       }
     }
 
-    builder.set("country", country).set("asn", asn)
+    builder
+        .set("country", country)
+        .set("asn", asn)
         // check of the resolver is a google backend resolver
         .set("is_google", isGoogle)
         // check of the resolver is a opendns backend resolver
@@ -341,11 +381,11 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
   private void writeQuestion(Question q, GenericRecordBuilder builder) {
     if (q != null) {
       // unassigned, private or unknown, get raw value
-      builder.set("qtype", q.getqTypeValue());
+      builder.set("qtype", q.getQTypeValue());
       // unassigned, private or unknown, get raw value
-      builder.set("qclass", q.getqClassValue());
+      builder.set("qclass", q.getQClassValue());
       // qtype metrics
-      updateMetricMap(qtypes, q.getqTypeValue());
+      updateMetricMap(qtypes, q.getQTypeValue());
     }
   }
 
@@ -403,8 +443,10 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 
     OPTResourceRecord opt = message.getPseudo();
     if (opt != null) {
-      builder.set("edns_udp", (int) opt.getUdpPlayloadSize())
-          .set("edns_version", (int) opt.getVersion()).set("edns_do", opt.getDnssecDo())
+      builder
+          .set("edns_udp", (int) opt.getUdpPlayloadSize())
+          .set("edns_version", (int) opt.getVersion())
+          .set("edns_do", opt.isDnssecDo())
           .set("edns_padding", -1); // use default no padding found
 
       List<Integer> otherEdnsOptions = new ArrayList<>();
@@ -430,11 +472,13 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
               clientCountry = geoLookup.lookupCountry(addr);
               clientASN = geoLookup.lookupASN(addr);
             } catch (Exception e) {
-              LOGGER.error("Could not convert " + (scOption.isIPv4() ? "IPv4" : "IPv6") + " addr to bytes, invalid address? :"
-                  + scOption.getAddress());
+              LOGGER
+                  .error("Could not convert " + (scOption.isIPv4() ? "IPv4" : "IPv6")
+                      + " addr to bytes, invalid address? :" + scOption.getAddress());
             }
           }
-          builder.set("edns_client_subnet", scOption.export())
+          builder
+              .set("edns_client_subnet", scOption.export())
               .set("edns_client_subnet_asn", clientASN)
               .set("edns_client_subnet_country", clientCountry);
 
@@ -457,11 +501,11 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
   }
 
 
-  @Override
-  protected PartitionStrategy createPartitionStrategy() {
-    return new PartitionStrategy.Builder().year("time").month("time").day("time")
-        .identity("svr", "server").build();
-  }
+  // @Override
+  // protected PartitionStrategy createPartitionStrategy() {
+  // return new PartitionStrategy.Builder().year("time").month("time").day("time")
+  // .identity("svr", "server").build();
+  // }
 
   @Override
   public void writeMetrics() {
@@ -470,12 +514,13 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
       Integer value = rcodes.get(key);
       if (key.intValue() == -1) {
         // pseudo rcode -1 means no reponse, not an official rcode
-        metricManager.send(MetricManager.METRIC_IMPORT_DNS_RCODE + ".NO_RESPONSE.count",
-            value.intValue());
+        metricManager
+            .send(MetricManager.METRIC_IMPORT_DNS_RCODE + ".NO_RESPONSE.count", value.intValue());
       } else {
         RcodeType type = RcodeType.fromValue(key.intValue());
-        metricManager.send(MetricManager.METRIC_IMPORT_DNS_RCODE
-            + StringUtils.upperCase("." + type.name()) + ".count", value.intValue());
+        metricManager
+            .send(MetricManager.METRIC_IMPORT_DNS_RCODE + StringUtils.upperCase("." + type.name())
+                + ".count", value.intValue());
       }
     }
 
@@ -484,14 +529,14 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
     metricManager.send(MetricManager.METRIC_IMPORT_ASN_COUNT, asn_cache.size());
 
     if (responseBytes > 0) {
-      metricManager.send(MetricManager.METRIC_IMPORT_DNS_RESPONSE_BYTES_SIZE,
-          (int) (responseBytes / 1024));
+      metricManager
+          .send(MetricManager.METRIC_IMPORT_DNS_RESPONSE_BYTES_SIZE, (int) (responseBytes / 1024));
     } else {
       metricManager.send(MetricManager.METRIC_IMPORT_DNS_RESPONSE_BYTES_SIZE, 0);
     }
     if (requestBytes > 0) {
-      metricManager.send(MetricManager.METRIC_IMPORT_DNS_QUERY_BYTES_SIZE,
-          (int) (requestBytes / 1024));
+      metricManager
+          .send(MetricManager.METRIC_IMPORT_DNS_QUERY_BYTES_SIZE, (int) (requestBytes / 1024));
     } else {
       metricManager.send(MetricManager.METRIC_IMPORT_DNS_QUERY_BYTES_SIZE, 0);
     }
@@ -499,25 +544,29 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
     for (Integer key : qtypes.keySet()) {
       Integer value = qtypes.get(key);
       ResourceRecordType type = ResourceRecordType.fromValue(key.intValue());
-      metricManager.send(MetricManager.METRIC_IMPORT_DNS_QTYPE
-          + StringUtils.upperCase("." + type.name()) + ".count", value.intValue());
+      metricManager
+          .send(MetricManager.METRIC_IMPORT_DNS_QTYPE + StringUtils.upperCase("." + type.name())
+              + ".count", value.intValue());
     }
 
     for (Integer key : opcodes.keySet()) {
       Integer value = opcodes.get(key);
       OpcodeType type = OpcodeType.fromValue(key.intValue());
-      metricManager.send(MetricManager.METRIC_IMPORT_DNS_OPCODE
-          + StringUtils.upperCase("." + type.name()) + ".count", value.intValue());
+      metricManager
+          .send(MetricManager.METRIC_IMPORT_DNS_OPCODE + StringUtils.upperCase("." + type.name())
+              + ".count", value.intValue());
     }
 
-    metricManager.send(MetricManager.METRIC_IMPORT_UDP_REQUEST_FRAGMENTED_COUNT,
-        requestUDPFragmentedCount);
-    metricManager.send(MetricManager.METRIC_IMPORT_TCP_REQUEST_FRAGMENTED_COUNT,
-        requestTCPFragmentedCount);
-    metricManager.send(MetricManager.METRIC_IMPORT_UDP_RESPONSE_FRAGMENTED_COUNT,
-        responseUDPFragmentedCount);
-    metricManager.send(MetricManager.METRIC_IMPORT_TCP_RESPONSE_FRAGMENTED_COUNT,
-        responseTCPFragmentedCount);
+    metricManager
+        .send(MetricManager.METRIC_IMPORT_UDP_REQUEST_FRAGMENTED_COUNT, requestUDPFragmentedCount);
+    metricManager
+        .send(MetricManager.METRIC_IMPORT_TCP_REQUEST_FRAGMENTED_COUNT, requestTCPFragmentedCount);
+    metricManager
+        .send(MetricManager.METRIC_IMPORT_UDP_RESPONSE_FRAGMENTED_COUNT,
+            responseUDPFragmentedCount);
+    metricManager
+        .send(MetricManager.METRIC_IMPORT_TCP_RESPONSE_FRAGMENTED_COUNT,
+            responseTCPFragmentedCount);
 
     metricManager.send(MetricManager.METRIC_IMPORT_IP_VERSION_4_COUNT, ipv4QueryCount);
     metricManager.send(MetricManager.METRIC_IMPORT_IP_VERSION_6_COUNT, ipv6QueryCount);

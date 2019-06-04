@@ -21,6 +21,7 @@ package nl.sidn.pcap.util;
 
 import com.google.common.collect.Lists;
 import com.google.common.net.InetAddresses;
+import nl.sidn.pcap.config.Settings;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;

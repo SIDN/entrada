@@ -6,8 +6,8 @@ import java.util.concurrent.LinkedBlockingQueue;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import nl.sidn.pcap.config.Settings;
 import nl.sidn.pcap.support.PacketCombination;
-import nl.sidn.pcap.util.Settings;
 
 public class LoaderThreadTest {
 
@@ -24,7 +24,7 @@ public class LoaderThreadTest {
   @Test
   public void loadValidPcap() {
     BlockingQueue<PacketCombination> queue = new LinkedBlockingQueue<PacketCombination>();
-    LoaderThread lt = new LoaderThread(queue, "/tmp/", "/tmp/", "/tmp/");
+    PcapProcessor lt = new PcapProcessor(queue, "/tmp/", "/tmp/", "/tmp/");
 
     ClassLoader classLoader = getClass().getClassLoader();
     File file = new File(classLoader

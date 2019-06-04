@@ -27,10 +27,11 @@ import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import nl.sidn.pcap.util.Settings;
+import lombok.extern.log4j.Log4j2;
+import nl.sidn.pcap.config.Settings;
 
 /**
  * Checker to see if an IP address is an OpenDNS resolver. resolver ips are downloaded from opendns
@@ -39,17 +40,26 @@ import nl.sidn.pcap.util.Settings;
  * @author maarten
  *
  */
+@Log4j2
+@Component
 public final class OpenDNSResolverCheck extends AbstractNetworkCheck {
 
-  private static String OPENDNS_RESOLVER_IP_FILENAME = "opendns-resolvers";
-  protected static final Logger LOGGER = LoggerFactory.getLogger(OpenDNSResolverCheck.class);
+  private static final String OPENDNS_RESOLVER_IP_FILENAME = "opendns-resolvers";
 
   private static final ObjectMapper objectMapper = new ObjectMapper();
 
+  @Value("${entrada.resolver.list.opendns}")
+  private String url;
+
+  public OpenDNSResolverCheck(Settings settings) {
+    super(settings);
+  }
+
+
   @Override
   protected void init() {
-    String url = Settings.getInstance().getSetting(Settings.RESOLVER_LIST_OPENDNS);
-    LOGGER.info("Load OpenDNS resolver addresses from url: " + url);
+    // String url = Settings.getInstance().getSetting(Settings.RESOLVER_LIST_OPENDNS);
+    log.info("Load OpenDNS resolver addresses from url: " + url);
 
     int timeout = 15;
     RequestConfig config = RequestConfig.custom().setConnectTimeout(timeout * 1000)
@@ -67,7 +77,7 @@ public final class OpenDNSResolverCheck extends AbstractNetworkCheck {
         String v4 = location.get("subnetV4");
         String v6 = location.get("subnetV6");
 
-        LOGGER.info("Add OpenDNS resolver IP ranges, subnetV4: " + v4 + " subnetV6: " + v6);
+        log.info("Add OpenDNS resolver IP ranges, subnetV4: " + v4 + " subnetV6: " + v6);
 
         bit_subnets.add(Subnet.createInstance(v4));
         bit_subnets.add(Subnet.createInstance(v6));
@@ -76,7 +86,7 @@ public final class OpenDNSResolverCheck extends AbstractNetworkCheck {
       }
 
     } catch (Exception e) {
-      LOGGER.error("Problem while adding OpenDns resolvers.");
+      log.error("Problem while adding OpenDns resolvers.");
     } finally {
       IOUtils.closeQuietly(client);
     }

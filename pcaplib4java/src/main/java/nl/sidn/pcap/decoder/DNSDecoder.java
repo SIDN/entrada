@@ -20,8 +20,8 @@
 package nl.sidn.pcap.decoder;
 
 import java.util.List;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
+import lombok.Data;
+import lombok.extern.log4j.Log4j2;
 import nl.sidn.dnslib.message.Message;
 import nl.sidn.dnslib.message.util.NetworkData;
 import nl.sidn.pcap.PcapReader;
@@ -31,8 +31,9 @@ import nl.sidn.pcap.packet.DNSPacket;
  * Decode the dns payload of an UDP or TCP message
  *
  */
+@Data
+@Log4j2
 public class DNSDecoder {
-  public static final Log LOG = LogFactory.getLog(DNSDecoder.class);
 
   private int dnsDecodeError;
   private int messageCounter;
@@ -60,30 +61,22 @@ public class DNSDecoder {
     nd = new NetworkData(payload);
     try {
       dnsMessage = new Message(nd, allowFaill);
+      dnsMessage.setBytes(nd.length());
+      packet.pushMessage(dnsMessage);
+      messageCounter++;
     } catch (Exception e) {
-      if (LOG.isDebugEnabled()) {
-        LOG.debug("error decoding maybe corrupt packet: " + packet, e);
+      if (log.isDebugEnabled()) {
+        log.debug("error decoding maybe corrupt packet: " + packet, e);
       }
       dnsDecodeError++;
     }
-    dnsMessage.setBytes(payload.length);
-    packet.pushMessage(dnsMessage);
-    messageCounter++;
 
-    if (LOG.isDebugEnabled() && packet.getProtocol() == PcapReader.PROTOCOL_UDP
+    if (log.isDebugEnabled() && packet.getProtocol() == PcapReader.PROTOCOL_UDP
         && nd.isBytesAvailable()) {
-      LOG.debug("udp padding found for: " + packet.getSrc() + " " + packet.getSrcPort()
+      log.debug("udp padding found for: " + packet.getSrc() + " " + packet.getSrcPort()
           + " pad bytes: " + (nd.length() - nd.getReaderIndex()));
     }
 
-  }
-
-  public int getDnsDecodeError() {
-    return dnsDecodeError;
-  }
-
-  public int getMessageCounter() {
-    return messageCounter;
   }
 
   public void reset() {

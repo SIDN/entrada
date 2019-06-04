@@ -23,10 +23,9 @@ package nl.sidn.pcap;
 
 import org.junit.Before;
 import org.junit.Test;
-
-import nl.sidn.pcap.util.Settings;
-import nl.sidn.stats.GraphiteAdapter;
-import nl.sidn.stats.Metric;
+import nl.sidn.metric.GraphiteAdapter;
+import nl.sidn.metric.Metric;
+import nl.sidn.pcap.config.Settings;
 
 /**
  * These tests need a working graphite configuration

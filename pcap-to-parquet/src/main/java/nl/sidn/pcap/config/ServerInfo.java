@@ -1,4 +1,4 @@
-package nl.sidn.pcap.support;
+package nl.sidn.pcap.config;
 
 import org.apache.commons.lang3.StringUtils;
 

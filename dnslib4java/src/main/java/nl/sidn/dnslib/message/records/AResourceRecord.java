@@ -24,23 +24,18 @@ import java.net.UnknownHostException;
 import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import nl.sidn.dnslib.exception.DnsDecodeException;
 import nl.sidn.dnslib.message.util.NetworkData;
 
+@Data
+@EqualsAndHashCode(callSuper = true)
 public class AResourceRecord extends AbstractResourceRecord {
 
-  private static final long serialVersionUID = 1L;
-
+  private static final long serialVersionUID = -1960441085310394001L;
   private String address;
   private int[] ipv4Bytes;
-
-  public String getAddress() {
-    return address;
-  }
-
-  public void setAddress(String address) {
-    this.address = address;
-  }
-
 
 
   @Override
@@ -53,7 +48,7 @@ public class AResourceRecord extends AbstractResourceRecord {
       try {
         ip = InetAddress.getByAddress(addrBytes);
       } catch (UnknownHostException e) {
-        throw new RuntimeException("Invalid IP address", e);
+        throw new DnsDecodeException("Invalid IP address", e);
       }
       setAddress(ip.getHostAddress());
     }
@@ -70,15 +65,6 @@ public class AResourceRecord extends AbstractResourceRecord {
         buffer.writeByte(ipv4Bytes[i]);
       }
     }
-  }
-
-  public String getCacheId() {
-    return address;
-  }
-
-  @Override
-  public String toString() {
-    return super.toString() + " AResourceRecord [address=" + address + "]";
   }
 
   @Override

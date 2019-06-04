@@ -21,12 +21,17 @@ package nl.sidn.dnslib.message.records.edns0;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import nl.sidn.dnslib.exception.DnsDecodeException;
 import nl.sidn.dnslib.message.util.NetworkData;
 
 /**
  * http://tools.ietf.org/html/draft-vandergaast-edns-client-subnet-02
  *
  */
+@Data
+@EqualsAndHashCode(callSuper = true)
 public class ClientSubnetOption extends EDNS0Option {
 
   private int fam;
@@ -41,54 +46,12 @@ public class ClientSubnetOption extends EDNS0Option {
     super(code, len, buffer);
   }
 
-  public int getFam() {
-    return fam;
-  }
-
-  public void setFam(int fam) {
-    this.fam = fam;
-  }
-
-  public int getSourcenetmask() {
-    return sourcenetmask;
-  }
-
-  public void setSourcenetmask(int sourcenetmask) {
-    this.sourcenetmask = sourcenetmask;
-  }
-
-  public int getScopenetmask() {
-    return scopenetmask;
-  }
-
-  public void setScopenetmask(int scopenetmask) {
-    this.scopenetmask = scopenetmask;
-  }
-
-  public String getAddress() {
-    return address;
-  }
-
-  public void setAddress(String address) {
-    this.address = address;
-  }
-
-  public boolean isIPv4() {
-    return fam == 1;
-  }
-
-  public InetAddress getInetAddress() {
-    return inetAddress;
-  }
-
   public String export() {
     return (fam == 1 ? "4," : "6,") + address + "/" + sourcenetmask + "," + scopenetmask;
   }
 
-  @Override
-  public String toString() {
-    return "ClientSubnetOption [fam=" + fam + ", sourcenetmask=" + sourcenetmask + ", scopenetmask="
-        + scopenetmask + ", address=" + address + ", code=" + code + ", len=" + len + "]";
+  public boolean isIPv4() {
+    return fam == 1;
   }
 
   @Override
@@ -115,7 +78,7 @@ public class ClientSubnetOption extends EDNS0Option {
       try {
         inetAddress = InetAddress.getByAddress(addrBytes);
       } catch (UnknownHostException e) {
-        throw new RuntimeException("Invalid IP address", e);
+        throw new DnsDecodeException("Invalid IP address", e);
       }
       address = inetAddress.getHostAddress();
     }

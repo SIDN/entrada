@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+	<Properties>
+		<Property name="LOG_PATTERN">
+			[%p] %d [%t] %c - %m%n
+		</Property>
+	</Properties>
+	<Appenders>
+		<Console name="ConsoleAppender" target="SYSTEM_OUT"
+			follow="true">
+			<PatternLayout pattern="${LOG_PATTERN}" />
+		</Console>
+	</Appenders>
+	<Loggers>
+		<Logger name="nl.sidn" level="debug" additivity="false">
+			<AppenderRef ref="ConsoleAppender" />
+		</Logger>
+		<Root level="debug">
+			<AppenderRef ref="ConsoleAppender" />
+		</Root>
+	</Loggers>
+</Configuration>

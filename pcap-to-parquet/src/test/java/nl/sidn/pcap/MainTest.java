@@ -20,12 +20,21 @@
 package nl.sidn.pcap;
 
 import java.io.File;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.junit4.SpringRunner;
 
+@RunWith(SpringRunner.class)
+@SpringBootTest(classes = Application.class)
 public class MainTest {
 
-  // @Test
+  @Autowired
+  private Application main;
+
+  @Test
   public void testRun() {
-    Main main = new Main();
 
     ClassLoader classLoader = getClass().getClassLoader();
 
@@ -35,13 +44,13 @@ public class MainTest {
         {"ns1.example.nl", classLoader.getResource("test-settings.properties").getFile(),
             file.getParent(), "/Users/maarten/sidn/development/tmp/pcap/parquet",
             "/Users/maarten/sidn/development/tmp/entrada/"};
-    main.run(args);
+    // main.run(args);
   }
 
 
   // @Test
   public void testRun2() {
-    Main main = new Main();
+
 
     ClassLoader classLoader = getClass().getClassLoader();
 

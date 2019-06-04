@@ -25,11 +25,15 @@ import javax.json.Json;
 import javax.json.JsonObject;
 import javax.json.JsonObjectBuilder;
 import org.apache.commons.codec.binary.Base64;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 import nl.sidn.dnslib.message.records.AbstractResourceRecord;
 import nl.sidn.dnslib.message.util.NetworkData;
 import nl.sidn.dnslib.types.AlgorithmType;
 import nl.sidn.dnslib.util.KeyUtil;
 
+@Data
+@EqualsAndHashCode(callSuper = true)
 public class DNSKEYResourceRecord extends AbstractResourceRecord {
 
   private static final long serialVersionUID = 1L;
@@ -114,15 +118,6 @@ public class DNSKEYResourceRecord extends AbstractResourceRecord {
   }
 
   @Override
-  public String toString() {
-    return "DNSKEYResourceRecord [flags=" + (int) flags + ", protocol=" + protocol + ", algorithm="
-        + algorithm + ", rdLength=" + (int) rdLength + ", isZoneKey=" + isZoneKey + ", isSepKey="
-        + isSepKey + ", keytag=" + keytag + "]";
-  }
-
-
-
-  @Override
   public String toZone(int maxLength) {
     return super.toZone(maxLength) + " " + (int) flags + " " + protocol + " " + algorithm.getValue()
         + "(\n\t\t\t\t\t\t" + new Base64(36, "\n\t\t\t\t\t\t".getBytes()).encodeAsString(keydata)
@@ -135,69 +130,6 @@ public class DNSKEYResourceRecord extends AbstractResourceRecord {
     return builder.add("rdata", Json.createObjectBuilder().add("flags", (int) flags))
         .add("protocol", protocol).add("algorithm", algorithm.name()).add("zone-key", isZoneKey)
         .add("sep-key", isSepKey).add("keytag", keytag).build();
-  }
-
-
-  public char getFlags() {
-    return flags;
-  }
-
-  public void setFlags(char flags) {
-    this.flags = flags;
-  }
-
-  public short getProtocol() {
-    return protocol;
-  }
-
-  public void setProtocol(byte protocol) {
-    this.protocol = protocol;
-  }
-
-  public AlgorithmType getAlgorithm() {
-    return algorithm;
-  }
-
-  public void setAlgorithm(AlgorithmType algorithm) {
-    this.algorithm = algorithm;
-  }
-
-
-
-  public PublicKey getPublicKey() {
-    return publicKey;
-  }
-
-  public void setPublicKey(PublicKey publicKey) {
-    this.publicKey = publicKey;
-  }
-
-
-
-  public byte[] getKeydata() {
-    return keydata;
-  }
-
-  public void setKeydata(byte[] keydata) {
-    this.keydata = keydata;
-  }
-
-
-
-  public int getKeytag() {
-    return keytag;
-  }
-
-  public void setKeytag(int keytag) {
-    this.keytag = keytag;
-  }
-
-  public boolean isZoneKey() {
-    return isZoneKey;
-  }
-
-  public boolean isSepKey() {
-    return isSepKey;
   }
 
 }

@@ -5,22 +5,22 @@
  * 
  * This file is part of ENTRADA.
  * 
- * ENTRADA is free software: you can redistribute it and/or modify
- * it under the terms of the GNU General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
+ * ENTRADA is free software: you can redistribute it and/or modify it under the terms of the GNU
+ * General Public License as published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
  * 
- * ENTRADA is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
+ * ENTRADA is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even
+ * the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+ * Public License for more details.
  * 
- * You should have received a copy of the GNU General Public License
- * along with ENTRADA.  If not, see [<http://www.gnu.org/licenses/].
+ * You should have received a copy of the GNU General Public License along with ENTRADA. If not, see
+ * [<http://www.gnu.org/licenses/].
  *
- */	
+ */
 package nl.sidn.dnslib.message.records.edns0;
 
+import lombok.Data;
+import lombok.EqualsAndHashCode;
 import nl.sidn.dnslib.message.util.NetworkData;
 
 /**
@@ -28,38 +28,27 @@ import nl.sidn.dnslib.message.util.NetworkData;
  * 
  *
  */
-public class NSidOption extends EDNS0Option{
-	
-	private String id;
+@Data
+@EqualsAndHashCode(callSuper = true)
+public class NSidOption extends EDNS0Option {
 
-	public NSidOption(){}
-	
-	public NSidOption(int code, int len, NetworkData opt) {
-		super(code, len,opt);
-	}
+  private String id;
 
-	public String getId() {
-		return id;
-	}
+  public NSidOption() {}
 
-	public void setId(String id) {
-		this.id = id;
-	}
+  public NSidOption(int code, int len, NetworkData opt) {
+    super(code, len, opt);
+  }
 
-	@Override
-	public String toString() {
-		return "NSidOption [id=" + id + ", code=" + code + ", len=" + len + "]";
-	}
-	
-	@Override
-	public void decode(NetworkData buffer) {
-		if(len > 0){
-			//id present in packet
-			byte[] iddata = new byte[len];
-			buffer.readBytes(iddata);
-			id = new String(iddata);
-		}
-	}
+  @Override
+  public void decode(NetworkData buffer) {
+    if (len > 0) {
+      // id present in packet
+      byte[] iddata = new byte[len];
+      buffer.readBytes(iddata);
+      id = new String(iddata);
+    }
+  }
 
 
 }

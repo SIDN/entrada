@@ -24,6 +24,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import nl.sidn.dnslib.util.DomainParent;
+import nl.sidn.pcap.config.Settings;
 
 public class SettingTest {
 

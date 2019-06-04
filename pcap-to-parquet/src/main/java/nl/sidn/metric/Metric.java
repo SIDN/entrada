@@ -19,7 +19,7 @@
  * along with ENTRADA.  If not, see [<http://www.gnu.org/licenses/].
  *
  */	
-package nl.sidn.stats;
+package nl.sidn.metric;
 
 public class Metric implements Comparable<Metric> {
 	

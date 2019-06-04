@@ -23,8 +23,8 @@ package nl.sidn.stats;
 
 import org.junit.Before;
 import org.junit.Test;
-
-import nl.sidn.pcap.util.Settings;
+import nl.sidn.metric.MetricManager;
+import nl.sidn.pcap.config.Settings;
 
 public class MetricManagerTest {
 	

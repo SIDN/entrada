@@ -19,24 +19,24 @@
  */
 package nl.sidn.pcap.util;
 
+import java.io.File;
+import java.io.IOException;
+import java.net.InetAddress;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
 import com.google.common.net.InetAddresses;
 import com.maxmind.db.CHMCache;
 import com.maxmind.geoip2.DatabaseReader;
 import com.maxmind.geoip2.model.AsnResponse;
 import com.maxmind.geoip2.model.CountryResponse;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.io.IOException;
-import java.net.InetAddress;
+import lombok.extern.log4j.Log4j2;
 
 /**
  * Utility class to lookup IP adress information such as country and asn. Uses the maxmind database
  */
+@Log4j2
+@Component
 public class GeoLookupUtil {
-
-  private static final Logger LOGGER = LoggerFactory.getLogger(GeoLookupUtil.class);
 
   private static final String MAXMIND_DIR = "maxmind";
   private static final String MAXMIND_COUNTRY_DB = "GeoLite2-Country.mmdb";
@@ -45,10 +45,10 @@ public class GeoLookupUtil {
   private DatabaseReader geoReader;
   private DatabaseReader asnReader;
 
-  public GeoLookupUtil() {
-    Settings settings = Settings.getInstance();
-    String path = settings.getSetting(Settings.STATE_LOCATION)
-        + System.getProperty("file.separator") + MAXMIND_DIR + System.getProperty("file.separator");
+  public GeoLookupUtil(@Value("${entrada.work.dir}") String workDir) {
+
+    String path = workDir + System.getProperty("file.separator") + MAXMIND_DIR
+        + System.getProperty("file.separator");
     try {
       // geo
       File database = new File(path + MAXMIND_COUNTRY_DB);
@@ -66,8 +66,8 @@ public class GeoLookupUtil {
     try {
       inetAddr = InetAddresses.forString(ip);
     } catch (Exception e) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Invalid IP address: " + ip);
+      if (log.isDebugEnabled()) {
+        log.debug("Invalid IP address: " + ip);
       }
       return null;
     }
@@ -80,8 +80,8 @@ public class GeoLookupUtil {
     try {
       response = geoReader.country(addr);
     } catch (Exception e) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("No country found for: " + addr);
+      if (log.isDebugEnabled()) {
+        log.debug("No country found for: " + addr);
       }
       return null;
     }
@@ -93,8 +93,8 @@ public class GeoLookupUtil {
       AsnResponse ar = asnReader.asn(ip);
       return String.valueOf(ar.getAutonomousSystemNumber());
     } catch (Exception e) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("No asn found for: " + ip);
+      if (log.isDebugEnabled()) {
+        log.debug("No asn found for: " + ip);
       }
     }
     return null;
@@ -105,8 +105,8 @@ public class GeoLookupUtil {
     try {
       inetAddr = InetAddresses.forString(ip);
     } catch (Exception e) {
-      if (LOGGER.isDebugEnabled()) {
-        LOGGER.debug("Invalid IP address: " + ip);
+      if (log.isDebugEnabled()) {
+        log.debug("Invalid IP address: " + ip);
       }
       return null;
     }

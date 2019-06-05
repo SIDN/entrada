@@ -27,32 +27,18 @@ public class ParquetPartition<T> {
         path + FILE_SEP + "year=" + year + FILE_SEP + "month=" + month + FILE_SEP + "day=" + day;
 
     if (StringUtils.isNotBlank(server)) {
-      partition = partition + System.getProperty("file.separator") + "svr=" + server;
+      partition = partition + FILE_SEP + "svr=" + server;
     }
 
     return partition;
   }
 
   public ParquetPartition(String partition, Schema schema) {
-    // this.partition = partition;
-
     Configuration conf = new Configuration();
-    file =
-        new Path(partition + System.getProperty("file.separator") + UUID.randomUUID() + ".parquet");
-
-
-    // path = "target/year=" + year + System.getProperty("file.separator") + "month=" + month
-    // + System.getProperty("file.separator") + "day=" + day;
-    //
-    // if (StringUtils.isNotBlank(server)) {
-    // path = path + System.getProperty("file.separator") + "svr=" + server;
-    // }
+    file = new Path(partition + FILE_SEP + UUID.randomUUID() + ".parquet");
 
     try {
       Files.createDirectories(Paths.get(partition));
-
-      // Parser parser = new Schema.Parser().setValidate(true);
-      // Schema avroSchema = parser.parse(new File("src/test/resources/dns-query.avsc"));
 
       writer = AvroParquetWriter
           .<T>builder(file)
@@ -60,14 +46,12 @@ public class ParquetPartition<T> {
           .enableValidation()
           .withCompressionCodec(CompressionCodecName.SNAPPY)
           .withConf(conf)
-          .withWriterVersion(WriterVersion.PARQUET_1_0)
+          .withWriterVersion(WriterVersion.PARQUET_2_0)
           .withSchema(schema)
           .build();
     } catch (IOException e) {
       throw new ApplicationException("Cannot create a Parquet parition", e);
     }
-
-    // return partition;
   }
 
   public void write(T data) {

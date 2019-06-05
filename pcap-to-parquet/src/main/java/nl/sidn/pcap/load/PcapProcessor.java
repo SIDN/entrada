@@ -22,7 +22,6 @@ package nl.sidn.pcap.load;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -34,14 +33,9 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.zip.GZIPInputStream;
-import org.apache.commons.compress.compressors.xz.XZCompressorInputStream;
 import org.apache.commons.io.FileUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import com.esotericsoftware.kryo.Kryo;
-import com.esotericsoftware.kryo.io.Input;
-import com.esotericsoftware.kryo.io.Output;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.TreeMultimap;
 import lombok.extern.log4j.Log4j2;
@@ -49,7 +43,6 @@ import nl.sidn.dnslib.message.Message;
 import nl.sidn.dnslib.types.MessageType;
 import nl.sidn.dnslib.types.ResourceRecordType;
 import nl.sidn.metric.MetricManager;
-import nl.sidn.metric.PersistenceManager;
 import nl.sidn.pcap.PcapReader;
 import nl.sidn.pcap.SequencePayload;
 import nl.sidn.pcap.config.Settings;
@@ -64,12 +57,12 @@ import nl.sidn.pcap.parquet.ParquetOutputHandler;
 import nl.sidn.pcap.support.MessageWrapper;
 import nl.sidn.pcap.support.PacketCombination;
 import nl.sidn.pcap.support.RequestKey;
+import nl.sidn.pcap.util.CompressionUtil;
 
 @Log4j2
 @Component
 public class PcapProcessor {
 
-  private static final String DECODER_STATE_FILE = "pcap-decoder-state";
   private static final int DEFAULT_PCAP_READER_BUFFER_SIZE = 65536;
 
   // config options from application.properties
@@ -189,7 +182,7 @@ public class PcapProcessor {
     if (!archiveDir.exists()) {
       log.info(archiveDir.getName() + " does not exist, create now.");
       if (!archiveDir.mkdirs()) {
-        throw new RuntimeException("creating archive dir: " + archiveDir.getAbsolutePath());
+        throw new ApplicationException("creating archive dir: " + archiveDir.getAbsolutePath());
       }
     }
     File newFile =
@@ -198,7 +191,7 @@ public class PcapProcessor {
       Files.move(Paths.get(file.getAbsolutePath()), Paths.get(newFile.getAbsolutePath()));
       log.info(pcap + " is archived!");
     } catch (Exception e) {
-      throw new RuntimeException("Error moving " + pcap + " to the archive: " + e);
+      throw new ApplicationException("Error moving " + pcap + " to the archive: " + e);
     }
   }
 
@@ -207,7 +200,7 @@ public class PcapProcessor {
       return FileUtils.getFile(file).getName();
     } catch (Exception e) {
       // some problem, cannot get file, use "unknown" to signal this
-      return "err";
+      return "unknown??   n                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             mm";
     }
   }
 
@@ -228,7 +221,7 @@ public class PcapProcessor {
     for (Packet currentPacket : pcapReader) {
       counter++;
       if (counter % 100000 == 0) {
-        log.info("Read " + counter + " packets");
+        log.info("Processed " + counter + " packets");
       }
       if (currentPacket != null && currentPacket.getIpVersion() != 0) {
 
@@ -236,8 +229,9 @@ public class PcapProcessor {
             || (currentPacket.getProtocol() == ICMPDecoder.PROTOCOL_ICMP_V6)) {
           // handle icmp
           outputHandler
-              .handle(new PacketCombination(currentPacket, null, settings.getServerInfo(), false,
-                  fileName));
+              .handle(new PacketCombination(currentPacket, null, settings.getServerInfo(), null,
+                  null, false, fileName));
+
         } else {
           DNSPacket dnsPacket = (DNSPacket) currentPacket;
           if (dnsPacket.getMessage() == null) {
@@ -341,121 +335,91 @@ public class PcapProcessor {
     pcapReader.close();
   }
 
-  private String createStateFileName() {
-    return settings.getStateDir() + "/" + DECODER_STATE_FILE + "-"
-        + settings.getServerInfo().getFullname() + ".bin";
-  }
-
   /**
    * Save the loader state with incomplete datagrams, tcp streams and unmatched dns queries to disk.
    */
   private void persistState() {
-    Kryo kryo = new Kryo();
-    Output output = null;
-    String file = createStateFileName();
 
     Map<TCPFlow, Collection<SequencePayload>> pmap = new HashMap<>();
-
-    try {
-      // persist tcp state
-      output = new Output(new FileOutputStream(file));
-      Map<TCPFlow, Collection<SequencePayload>> flows = pcapReader.getFlows().asMap();
-      // convert to std java map and collection
-
-      Iterator<TCPFlow> iter = flows.keySet().iterator();
-      while (iter.hasNext()) {
-        TCPFlow tcpFlow = (TCPFlow) iter.next();
-        Collection<SequencePayload> payloads = new ArrayList<SequencePayload>();
-        Collection<SequencePayload> payloads2Persist = flows.get(tcpFlow);
-        for (SequencePayload sequencePayload : payloads2Persist) {
-          payloads.add(sequencePayload);
-        }
-        pmap.put(tcpFlow, payloads);
+    // persist tcp state
+    Map<TCPFlow, Collection<SequencePayload>> flows = pcapReader.getFlows().asMap();
+    // convert to std java map and collection
+    Iterator<TCPFlow> iter = flows.keySet().iterator();
+    while (iter.hasNext()) {
+      TCPFlow tcpFlow = iter.next();
+      Collection<SequencePayload> payloads = new ArrayList<>();
+      Collection<SequencePayload> payloads2Persist = flows.get(tcpFlow);
+      for (SequencePayload sequencePayload : payloads2Persist) {
+        payloads.add(sequencePayload);
       }
-      kryo.writeObject(output, pmap);
-
-      // persist IP datagrams
-      Map<Datagram, Collection<DatagramPayload>> datagrams = pcapReader.getDatagrams().asMap();
-      // convert to std java map and collection
-      Map<Datagram, Collection<DatagramPayload>> outMap = new HashMap<>();
-      Iterator<Datagram> ipIter = datagrams.keySet().iterator();
-      while (iter.hasNext()) {
-        Datagram dg = (Datagram) ipIter.next();
-        Collection<DatagramPayload> datagrams2persist = new ArrayList<DatagramPayload>();
-        Collection<DatagramPayload> datagramPayloads = datagrams.get(dg);
-        for (DatagramPayload sequencePayload : datagramPayloads) {
-          datagrams2persist.add(sequencePayload);
-        }
-        outMap.put(dg, datagrams2persist);
-      }
-
-      kryo.writeObject(output, outMap);
-
-      // persist request cache
-      kryo.writeObject(output, requestCache);
-
-      // persist running statistics
-      persistenceManager.persist(kryo, output);
-
-      output.close();
-
-    } catch (Exception e) {
-      log.error("Error saving decoder state to file: " + file, e);
+      pmap.put(tcpFlow, payloads);
     }
 
+    persistenceManager.write(pmap);
+
+    // persist IP datagrams
+    Map<Datagram, Collection<DatagramPayload>> datagrams = pcapReader.getDatagrams().asMap();
+    // convert to std java map and collection
+    Map<Datagram, Collection<DatagramPayload>> outMap = new HashMap<>();
+
+    Iterator<Datagram> ipIter = datagrams.keySet().iterator();
+    while (iter.hasNext()) {
+      Datagram dg = ipIter.next();
+      Collection<DatagramPayload> datagrams2persist = new ArrayList<>();
+      Collection<DatagramPayload> datagramPayloads = datagrams.get(dg);
+      for (DatagramPayload sequencePayload : datagramPayloads) {
+        datagrams2persist.add(sequencePayload);
+      }
+      outMap.put(dg, datagrams2persist);
+    }
+
+    persistenceManager.write(outMap);
+
+    // persist request cache
+    persistenceManager.write(requestCache);
+
+    persistenceManager.close();
+
     log.info("------------- State persistence stats --------------");
-    log.info("Data is persisted to " + file);
     log.info("Persist {} TCP flows", pmap.size());
     log.info("Persist {} Datagrams", pcapReader.getDatagrams().size());
     log.info("Persist request cache {} DNS requests", requestCache.size());
     log.info("----------------------------------------------------");
   }
 
-  @SuppressWarnings("unchecked")
   private void loadState() {
-    Kryo kryo = new Kryo();
-    String file = createStateFileName();
 
-    if (!new File(file).exists()) {
-      log.info("No state found at " + file);
+    if (!persistenceManager.stateAvailable()) {
+      log.info("No state file found, do not try to load previous state");
       return;
     }
-    try {
-      Input input = new Input(new FileInputStream(file));
 
-      // read persisted TCP sessions
-      Multimap<TCPFlow, SequencePayload> flows = TreeMultimap.create();
-      HashMap<TCPFlow, Collection<SequencePayload>> map = kryo.readObject(input, HashMap.class);
-      for (TCPFlow flow : map.keySet()) {
-        Collection<SequencePayload> payloads = map.get(flow);
-        for (SequencePayload sequencePayload : payloads) {
-          flows.put(flow, sequencePayload);
-        }
+    // read persisted TCP sessions
+    Multimap<TCPFlow, SequencePayload> flows = TreeMultimap.create();
+    Map<TCPFlow, Collection<SequencePayload>> map = persistenceManager.read(HashMap.class);
+    for (Map.Entry<TCPFlow, Collection<SequencePayload>> entry : map.entrySet()) {
+      for (SequencePayload sequencePayload : entry.getValue()) {
+        flows.put(entry.getKey(), sequencePayload);
       }
-      pcapReader.setFlows(flows);
-
-      // read persisted IP datagrams
-      Multimap<nl.sidn.pcap.packet.Datagram, nl.sidn.pcap.packet.DatagramPayload> datagrams =
-          TreeMultimap.create();
-      HashMap<Datagram, Collection<DatagramPayload>> inMap = kryo.readObject(input, HashMap.class);
-      for (Datagram flow : inMap.keySet()) {
-        Collection<DatagramPayload> payloads = inMap.get(flow);
-        for (DatagramPayload dgPayload : payloads) {
-          datagrams.put(flow, dgPayload);
-        }
-      }
-      pcapReader.setDatagrams(datagrams);
-
-      // read in previous request cache
-      requestCache = kryo.readObject(input, HashMap.class);
-
-      // read running statistics
-      persistenceManager.load(kryo, input);
-
-      input.close();
-    } catch (Exception e) {
-      log.error("Error opening state file, continue without loading state: " + file, e);
     }
+    pcapReader.setFlows(flows);
+
+    // read persisted IP datagrams
+    Multimap<nl.sidn.pcap.packet.Datagram, nl.sidn.pcap.packet.DatagramPayload> datagrams =
+        TreeMultimap.create();
+    HashMap<Datagram, Collection<DatagramPayload>> inMap = persistenceManager.read(HashMap.class);
+    for (Map.Entry<Datagram, Collection<DatagramPayload>> entry : inMap.entrySet()) {
+      for (DatagramPayload dgPayload : entry.getValue()) {
+        datagrams.put(entry.getKey(), dgPayload);
+      }
+    }
+    pcapReader.setDatagrams(datagrams);
+
+    // read in previous request cache
+    requestCache = persistenceManager.read(HashMap.class);
+
+    persistenceManager.close();
+
 
     log.info("------------- Loader state stats ------------------");
     log.info("Loaded TCP state {} TCP flows", pcapReader.getFlows().size());
@@ -475,7 +439,7 @@ public class PcapProcessor {
       // add the expiration time to the key and see if this leads to a time which is after the
       // current time.
       if ((key.getTime() + cacheTimeout) <= now) {
-        // remove expired request;
+        // remove expired request
         MessageWrapper mw = requestCache.get(key);
         iter.remove();
 
@@ -483,7 +447,7 @@ public class PcapProcessor {
 
           outputHandler
               .handle(new PacketCombination(mw.getPacket(), mw.getMessage(),
-                  settings.getServerInfo(), true, mw.getFilename()));
+                  settings.getServerInfo(), null, null, true, mw.getFilename()));
 
           purgeCounter++;
 
@@ -499,29 +463,6 @@ public class PcapProcessor {
             + " expired queries from request cache to output file with rcode no response");
   }
 
-  /**
-   * wraps the inputstream with a decompressor based on a filename ending
-   *
-   * @param in The input stream to wrap with a decompressor
-   * @param filename The filename from which we guess the correct decompressor
-   * @return the compressor stream wrapped around the inputstream. If no decompressor is found,
-   *         returns the inputstream as-is
-   */
-  public InputStream getDecompressorStreamWrapper(InputStream in, String filename, int bufSize)
-      throws IOException {
-    String filenameLower = filename.toLowerCase();
-    if (filenameLower.endsWith(".pcap")) {
-      return in;
-    } else if (filenameLower.endsWith(".gz")) {
-      return new GZIPInputStream(in, bufSize);
-    } else if (filenameLower.endsWith(".xz")) {
-      return new XZCompressorInputStream(in);
-    }
-
-    // unkown file type
-    throw new IOException("Could not open file with unknown extension: " + filenameLower);
-  }
-
   public boolean createReader(String file) {
     log.info("Start loading queue from file:" + file);
     fileCount++;
@@ -532,9 +473,10 @@ public class PcapProcessor {
       FileInputStream fis = FileUtils.openInputStream(f);
       int bufSize = bufferSizeConfig > 512 ? bufferSizeConfig : DEFAULT_PCAP_READER_BUFFER_SIZE;
 
-      InputStream decompressor = getDecompressorStreamWrapper(fis, file, bufSize);
+      InputStream decompressor = CompressionUtil.getDecompressorStreamWrapper(fis, file, bufSize);
       pcapReader.init(new DataInputStream(decompressor));
     } catch (IOException e) {
+      // cannot create reader, continue with next file
       log.error("Error opening pcap file: " + file, e);
       return false;
     }

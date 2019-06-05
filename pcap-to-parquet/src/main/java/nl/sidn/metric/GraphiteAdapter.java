@@ -47,8 +47,6 @@ public class GraphiteAdapter {
   private PrintWriter writer = null;
 
   public void connect() {
-    // int serverPort = Settings.getInstance().getIntSetting("graphite.port");
-    // int timeout = Settings.getInstance().getIntSetting("graphite.connect.timeout");
     try {
       socket = new Socket();
       socket.connect(new InetSocketAddress(host, port), timeout * 1000);

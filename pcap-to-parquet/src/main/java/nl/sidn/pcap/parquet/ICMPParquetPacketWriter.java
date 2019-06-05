@@ -23,6 +23,7 @@ import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.commons.lang3.StringUtils;
@@ -35,11 +36,11 @@ import nl.sidn.dnslib.util.Domaininfo;
 import nl.sidn.dnslib.util.NameUtil;
 import nl.sidn.metric.MetricManager;
 import nl.sidn.pcap.config.Settings;
+import nl.sidn.pcap.ip.geo.GeoIPService;
 import nl.sidn.pcap.packet.DNSPacket;
 import nl.sidn.pcap.packet.ICMPPacket;
 import nl.sidn.pcap.packet.Packet;
 import nl.sidn.pcap.support.PacketCombination;
-import nl.sidn.pcap.util.GeoLookupUtil;
 
 @Component
 public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
@@ -54,15 +55,11 @@ public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
   private Map<Integer, Integer> types_v4 = new HashMap<>();
   private Map<Integer, Integer> types_v6 = new HashMap<>();
 
-  // public ICMPParquetPacketWriter(String repoName, String schema) {
-  // super(repoName, schema);
-  // }
-
   private Settings settings;
   private MetricManager metricManager;
 
   public ICMPParquetPacketWriter(Settings settings, MetricManager metricManager,
-      GeoLookupUtil geoLookup) {
+      GeoIPService geoLookup) {
     super(geoLookup);
     this.settings = settings;
     this.metricManager = metricManager;
@@ -98,8 +95,8 @@ public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
 
     // icmp packet ip+headers
     Timestamp packetTime = new Timestamp((icmpPacket.getTs() * 1000));
-    String country = getCountry(icmpPacket.getSrc());
-    String asn = getAsn(icmpPacket.getSrc());
+    Optional<String> country = getCountry(icmpPacket.getSrc());
+    Optional<String> asn = getAsn(icmpPacket.getSrc());
 
     // icmp payload
     Question q = null;
@@ -131,8 +128,8 @@ public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
         .set("ip_v", (int) icmpPacket.getIpVersion())
         .set("ip_src", icmpPacket.getSrc())
         .set("ip_dst", icmpPacket.getDst())
-        .set("ip_country", country)
-        .set("ip_asn", asn)
+        .set("ip_country", country.orElse(null))
+        .set("ip_asn", asn.orElse(null))
         .set("l4_prot", (int) icmpPacket.getProtocol())
         .set("l4_srcp", icmpPacket.getSrcPort())
         .set("l4_dstp", icmpPacket.getDstPort())

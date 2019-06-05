@@ -32,119 +32,15 @@ import nl.sidn.dnslib.util.DomainParent;
 @Component
 public class Settings {
 
-  public static String INPUT_LOCATION = "input.location";
-  public static String OUTPUT_LOCATION = "output.location";
-  public static String STATE_LOCATION = "state.location";
-  public static String OUTPUT_MAX_PACKETS = "output.max.packets";
-  public static String CACHE_TIMEOUT = "cache.timeout";
-  public static String CACHE_TIMEOUT_TCP_FLOW = "cache.timeout.tcp.flows";
-  public static String CACHE_TIMEOUT_FRAG_IP = "cache.timeout.ip.fragmented";
-
-  public static String METRICS_EXCHANGE = "metrics.exchange";
-  public static String METRICS_QUEUE = "metrics.queue";
-  public static String METRICS_USERNAME = "metrics.username";
-  public static String METRICS_PASSWORD = "metrics.password";
-  public static String METRICS_VIRTUALHOST = "metrics.virtualhost";
-  public static String METRICS_HOST = "metrics.host";
-  public static String METRICS_TIMEOUT = "metrics.timeout";
-
-  public static String RESOLVER_LIST_GOOGLE = "resolver.list.google";
-  public static String RESOLVER_LIST_OPENDNS = "resolver.list.opendns";
-
-  public static String TLD_SUFFIX = "tld.suffix";
-  public static String BUFFER_PCAP_READER = "buffer.pcap.reader";
-
-
-  // private static Properties props = null;
-  // private static Settings _instance = null;
-  //
-  // private static String path = null;
   private ServerInfo serverInfo = null;
 
   @Value("${entrada.tld.suffix}")
   private String tldSuffixConfig;
-  private static List<DomainParent> tldSuffixes = new ArrayList<>();
+  private List<DomainParent> tldSuffixes = new ArrayList<>();
 
-  // private String server;
   private String inputDir;
   private String outputDir;
-
-  @Value("${entrada.work.dir}")
   private String stateDir;
-
-
-
-  // private Settings(String path) {
-  // init(path);
-  // debug();
-  // }
-
-  // public static Settings getInstance() {
-  // if (_instance == null) {
-  // _instance = new Settings(path);
-  // }
-  // return _instance;
-  // }
-
-  // public static void init(String path) {
-  //
-  // props = new Properties();
-  // InputStream input = null;
-  //
-  // try {
-  //
-  // input = new FileInputStream(path);
-  // props.load(input);
-  //
-  // } catch (IOException e) {
-  // throw new RuntimeException("Could not load settings", e);
-  // } finally {
-  // if (input != null) {
-  // try {
-  // input.close();
-  // } catch (IOException e) {
-  // // ignore exception while closing
-  // log.error("Could not close settings", e);
-  // }
-  // }
-  // }
-  // // do other init work
-  // createTldSuffixes();
-  // }
-
-  // public String getSetting(String key) {
-  // return props.getProperty(key);
-  // }
-  //
-  // public void setSetting(String key, String value) {
-  // props.setProperty(key, value);
-  // }
-
-  // public int getIntSetting(String key) {
-  // try {
-  // return Integer.parseInt(props.getProperty(key));
-  // } catch (NumberFormatException e) {
-  // throw new RuntimeException(
-  // "Value " + props.getProperty(key) + " for " + key + " is not a valid number", e);
-  // }
-  // }
-  //
-  // public int getIntSetting(String key, int defaultValue) {
-  // try {
-  // return Integer.parseInt(props.getProperty(key));
-  // } catch (Exception e) {
-  // return defaultValue;
-  // }
-  // }
-
-  // public static void setPath(String settingFilePath) {
-  // path = settingFilePath;
-  // _instance = null;
-  // }
-
-  // public ServerInfo getServer() {
-  // return serverInfo;
-  // }
 
   /**
    * Load the server and optional anycast server location information. Using format
@@ -165,10 +61,6 @@ public class Settings {
     // no anycast location encoded in name
     serverInfo.setName(name);
   }
-
-  // public static void createTldSuffixes() {
-  // createTldSuffixes(props.getProperty(Settings.TLD_SUFFIX));
-  // }
 
   private void createTldSuffixes() {
     tldSuffixes = new ArrayList<>();
@@ -207,12 +99,4 @@ public class Settings {
     }
     return tldSuffixes;
   }
-
-  // private void debug() {
-  // log.info("************** entrada-setting.properties ******************");
-  // for (String pn : props.stringPropertyNames()) {
-  // log.info(pn + ": " + props.getProperty(pn));
-  // }
-  // log.info("*************************************************************");
-  // }
 }

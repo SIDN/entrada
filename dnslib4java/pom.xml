@@ -1,13 +1,37 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-
 	<modelVersion>4.0.0</modelVersion>
 
-	<groupId>nl.sidn</groupId>
+	<groupId>nl.sidnlabs</groupId>
 	<artifactId>dnslib</artifactId>
 	<version>0.1.3-SNAPSHOT</version>
+
+	<name>${project.groupId}:${project.artifactId}</name>
 	<description>DNS library</description>
+	<url>https://github.com/SIDN/dnslib</url>
+
+	<licenses>
+		<license>
+			<name>GNU General Public License, version 3 </name>
+			<url>https://www.gnu.org/licenses/gpl-3.0.en.html</url>
+		</license>
+	</licenses>
+
+	<developers>
+		<developer>
+			<name>Maarten Wullink</name>
+			<email>maarten.wullink@sidn.nl</email>
+			<organization>SIDN</organization>
+			<organizationUrl>https://www.sidn.nl</organizationUrl>
+		</developer>
+	</developers>
+
+	<scm>
+		<connection>scm:git:git://github.com/SIDN/dnslib.git</connection>
+		<developerConnection>scm:git:ssh://github.com/SIDN/dnslib.git</developerConnection>
+		<url>https://github.com/SIDN/dnslib/tree/master/</url>
+	</scm>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -16,7 +40,6 @@
 	</properties>
 
 	<dependencies>
-
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-lang3</artifactId>

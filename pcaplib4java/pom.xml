@@ -2,12 +2,42 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>nl.sidn</groupId>
+
+	<groupId>nl.sidnlabs</groupId>
 	<artifactId>pcap-lib</artifactId>
 	<version>0.1.3-SNAPSHOT</version>
 
+	<name>${project.groupId}:${project.artifactId}</name>
+	<description>PCAP library</description>
+	<url>https://github.com/SIDN/dnslib</url>
+
+	<licenses>
+		<license>
+			<name>GNU General Public License, version 3 </name>
+			<url>https://www.gnu.org/licenses/gpl-3.0.en.html</url>
+		</license>
+	</licenses>
+
+	<developers>
+		<developer>
+			<name>Maarten Wullink</name>
+			<email>maarten.wullink@sidn.nl</email>
+			<organization>SIDN</organization>
+			<organizationUrl>https://www.sidn.nl</organizationUrl>
+		</developer>
+	</developers>
+
+	<scm>
+		<connection>scm:git:git://github.com/SIDN/pcap-lib.git</connection>
+		<developerConnection>scm:git:ssh://github.com/SIDN/pcap-lib.git</developerConnection>
+		<url>https://github.com/SIDN/pcap-lib/tree/master/</url>
+	</scm>
+
 	<properties>
 		<sidn-dnslib>0.1.3-SNAPSHOT</sidn-dnslib>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<java.version>1.8</java.version>
 	</properties>
 
 	<dependencies>
@@ -23,7 +53,7 @@
 			<artifactId>commons-lang3</artifactId>
 			<version>3.9</version>
 		</dependency>
-		
+
 		<dependency>
 			<groupId>com.google.guava</groupId>
 			<artifactId>guava</artifactId>

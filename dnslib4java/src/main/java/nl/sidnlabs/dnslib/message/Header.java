@@ -87,21 +87,21 @@ public class Header {
    * 
    */
 
-  private static int QR_QUERY_BIT_MASK = 32768; // 1000 0000 0000 0000
-  private static int AA_BIT_MASK = 1024; // 0000 0100 0000 0000
-  private static int TC_BIT_MASK = 512; // 0000 0010 0000 0000
-  private static int RD_BIT_MASK = 256; // 0000 0001 0000 0000
-  private static int RA_BIT_MASK = 128; // 0000 0000 1000 0000
-  private static int Z_BIT_MASK = 64; // 0000 0000 0100 0000
-  private static int AD_BIT_MASK = 32; // 0000 0000 0010 0000
-  private static int CD_BIT_MASK = 16; // 0000 0000 0001 0000
+  private static final int QR_QUERY_BIT_MASK = 32768; // 1000 0000 0000 0000
+  private static final int AA_BIT_MASK = 1024; // 0000 0100 0000 0000
+  private static final int TC_BIT_MASK = 512; // 0000 0010 0000 0000
+  private static final int RD_BIT_MASK = 256; // 0000 0001 0000 0000
+  private static final int RA_BIT_MASK = 128; // 0000 0000 1000 0000
+  private static final int Z_BIT_MASK = 64; // 0000 0000 0100 0000
+  private static final int AD_BIT_MASK = 32; // 0000 0000 0010 0000
+  private static final int CD_BIT_MASK = 16; // 0000 0000 0001 0000
 
-  private static int OPCODE_MASK = 30720; // 0111 1000 0000 0000
-  private static int RCODE_MASK = 15; // 0000 0000 0000 1111
+  private static final int OPCODE_MASK = 30720; // 0111 1000 0000 0000
+  private static final int RCODE_MASK = 15; // 0000 0000 0000 1111
 
   private int id;
   private MessageType qr = MessageType.QUERY;
-  private OpcodeType OpCode;
+  private OpcodeType opCode;
   private boolean aa;
   private boolean tc;
   private boolean rd;
@@ -260,9 +260,9 @@ public class Header {
       flags = (char) (flags | 0x8000); // 1000 0000 0000 0000
     }
 
-    if (OpCode == OpcodeType.INVERSE) {
+    if (opCode == OpcodeType.INVERSE) {
       flags = (char) (flags | 0x800); // 0000 1000 0000 0000
-    } else if (OpCode == OpcodeType.STATUS) {
+    } else if (opCode == OpcodeType.STATUS) {
       flags = (char) (flags | 0x1000); // 0001 0000 0000 0000
     }
 
@@ -337,7 +337,7 @@ public class Header {
         .createObjectBuilder()
         .add("id", id)
         .add("qr", qr.getValue())
-        .add("opcode", OpCode.getValue())
+        .add("opcode", opCode.getValue())
         .add("flags",
             Json
                 .createObjectBuilder()

@@ -90,7 +90,7 @@ public class IPv6Util {
       packet.setIpId(id);
 
       int flags = packetData[ipStart + IPV6_HEADER_SIZE + IPV6_MFLAG_OFFSET] & 0x7;
-      packet.setFragmentFlagM((flags & 0x1) == 0 ? false : true);
+      packet.setFragmentFlagM((flags & 0x1) == 0);
 
       long fragmentOffset =
           PcapReaderUtil.convertShort(packetData, ipStart + IPV6_HEADER_SIZE + IPV6_FRAGMENT_OFFSET)

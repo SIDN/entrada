@@ -86,7 +86,7 @@ public class IPDecoder {
       buildInternetProtocolV4Packet(packet, packetData, ipStart);
       totalLength = PcapReaderUtil.convertShort(packetData, ipStart + IP_TOTAL_LEN_OFFSET);
       decodeV4Fragmented(packet, ipStart, packetData);
-    } else if (ipProtocolHeaderVersion == IP_PROTOCOL_VERSION_6) {
+    } else {
       int ipHeaderLen = IPv6Util.getInternetProtocolHeaderLength(packetData, ipStart);
       packet.setIpHeaderLen(ipHeaderLen);
 
@@ -115,7 +115,7 @@ public class IPDecoder {
 
   private void decodeV4Fragmented(Packet packet, int ipStart, byte[] packetData) {
     long fragmentOffset =
-        (PcapReaderUtil.convertShort(packetData, ipStart + IP_FRAGMENT_OFFSET) & 0x1FFF) * 8;
+        (PcapReaderUtil.convertShort(packetData, ipStart + IP_FRAGMENT_OFFSET) & 0x1FFF) * 8L;
     packet.setFragOffset(fragmentOffset);
 
     int flags = packetData[ipStart + IP_FLAGS] & 0xE0;
@@ -159,7 +159,7 @@ public class IPDecoder {
 
       if (packet.isLastFragment()) {
         Collection<DatagramPayload> datagramPayloads = datagrams.removeAll(datagram);
-        if (datagramPayloads != null && datagramPayloads.size() > 0) {
+        if (datagramPayloads != null && !datagramPayloads.isEmpty()) {
           reassmbledPacketData =
               Arrays.copyOfRange(packetData, 0, ipStart + packet.getIpHeaderLen()); // Start
                                                                                     // re-fragmented

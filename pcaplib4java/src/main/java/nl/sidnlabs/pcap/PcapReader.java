@@ -29,6 +29,7 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.NoSuchElementException;
 import org.apache.commons.codec.binary.Hex;
 import com.google.common.collect.Multimap;
 import lombok.extern.log4j.Log4j2;
@@ -81,7 +82,7 @@ public class PcapReader implements Iterable<Packet> {
   private LinkType linkType;
   private boolean caughtEOF = false;
   // MathContext for BigDecimal to preserve only 16 decimal digits
-  private MathContext ts_mc = new MathContext(16);
+  private MathContext matchCtx = new MathContext(16);
 
   // To read reversed-endian PCAPs; the header is the only part that switches
   private boolean reverseHeaderByteOrder = false;
@@ -220,7 +221,7 @@ public class PcapReader implements Iterable<Packet> {
 
     // Prepare the timestamp with a BigDecimal to include microseconds
     BigDecimal packetTimestampUsec =
-        new BigDecimal(packetTimestamp + (double) packetTimestampMicros / 1000000.0, ts_mc);
+        new BigDecimal(packetTimestamp + (double) packetTimestampMicros / 1000000.0, matchCtx);
     packet.setTsUsec(packetTimestampUsec.doubleValue());
 
     int ipProtocolHeaderVersion = packet.getIpVersion();
@@ -308,7 +309,7 @@ public class PcapReader implements Iterable<Packet> {
         return Packet.NULL;
       }
 
-      if (dnsBytes == null || dnsBytes.size() == 0) {
+      if (dnsBytes == null || dnsBytes.isEmpty()) {
         // no DNS packets found
         return Packet.NULL;
       }
@@ -318,7 +319,7 @@ public class PcapReader implements Iterable<Packet> {
       DNSPacket dnsPacket = (DNSPacket) packet;
       try {
         dnsDecoder.decode(dnsPacket, dnsBytes);
-      } catch (Throwable e) {
+      } catch (Exception e) {
         /*
          * catch anything which might get thrown out of the dns decoding if the tcp bytes are
          * somehow incorrectly assembled the dns decoder will fail.
@@ -438,7 +439,7 @@ public class PcapReader implements Iterable<Packet> {
         do {
           try {
             next = nextPacket();
-          } catch (Throwable e) {
+          } catch (Exception e) {
             log.error("PCAP decode error: ", e);
             next = Packet.NULL;
           }
@@ -468,6 +469,10 @@ public class PcapReader implements Iterable<Packet> {
     @Override
     public Packet next() {
       fetchNext();
+
+      if (next == null) {
+        throw new NoSuchElementException("No more packets to decode");
+      }
       try {
         return next;
       } finally {

@@ -58,7 +58,7 @@ public class UDPUtil {
     /*
      * Build data[] that we can checksum. Its a pseudo-header followed by the entire UDP packet.
      */
-    byte data[] = new byte[packetData.length - ipStart - ipHeaderLen + 12];
+    byte[] data = new byte[packetData.length - ipStart - ipHeaderLen + 12];
     int sum = 0;
     System.arraycopy(packetData, ipStart + IPv4Util.IP_SRC_OFFSET, data, 0, 4);
     System.arraycopy(packetData, ipStart + IPv4Util.IP_DST_OFFSET, data, 4, 4);

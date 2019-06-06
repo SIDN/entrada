@@ -10,11 +10,11 @@ Workflow scripts for automating Entrada actions.
 
 ### grafana-dashboard
 
-Grafana dashboards used to monitor Entrada.
+Example Grafana dashboards used to monitor ENTRADA activity.
 
 ## License
 
-See the LICENSE file included in each project.
+This project is distributed under the LGPL, see [LICENSE](LICENSE).
 
 ## Attribution
 

@@ -10,13 +10,13 @@ echo "Workspace: $WORKSPACE"
 rm -rf $BASE_DIR
 
 mkdir $BASE_DIR
-cp $WORKSPACE/pcap-to-parquet/target/pcap-to-parquet-$VERSION-jar-with-dependencies.jar $BASE_DIR
+cp $WORKSPACE/target/entrada-$VERSION-jar-with-dependencies.jar $BASE_DIR
 cp -R scripts $BASE_DIR
 cp -R grafana-dashboard $BASE_DIR
 cp VERSION $BASE_DIR
 cp UPGRADE $BASE_DIR
 cd $BASE_DIR
-ln -s pcap-to-parquet-$VERSION-jar-with-dependencies.jar entrada-latest.jar
+ln -s entrada-$VERSION-jar-with-dependencies.jar entrada-latest.jar
 cd ..
 
 tar -zcvf "$BASE_DIR.tar.gz" $BASE_DIR

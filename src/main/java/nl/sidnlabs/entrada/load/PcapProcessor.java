@@ -175,18 +175,17 @@ public class PcapProcessor {
   }
 
   private void archiveFile(String pcap) {
+    String sep = System.getProperty("file.separator");
     File file = new File(pcap);
-    File archiveDir =
-        new File(settings.getOutputDir() + System.getProperty("file.separator") + "archive"
-            + System.getProperty("file.separator") + settings.getServerInfo().getFullname());
+    File archiveDir = new File(
+        settings.getOutputDir() + sep + "archive" + sep + settings.getServerInfo().getFullname());
     if (!archiveDir.exists()) {
       log.info(archiveDir.getName() + " does not exist, create now.");
       if (!archiveDir.mkdirs()) {
         throw new ApplicationException("creating archive dir: " + archiveDir.getAbsolutePath());
       }
     }
-    File newFile =
-        new File(archiveDir.getPath() + System.getProperty("file.separator") + file.getName());
+    File newFile = new File(archiveDir.getPath() + sep + file.getName());
     try {
       Files.move(Paths.get(file.getAbsolutePath()), Paths.get(newFile.getAbsolutePath()));
       log.info(pcap + " is archived!");

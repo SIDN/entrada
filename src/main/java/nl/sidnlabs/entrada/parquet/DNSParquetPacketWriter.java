@@ -27,11 +27,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
-import com.google.common.base.Joiner;
 import nl.sidnlabs.dnslib.message.Header;
 import nl.sidnlabs.dnslib.message.Message;
 import nl.sidnlabs.dnslib.message.Question;
@@ -479,7 +479,16 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
         } else if (option instanceof KeyTagOption) {
           KeyTagOption kto = (KeyTagOption) option;
           builder.set("edns_keytag_count", kto.getKeytags().size());
-          builder.set("edns_keytag_list", Joiner.on(",").join(kto.getKeytags()));
+
+          if (!kto.getKeytags().isEmpty()) {
+            builder
+                .set("edns_keytag_list",
+                    kto
+                        .getKeytags()
+                        .stream()
+                        .map(Object::toString)
+                        .collect(Collectors.joining(",")));
+          }
         } else {
           // other
           otherEdnsOptions.add(option.getCode());
@@ -487,7 +496,9 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
       }
 
       if (!otherEdnsOptions.isEmpty()) {
-        builder.set("edns_other", Joiner.on(",").join(otherEdnsOptions));
+        builder
+            .set("edns_other",
+                otherEdnsOptions.stream().map(Object::toString).collect(Collectors.joining(",")));
       }
     }
   }
@@ -510,22 +521,13 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
       }
     }
 
-    // metricManager.send(MetricManager.METRIC_IMPORT_IP_COUNT, geo_ip_cache.size());
     metricManager.send(MetricManager.METRIC_IMPORT_COUNTRY_COUNT, countries.size());
-    // metricManager.send(MetricManager.METRIC_IMPORT_ASN_COUNT, asn_cache.size());
 
-    if (responseBytes > 0) {
-      metricManager
-          .send(MetricManager.METRIC_IMPORT_DNS_RESPONSE_BYTES_SIZE, (int) (responseBytes / 1024));
-    } else {
-      metricManager.send(MetricManager.METRIC_IMPORT_DNS_RESPONSE_BYTES_SIZE, 0);
-    }
-    if (requestBytes > 0) {
-      metricManager
-          .send(MetricManager.METRIC_IMPORT_DNS_QUERY_BYTES_SIZE, (int) (requestBytes / 1024));
-    } else {
-      metricManager.send(MetricManager.METRIC_IMPORT_DNS_QUERY_BYTES_SIZE, 0);
-    }
+    int bytes = responseBytes == 0 ? 0 : (int) (responseBytes / 1024);
+    metricManager.send(MetricManager.METRIC_IMPORT_DNS_RESPONSE_BYTES_SIZE, bytes);
+
+    bytes = requestBytes == 0 ? 0 : (int) (requestBytes / 1024);
+    metricManager.send(MetricManager.METRIC_IMPORT_DNS_QUERY_BYTES_SIZE, bytes);
 
     qtypes.entrySet().stream().forEach(e -> {
       ResourceRecordType type = ResourceRecordType.fromValue(e.getKey().intValue());

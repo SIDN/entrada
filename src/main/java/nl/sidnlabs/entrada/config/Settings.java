@@ -25,6 +25,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import nl.sidnlabs.dnslib.util.DomainParent;
 
 
@@ -32,15 +34,23 @@ import nl.sidnlabs.dnslib.util.DomainParent;
 @Component
 public class Settings {
 
-  private ServerInfo serverInfo = null;
-
   @Value("${entrada.tld.suffix}")
   private String tldSuffixConfig;
   private List<DomainParent> tldSuffixes = new ArrayList<>();
 
-  private String inputDir;
-  private String outputDir;
-  private String stateDir;
+  // allow for static getter/setters to set values before spring creates the bean
+  @Getter
+  @Setter
+  private static ServerInfo serverInfo = null;
+  @Getter
+  @Setter
+  private static String inputDir;
+  @Getter
+  @Setter
+  private static String outputDir;
+  @Getter
+  @Setter
+  private static String stateDir;
 
   /**
    * Load the server and optional anycast server location information. Using format
@@ -48,8 +58,8 @@ public class Settings {
    * 
    * @param name server name
    */
-  public void setServer(String name) {
-    this.serverInfo = new ServerInfo();
+  public static void setServer(String name) {
+    serverInfo = new ServerInfo();
     // set the pcap input directory name.
     serverInfo.setFullname(name);
     if (name.contains("_")) {

@@ -111,11 +111,9 @@ public class MetricManager {
   @Value("${graphite.threshhold}")
   private int threshhold;
 
-  private Settings settings;
   private GraphiteAdapter graphiteAdapter;
 
-  public MetricManager(Settings settings, GraphiteAdapter graphiteAdapter) {
-    this.settings = settings;
+  public MetricManager(GraphiteAdapter graphiteAdapter) {
     this.graphiteAdapter = graphiteAdapter;
   }
 
@@ -135,7 +133,7 @@ public class MetricManager {
   private String createMetricName(String metric) {
     // replace dot in the server name with underscore otherwise graphite will assume nesting
     String cleanServer = StringUtils
-        .trimToEmpty(StringUtils.replace(settings.getServerInfo().getFullname(), ".", "_"));
+        .trimToEmpty(StringUtils.replace(Settings.getServerInfo().getFullname(), ".", "_"));
     return graphitePrefix + "." + cleanServer + metric;
   }
 

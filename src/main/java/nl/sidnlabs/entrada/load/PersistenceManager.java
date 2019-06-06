@@ -21,15 +21,10 @@ public class PersistenceManager {
 
   private Output output = null;
   private Input input = null;
-  private Settings settings;
-
-  public PersistenceManager(Settings settings) {
-    this.settings = settings;
-  }
 
   private String createStateFileName() {
-    return settings.getStateDir() + "/" + DECODER_STATE_FILE + "-"
-        + settings.getServerInfo().getFullname() + ".bin";
+    return Settings.getStateDir() + "/" + DECODER_STATE_FILE + "-"
+        + Settings.getServerInfo().getFullname() + ".bin";
   }
 
   public void write(Object data) {

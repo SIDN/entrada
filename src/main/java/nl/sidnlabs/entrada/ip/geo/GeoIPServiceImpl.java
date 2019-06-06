@@ -23,13 +23,13 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.Optional;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import com.google.common.net.InetAddresses;
 import com.maxmind.db.CHMCache;
 import com.maxmind.geoip2.DatabaseReader;
 import com.maxmind.geoip2.model.AsnResponse;
 import lombok.extern.log4j.Log4j2;
+import nl.sidnlabs.entrada.config.Settings;
 import nl.sidnlabs.entrada.exception.ApplicationException;
 
 /**
@@ -46,9 +46,9 @@ public class GeoIPServiceImpl implements GeoIPService {
   private DatabaseReader geoReader;
   private DatabaseReader asnReader;
 
-  public GeoIPServiceImpl(@Value("${entrada.work.dir}") String workDir) {
+  public GeoIPServiceImpl() {
 
-    String path = workDir + System.getProperty("file.separator") + MAXMIND_DIR
+    String path = Settings.getStateDir() + System.getProperty("file.separator") + MAXMIND_DIR
         + System.getProperty("file.separator");
     try {
       // geo

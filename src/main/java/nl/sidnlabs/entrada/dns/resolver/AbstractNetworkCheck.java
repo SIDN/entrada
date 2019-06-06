@@ -50,7 +50,7 @@ public abstract class AbstractNetworkCheck implements DnsResolverAddress {
   public AbstractNetworkCheck(Settings settings) {
     this.settings = settings;
 
-    String filename = settings.getStateDir() + System.getProperty("file.separator") + getFilename();
+    String filename = Settings.getStateDir() + System.getProperty("file.separator") + getFilename();
     File file = new File(filename);
     // if file does not exist or was update last on previous day, then update resolvers ip's
     if (file.exists()) {
@@ -65,7 +65,7 @@ public abstract class AbstractNetworkCheck implements DnsResolverAddress {
   }
 
   public void update() {
-    String filename = settings.getStateDir() + System.getProperty("file.separator") + getFilename();
+    String filename = Settings.getStateDir() + System.getProperty("file.separator") + getFilename();
     File file = new File(filename);
     // if file does not exist or was update last on previous day, then update resolvers ip's
     if (file.exists()) {

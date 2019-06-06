@@ -21,16 +21,17 @@ package nl.sidnlabs.entrada.parquet;
 
 import java.util.HashMap;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import lombok.extern.log4j.Log4j2;
-import nl.sidnlabs.pcap.PcapReader;
-import nl.sidnlabs.pcap.decoder.ICMPDecoder;
-import nl.sidnlabs.pcap.packet.Packet;
 import nl.sidnlabs.entrada.config.Settings;
 import nl.sidnlabs.entrada.load.OutputHandler;
 import nl.sidnlabs.entrada.metric.MetricManager;
 import nl.sidnlabs.entrada.support.PacketCombination;
 import nl.sidnlabs.entrada.support.RequestKey;
+import nl.sidnlabs.pcap.PcapReader;
+import nl.sidnlabs.pcap.decoder.ICMPDecoder;
+import nl.sidnlabs.pcap.packet.Packet;
 
 /**
  * Output handler for Apache Parquet format.
@@ -44,8 +45,9 @@ public class ParquetOutputHandler implements OutputHandler {
 
   protected final Map<RequestKey, Packet> requestCache = new HashMap<>();
 
-  // default max 3 mil packets per files max (+/- 125mb files)
-  private int parquetMaxPackets = 3000000; // TODO: create config for this
+  // default max 3 million packets per files max (+/- 125mb files)
+  @Value("${entrada.parquet.max:3000000}")
+  private int parquetMaxPackets;
   private int counter;
   private int totalCounter;
 
@@ -54,7 +56,6 @@ public class ParquetOutputHandler implements OutputHandler {
 
   private DNSParquetPacketWriter dnsWriter;
   private ICMPParquetPacketWriter icmpWriter;
-  private Settings settings;
   private MetricManager metricManager;
 
   // metric counters
@@ -64,9 +65,9 @@ public class ParquetOutputHandler implements OutputHandler {
 
 
 
-  public ParquetOutputHandler(Settings settings, DNSParquetPacketWriter dnsWriter,
-      ICMPParquetPacketWriter icmpWriter, MetricManager metricManager) {
-    this.settings = settings;
+  public ParquetOutputHandler(DNSParquetPacketWriter dnsWriter, ICMPParquetPacketWriter icmpWriter,
+      MetricManager metricManager) {
+
     this.dnsWriter = dnsWriter;
     this.icmpWriter = icmpWriter;
     this.metricManager = metricManager;
@@ -122,9 +123,11 @@ public class ParquetOutputHandler implements OutputHandler {
     counter++;
     totalCounter++;
     if (counter >= parquetMaxPackets) {
+      log.info("Max DNS packets reached for this Parquet file, close current file and create new");
+
       dnsWriter.close();
       // create new writer
-      dnsWriter.open(settings.getOutputDir(), settings.getServerInfo().getFullname(), "dnsdata");
+      dnsWriter.open(Settings.getOutputDir(), Settings.getServerInfo().getFullname(), "dnsdata");
       // reset counter
       counter = 0;
     }
@@ -135,9 +138,11 @@ public class ParquetOutputHandler implements OutputHandler {
     icmpCounter++;
     icmpTotalCounter++;
     if (icmpCounter >= parquetMaxPackets) {
+      log.info("Max ICMP packets reached for this Parquet file, close current file and create new");
+
       icmpWriter.close();
       // create new writer
-      icmpWriter.open(settings.getOutputDir(), settings.getServerInfo().getFullname(), "icmpdata");
+      icmpWriter.open(Settings.getOutputDir(), Settings.getServerInfo().getFullname(), "icmpdata");
       // reset counter
       icmpCounter = 0;
     }
@@ -150,8 +155,8 @@ public class ParquetOutputHandler implements OutputHandler {
   }
 
   public void open() {
-    dnsWriter.open(settings.getOutputDir(), settings.getServerInfo().getFullname(), "dnsdata");
-    icmpWriter.open(settings.getOutputDir(), settings.getServerInfo().getFullname(), "icmpdata");
+    dnsWriter.open(Settings.getOutputDir(), Settings.getServerInfo().getFullname(), "dnsdata");
+    icmpWriter.open(Settings.getOutputDir(), Settings.getServerInfo().getFullname(), "icmpdata");
   }
 
 }

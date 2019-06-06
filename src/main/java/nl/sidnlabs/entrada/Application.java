@@ -32,20 +32,19 @@ import nl.sidnlabs.entrada.metric.MetricManager;
 import nl.sidnlabs.entrada.util.FileUtil;
 
 @Log4j2
-@ComponentScan("nl.sidn")
+@ComponentScan("nl.sidnlabs")
 @SpringBootApplication
 public class Application implements CommandLineRunner {
 
-  private Settings settings;
   private MetricManager metricManager;
   private GoogleResolverCheck googleResolverCheck;
   private OpenDNSResolverCheck openDNSResolverCheck;
   private PcapProcessor pcapProcessor;
 
-  public Application(Settings settings, GoogleResolverCheck googleResolverCheck,
+  public Application(GoogleResolverCheck googleResolverCheck,
       OpenDNSResolverCheck openDNSResolverCheck, MetricManager metricManager,
       PcapProcessor pcapProcessor) {
-    this.settings = settings;
+
     this.googleResolverCheck = googleResolverCheck;
     this.openDNSResolverCheck = openDNSResolverCheck;
     this.metricManager = metricManager;
@@ -54,7 +53,18 @@ public class Application implements CommandLineRunner {
 
   public static void main(String[] args) {
 
-    log.info("Started Spring container");
+    debug(args);
+    if (args.length != 4) {
+      throw new IllegalArgumentException("Incorrect number of parameters found.");
+    }
+    // set the argument as static fields of Settings, cannot wait until Spring
+    // creates a bean, because the constructor of Settings needs the arguments
+    Settings.setServer(args[0]);
+    Settings.setInputDir(args[1]);
+    Settings.setOutputDir(args[2]);
+    Settings.setStateDir(args[3]);
+
+    log.info("Starting Spring container");
 
     SpringApplication.run(Application.class, args);
 
@@ -65,22 +75,13 @@ public class Application implements CommandLineRunner {
   @Override
   public void run(String... args) {
     long start = System.currentTimeMillis();
-    debug(args);
-    if (args.length != 4) {
-      throw new IllegalArgumentException("Incorrect number of parameters found.");
-    }
-
-    settings.setServer(args[0]);
-    settings.setInputDir(args[1]);
-    settings.setOutputDir(args[2]);
-    settings.setStateDir(args[3]);
-
+    // update known resolver ips
     update();
 
     // do sanity check to see if files are present
     if (FileUtil
-        .countFiles(settings.getInputDir() + System.getProperty("file.separator")
-            + settings.getServerInfo().getFullname()) == 0) {
+        .countFiles(Settings.getInputDir() + System.getProperty("file.separator")
+            + Settings.getServerInfo().getFullname()) == 0) {
       log.info("No new PCAP files found, stop.");
       return;
     }
@@ -108,9 +109,10 @@ public class Application implements CommandLineRunner {
   }
 
 
-  private void debug(String[] args) {
+  private static void debug(String[] args) {
+    log.info("Started application with following arguments:");
     for (int i = 0; i < args.length; i++) {
-      log.info("arg " + i + " = " + args[i]);
+      log.info("argument " + i + " = " + args[i]);
     }
   }
 

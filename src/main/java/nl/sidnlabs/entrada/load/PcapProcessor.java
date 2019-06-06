@@ -84,7 +84,6 @@ public class PcapProcessor {
   private List<String> processedFiles = new ArrayList<>();
   private List<String> inputFiles = new ArrayList<>();
 
-  private Settings settings;
   private MetricManager metricManager;
   private PersistenceManager persistenceManager;
   private ParquetOutputHandler outputHandler;
@@ -105,9 +104,9 @@ public class PcapProcessor {
   // keep list of active zone transfers
   private Map<RequestKey, Integer> activeZoneTransfers = new HashMap<>();
 
-  public PcapProcessor(Settings settings, MetricManager metricManager,
-      PersistenceManager persistenceManager, ParquetOutputHandler outputHandler) {
-    this.settings = settings;
+  public PcapProcessor(MetricManager metricManager, PersistenceManager persistenceManager,
+      ParquetOutputHandler outputHandler) {
+
     this.metricManager = metricManager;
     this.persistenceManager = persistenceManager;
     this.outputHandler = outputHandler;
@@ -178,7 +177,7 @@ public class PcapProcessor {
     String sep = System.getProperty("file.separator");
     File file = new File(pcap);
     File archiveDir = new File(
-        settings.getOutputDir() + sep + "archive" + sep + settings.getServerInfo().getFullname());
+        Settings.getOutputDir() + sep + "archive" + sep + Settings.getServerInfo().getFullname());
     if (!archiveDir.exists()) {
       log.info(archiveDir.getName() + " does not exist, create now.");
       if (!archiveDir.mkdirs()) {
@@ -228,7 +227,7 @@ public class PcapProcessor {
             || (currentPacket.getProtocol() == ICMPDecoder.PROTOCOL_ICMP_V6)) {
           // handle icmp
           outputHandler
-              .handle(new PacketCombination(currentPacket, null, settings.getServerInfo(), null,
+              .handle(new PacketCombination(currentPacket, null, Settings.getServerInfo(), null,
                   null, false, fileName));
 
         } else {
@@ -307,7 +306,7 @@ public class PcapProcessor {
 
                 outputHandler
                     .handle(new PacketCombination(request.getPacket(), request.getMessage(),
-                        settings.getServerInfo(), dnsPacket, msg, false, fileName));
+                        Settings.getServerInfo(), dnsPacket, msg, false, fileName));
 
               } else {
                 // no request found, this could happen if the query was in previous pcap
@@ -317,7 +316,7 @@ public class PcapProcessor {
                 noQueryFoundCounter++;
 
                 outputHandler
-                    .handle(new PacketCombination(null, null, settings.getServerInfo(), dnsPacket,
+                    .handle(new PacketCombination(null, null, Settings.getServerInfo(), dnsPacket,
                         msg, false, fileName));
               }
             }
@@ -446,7 +445,7 @@ public class PcapProcessor {
 
           outputHandler
               .handle(new PacketCombination(mw.getPacket(), mw.getMessage(),
-                  settings.getServerInfo(), null, null, true, mw.getFilename()));
+                  Settings.getServerInfo(), null, null, true, mw.getFilename()));
 
           purgeCounter++;
 
@@ -467,7 +466,7 @@ public class PcapProcessor {
     fileCount++;
     try {
       File f = FileUtils.getFile(file);
-      log.info("Load data for server: " + settings.getServerInfo().getFullname());
+      log.info("Load data for server: " + Settings.getServerInfo().getFullname());
 
       FileInputStream fis = FileUtils.openInputStream(f);
       int bufSize = bufferSizeConfig > 512 ? bufferSizeConfig : DEFAULT_PCAP_READER_BUFFER_SIZE;
@@ -484,8 +483,8 @@ public class PcapProcessor {
   }
 
   private void scan() {
-    String inputDir = settings.getInputDir() + System.getProperty("file.separator")
-        + settings.getServerInfo().getFullname();
+    String inputDir = Settings.getInputDir() + System.getProperty("file.separator")
+        + Settings.getServerInfo().getFullname();
 
     log.info("Scan for pcap files in: {}", inputDir);
 

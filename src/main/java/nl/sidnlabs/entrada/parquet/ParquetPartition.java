@@ -27,7 +27,7 @@ public class ParquetPartition<T> {
         path + FILE_SEP + "year=" + year + FILE_SEP + "month=" + month + FILE_SEP + "day=" + day;
 
     if (StringUtils.isNotBlank(server)) {
-      partition = partition + FILE_SEP + "svr=" + server;
+      partition = partition + FILE_SEP + "server=" + server;
     }
 
     return partition;

@@ -154,9 +154,14 @@ public class ParquetOutputHandler implements OutputHandler {
     icmpWriter.close();
   }
 
-  public void open() {
-    dnsWriter.open(Settings.getOutputDir(), Settings.getServerInfo().getFullname(), "dnsdata");
-    icmpWriter.open(Settings.getOutputDir(), Settings.getServerInfo().getFullname(), "icmpdata");
+  public void open(boolean dns, boolean icmp) {
+    if (dns) {
+      dnsWriter.open(Settings.getOutputDir(), Settings.getServerInfo().getFullname(), "dnsdata");
+    }
+
+    if (icmp) {
+      icmpWriter.open(Settings.getOutputDir(), Settings.getServerInfo().getFullname(), "icmpdata");
+    }
   }
 
 }

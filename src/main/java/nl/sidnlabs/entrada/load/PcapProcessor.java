@@ -78,6 +78,10 @@ public class PcapProcessor {
   @Value("${entrada.buffer.pcap.reader}")
   private int bufferSizeConfig;
 
+  @Value("${entrada.icmp.enable}")
+  private boolean icmpEnabled;
+
+
   private PcapReader pcapReader;
   protected Map<RequestKey, MessageWrapper> requestCache = new HashMap<>();
 
@@ -128,7 +132,7 @@ public class PcapProcessor {
     // get the state from the previous run
     loadState();
     // open the output file writer
-    outputHandler.open();
+    outputHandler.open(true, icmpEnabled);
     for (String file : inputFiles) {
       read(file);
       // flush expired packets after every file, to avoid a cache explosion
@@ -198,7 +202,7 @@ public class PcapProcessor {
       return FileUtils.getFile(file).getName();
     } catch (Exception e) {
       // some problem, cannot get file, use "unknown" to signal this
-      return "unknown??   n                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             mm";
+      return "unknown";
     }
   }
 
@@ -223,8 +227,15 @@ public class PcapProcessor {
       }
       if (currentPacket != null && currentPacket.getIpVersion() != 0) {
 
-        if ((currentPacket.getProtocol() == ICMPDecoder.PROTOCOL_ICMP_V4)
+
+        if (currentPacket.getProtocol() == ICMPDecoder.PROTOCOL_ICMP_V4
             || (currentPacket.getProtocol() == ICMPDecoder.PROTOCOL_ICMP_V6)) {
+
+          if (!icmpEnabled) {
+            // do not process ICMP packets
+            continue;
+          }
+
           // handle icmp
           outputHandler
               .handle(new PacketCombination(currentPacket, null, Settings.getServerInfo(), null,

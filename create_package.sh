@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION=$(mvn org.apache.maven.plugins:maven-help-plugin:2.1.1:evaluate -Dexpression=project.version | egrep -v '^\[|Downloading:' | tr -d ' \n')
+VERSION=$(xmllint --xpath "/*[name()='project']/*[name()='version']/text()" pom.xml)
 BASE_DIR="entrada-$VERSION"
 echo "Create ENTRADA installation package for version $VERSION"
 

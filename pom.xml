@@ -12,7 +12,7 @@
 
 	<groupId>nl.sidnlabs</groupId>
 	<artifactId>entrada</artifactId>
-	<version>0.1.4-SNAPSHOT</version>
+	<version>0.1.5-SNAPSHOT</version>
 	<name>${project.groupId}:${project.artifactId}</name>
 	<description>Convert PCAP files into Parquet files</description>
 	<url>https://github.com/SIDN/dnslib</url>
@@ -40,8 +40,8 @@
 	</scm>
 
 	<properties>
-		<sidn-dnslib>0.1.4-SNAPSHOT</sidn-dnslib>
-		<sidn-pcaplib>0.1.4-SNAPSHOT</sidn-pcaplib>
+		<sidn-dnslib>0.1.5-SNAPSHOT</sidn-dnslib>
+		<sidn-pcaplib>0.1.5-SNAPSHOT</sidn-pcaplib>
 		<hadoop.version>2.7.3</hadoop.version>
 		<!-- need this for eclipse bug https://github.com/spring-projects/spring-boot/issues/16846#issuecomment-492792506 -->
 		<maven-jar-plugin.version>3.1.1</maven-jar-plugin.version>

@@ -46,6 +46,7 @@ import nl.sidnlabs.entrada.config.Settings;
 import nl.sidnlabs.entrada.exception.ApplicationException;
 import nl.sidnlabs.entrada.metric.MetricManager;
 import nl.sidnlabs.entrada.parquet.ParquetOutputHandler;
+import nl.sidnlabs.entrada.service.FileArchiveService;
 import nl.sidnlabs.entrada.support.MessageWrapper;
 import nl.sidnlabs.entrada.support.PacketCombination;
 import nl.sidnlabs.entrada.support.RequestKey;
@@ -91,6 +92,7 @@ public class PcapProcessor {
   private MetricManager metricManager;
   private PersistenceManager persistenceManager;
   private ParquetOutputHandler outputHandler;
+  private FileArchiveService fileArchiveService;
 
   private int multiCounter;
 
@@ -109,11 +111,12 @@ public class PcapProcessor {
   private Map<RequestKey, Integer> activeZoneTransfers = new HashMap<>();
 
   public PcapProcessor(MetricManager metricManager, PersistenceManager persistenceManager,
-      ParquetOutputHandler outputHandler) {
+      ParquetOutputHandler outputHandler, FileArchiveService fileArchiveService) {
 
     this.metricManager = metricManager;
     this.persistenceManager = persistenceManager;
     this.outputHandler = outputHandler;
+    this.fileArchiveService = fileArchiveService;
 
     // convert minutes to seconds
     this.cacheTimeout = 1000 * 60 * cacheTimeoutConfig;
@@ -134,6 +137,14 @@ public class PcapProcessor {
     // open the output file writer
     outputHandler.open(true, icmpEnabled);
     for (String file : inputFiles) {
+
+      if (fileArchiveService.exists(file)) {
+        log.error("file {} already processed!, continue with next file", file);
+        continue;
+      }
+
+      fileArchiveService.save(file);
+
       read(file);
       // flush expired packets after every file, to avoid a cache explosion
       purgeCache();

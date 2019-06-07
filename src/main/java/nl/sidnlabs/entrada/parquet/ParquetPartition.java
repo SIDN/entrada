@@ -46,7 +46,7 @@ public class ParquetPartition<T> {
           .enableValidation()
           .withCompressionCodec(CompressionCodecName.SNAPPY)
           .withConf(conf)
-          .withWriterVersion(WriterVersion.PARQUET_2_0)
+          .withWriterVersion(WriterVersion.PARQUET_1_0)
           .withSchema(schema)
           .build();
     } catch (IOException e) {

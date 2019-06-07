@@ -106,6 +106,9 @@ public class Application implements CommandLineRunner {
     }
 
     log.info("Done loading data");
+
+    // need to call exit otherwise H2 db will keep application alive
+    System.exit(0);
   }
 
 
@@ -115,6 +118,5 @@ public class Application implements CommandLineRunner {
       log.info("argument " + i + " = " + args[i]);
     }
   }
-
 
 }

@@ -17,9 +17,10 @@
  * [<http://www.gnu.org/licenses/].
  *
  */
-package nl.sidnlabs.entrada.dns.resolver;
+package nl.sidnlabs.entrada.enrich.resolver;
 
-import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,7 +33,6 @@ import org.xbill.DNS.SimpleResolver;
 import org.xbill.DNS.TXTRecord;
 import org.xbill.DNS.Type;
 import lombok.extern.log4j.Log4j2;
-import nl.sidnlabs.entrada.config.Settings;
 
 /**
  * check if an IP address is a Google open resolver. This check uses the list from the Google
@@ -43,23 +43,24 @@ import nl.sidnlabs.entrada.config.Settings;
  */
 @Log4j2
 @Component
-public final class GoogleResolverCheck extends AbstractNetworkCheck {
+public final class GoogleResolverCheck extends AbstractResolverCheck {
 
-  private static final String GOOGLE_RESOLVER_IP_FILENAME = "google-resolvers";
+  private static final String RESOLVER_STATE_FILENAME = "google-resolvers";
+  private static final String RESOLVER_NAME = "Google";
 
-  @Value("${entrada.resolver.list.google}")
+  @Value("${google.resolver.hostname}")
   private String hostname;
+  @Value("${google.resolver.timeout:15}")
+  private int timeout;
 
-  public GoogleResolverCheck(Settings settings) {
-    super(settings);
-  }
 
   @Override
-  protected void init() {
+  protected List<String> fetch() {
+
     try {
       Resolver resolver = new SimpleResolver();
       // dns resolvers may take a long time to return a response.
-      resolver.setTimeout(15);
+      resolver.setTimeout(timeout);
       Lookup l =
           new Lookup(StringUtils.endsWith(hostname, ".") ? hostname : hostname + ".", Type.TXT);
       // always make sure the cache is empty
@@ -67,39 +68,45 @@ public final class GoogleResolverCheck extends AbstractNetworkCheck {
       l.setResolver(resolver);
       Record[] records = l.run();
       if (records != null && records.length > 0) {
-        parse(records[0]);
-      }
-
-      if (subnets.isEmpty()) {
-        log.error("No Google resolvers found.");
+        return parse(records[0]);
       }
     } catch (Exception e) {
       log.error("Problem while adding Google resolvers, continue without", e);
     }
+
+    return Collections.emptyList();
   }
 
-  private void parse(Record record) {
+  private List<String> parse(Record record) {
     TXTRecord txt = (TXTRecord) record;
+    List<String> subnets = new ArrayList<>();
+
     @SuppressWarnings("unchecked")
     List<String> lines = txt.getStrings();
     for (String line : lines) {
       String[] parts = StringUtils.split(line, " ");
       if (parts.length == 2) {
-        log.info("Add Google resolver IP range: " + parts[0]);
-
-        try {
-          bitSubnets.add(Subnet.createInstance(parts[0]));
-          subnets.add(parts[0]);
-        } catch (UnknownHostException e) {
-          log.error("Problem while adding Google resolver IP range: " + parts[0] + e);
+        if (log.isDebugEnabled()) {
+          log.debug("Add Google resolver IP range: " + parts[0]);
         }
+        subnets.add(parts[0]);
       }
     }
+
+    if (subnets.isEmpty()) {
+      log.error("No Google resolvers found.");
+    }
+
+    return subnets;
   }
 
   @Override
-  protected String getFilename() {
-    return GOOGLE_RESOLVER_IP_FILENAME;
+  public String getFilename() {
+    return RESOLVER_STATE_FILENAME;
   }
 
+  @Override
+  public String getName() {
+    return RESOLVER_NAME;
+  }
 }

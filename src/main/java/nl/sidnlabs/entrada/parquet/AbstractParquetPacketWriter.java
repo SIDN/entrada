@@ -21,16 +21,15 @@ package nl.sidnlabs.entrada.parquet;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Parser;
 import org.apache.avro.generic.GenericRecordBuilder;
+import org.apache.commons.lang3.StringUtils;
 import lombok.extern.log4j.Log4j2;
+import nl.sidnlabs.entrada.enrich.AddressEnrichment;
 import nl.sidnlabs.entrada.exception.ApplicationException;
-import nl.sidnlabs.entrada.ip.geo.GeoIPService;
 import nl.sidnlabs.entrada.support.PacketCombination;
 
 @Log4j2
@@ -40,14 +39,12 @@ public abstract class AbstractParquetPacketWriter {
 
   protected int packetCounter;
   protected ParquetPartitionWriter writer;
-  protected GeoIPService geoLookup;
-  protected Set<String> countries = new HashSet<>();
-
+  private List<AddressEnrichment> enrichments;
   protected Schema avroSchema;
 
 
-  public AbstractParquetPacketWriter(GeoIPService geoLookup) {
-    this.geoLookup = geoLookup;
+  public AbstractParquetPacketWriter(List<AddressEnrichment> enrichments) {
+    this.enrichments = enrichments;
   }
 
   protected Schema schema(String schema) {
@@ -64,31 +61,6 @@ public abstract class AbstractParquetPacketWriter {
     }
 
     return avroSchema;
-  }
-
-
-  /**
-   * Lookup country for IP address
-   * 
-   * @param address IP address to perform lookup with
-   * @return Optional with country if found
-   */
-  protected Optional<String> getCountry(String address) {
-    Optional<String> country = geoLookup.lookupCountry(address);
-    if (country.isPresent()) {
-      countries.add(country.get());
-    }
-    return country;
-  }
-
-  /**
-   * Lookup ASN for IP address
-   * 
-   * @param address IP address to perform lookup with
-   * @return Optional with ASN if found
-   */
-  protected Optional<String> getAsn(String address) {
-    return geoLookup.lookupASN(address);
   }
 
   /**
@@ -120,6 +92,22 @@ public abstract class AbstractParquetPacketWriter {
    */
   protected GenericRecordBuilder recordBuilder(String schema) {
     return new GenericRecordBuilder(schema(schema));
+  }
+
+  protected void enrich(String address, String prefix, GenericRecordBuilder builder) {
+
+    String cleanPrefix = StringUtils.trimToEmpty(prefix);
+
+    // execute all enrichments and if a match is found add value to row
+    enrichments.stream().filter(e -> e.match(address)).forEach(e -> {
+      if (hasField(cleanPrefix + e.getColumn())) {
+        builder.set(cleanPrefix + e.getColumn(), e.getValue());
+      }
+    });
+  }
+
+  private boolean hasField(String name) {
+    return avroSchema.getField(name) != null;
   }
 
   public void close() {

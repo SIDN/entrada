@@ -66,6 +66,7 @@
     { "name": "q_tc","type": ["null","boolean"], "default": null},
     { "name": "q_ra", "type": ["null","boolean"], "default": null},
     { "name": "q_ad", "type": ["null","boolean"], "default": null},
-    { "name": "q_rcode", "type": ["null","int"], "default": null}
+    { "name": "q_rcode", "type": ["null","int"], "default": null},
+    { "name": "pub_resolver", "type": ["null","string"], "default": null}
   ]
 }

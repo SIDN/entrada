@@ -19,14 +19,12 @@
  */
 package nl.sidnlabs.entrada.parquet;
 
-import java.net.InetAddress;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
@@ -49,10 +47,9 @@ import nl.sidnlabs.dnslib.types.ResourceRecordType;
 import nl.sidnlabs.dnslib.util.Domaininfo;
 import nl.sidnlabs.dnslib.util.NameUtil;
 import nl.sidnlabs.entrada.config.Settings;
-import nl.sidnlabs.entrada.dns.resolver.DnsResolverAddress;
-import nl.sidnlabs.entrada.dns.resolver.GoogleResolverCheck;
-import nl.sidnlabs.entrada.dns.resolver.OpenDNSResolverCheck;
-import nl.sidnlabs.entrada.ip.geo.GeoIPService;
+import nl.sidnlabs.entrada.enrich.AddressEnrichment;
+import nl.sidnlabs.entrada.enrich.resolver.GoogleResolverCheck;
+import nl.sidnlabs.entrada.enrich.resolver.OpenDNSResolverCheck;
 import nl.sidnlabs.entrada.metric.MetricManager;
 import nl.sidnlabs.entrada.support.PacketCombination;
 import nl.sidnlabs.pcap.PcapReader;
@@ -81,16 +78,13 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 
   private Settings settings;
   private MetricManager metricManager;
-  private DnsResolverAddress googleCheck;
-  private DnsResolverAddress openDNSCheck;
 
   public DNSParquetPacketWriter(Settings settings, GoogleResolverCheck googleCheck,
-      OpenDNSResolverCheck openDNSCheck, MetricManager metricManager, GeoIPService geoLookup) {
+      OpenDNSResolverCheck openDNSCheck, MetricManager metricManager,
+      List<AddressEnrichment> enrichments) {
 
-    super(geoLookup);
+    super(enrichments);
     this.settings = settings;
-    this.googleCheck = googleCheck;
-    this.openDNSCheck = openDNSCheck;
     this.metricManager = metricManager;
   }
 
@@ -178,7 +172,8 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
     builder.set("pcap_file", combo.getPcapFilename());
 
     // add meta data
-    enrich(reqTransport, respTransport, builder);
+    String addressToCheck = (reqTransport != null) ? reqTransport.getSrc() : respTransport.getSrc();
+    enrich(addressToCheck, "", builder);
 
     // these are the values that are retrieved from the response
     if (respTransport != null && respMessage != null && responseHeader != null) {
@@ -326,38 +321,6 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
     }
   }
 
-  private void enrich(Packet reqPacket, Packet respPacket, GenericRecordBuilder builder) {
-    Optional<String> country = null;
-    Optional<String> asn = null;
-    boolean isGoogle = false;
-    boolean isOpenDNS = false;
-    if (reqPacket != null) {
-      // request packet, check the source address
-      country = getCountry(reqPacket.getSrc());
-      asn = getAsn(reqPacket.getSrc());
-      isGoogle = googleCheck.isMatch(reqPacket.getSrc());
-      if (!isGoogle) {
-        isOpenDNS = openDNSCheck.isMatch(reqPacket.getSrc());
-      }
-    } else {
-      // response packet, check the destination address
-      country = getCountry(respPacket.getDst());
-      asn = getAsn(respPacket.getDst());
-      isGoogle = googleCheck.isMatch(respPacket.getDst());
-      if (!isGoogle) {
-        isOpenDNS = openDNSCheck.isMatch(respPacket.getDst());
-      }
-    }
-
-    builder
-        .set("country", country.orElse(null))
-        .set("asn", asn.orElse(null))
-        // check of the resolver is a google backend resolver
-        .set("is_google", isGoogle)
-        // check of the resolver is a opendns backend resolver
-        .set("is_opendns", isOpenDNS);
-  }
-
   private void updateIpVersionMetrics(Packet req, Packet resp) {
     if (req != null) {
       if (req.getIpVersion() == 4) {
@@ -461,15 +424,8 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
           ClientSubnetOption scOption = (ClientSubnetOption) option;
           // get client country and asn
 
-          if (scOption.getInetAddress() != null) {
-            InetAddress addr = scOption.getInetAddress();
-            Optional<String> clientCountry = geoLookup.lookupCountry(addr);
-            Optional<String> clientASN = geoLookup.lookupASN(addr);
-
-            builder
-                .set("edns_client_subnet_asn", clientASN.orElse(null))
-                .set("edns_client_subnet_country", clientCountry.orElse(null));
-
+          if (scOption.getAddress() != null) {
+            enrich(scOption.getAddress(), "edns_client_subnet_", builder);
           }
           builder.set("edns_client_subnet", scOption.export());
 
@@ -520,8 +476,6 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
                 + ".count", entry.getValue().intValue());
       }
     }
-
-    metricManager.send(MetricManager.METRIC_IMPORT_COUNTRY_COUNT, countries.size());
 
     int bytes = responseBytes == 0 ? 0 : (int) (responseBytes / 1024);
     metricManager.send(MetricManager.METRIC_IMPORT_DNS_RESPONSE_BYTES_SIZE, bytes);

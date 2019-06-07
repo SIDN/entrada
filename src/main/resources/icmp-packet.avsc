@@ -57,6 +57,7 @@
     { "name": "svr", "type": "string" },
     { "name": "time_micro", "type": "long" },
     { "name": "server_location", "type": ["null","string"], "default": null },
-    { "name": "pcap_file", "type": ["null","string"], "default": null}
+    { "name": "pcap_file", "type": ["null","string"], "default": null},
+    { "name": "ip_pub_resolver", "type": ["null","string"], "default": null}
   ]
 }

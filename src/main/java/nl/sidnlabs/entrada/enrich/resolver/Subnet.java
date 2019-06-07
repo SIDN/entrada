@@ -17,11 +17,12 @@
  * [<http://www.gnu.org/licenses/].
  *
  */
-package nl.sidnlabs.entrada.dns.resolver;
+package nl.sidnlabs.entrada.enrich.resolver;
 
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import com.esotericsoftware.minlog.Log;
 
 /**
  * @author c3oe.de, based on snippets from Scott Plante, John Kugelmann
@@ -61,14 +62,21 @@ public class Subnet {
    * @return a new instance
    * @throws UnknownHostException thrown if unsupported subnet mask.
    */
-  public static Subnet createInstance(final String subnetMask) throws UnknownHostException {
-    final String[] stringArr = subnetMask.split("/");
-    if (2 > stringArr.length)
-      return new Subnet(InetAddress.getByName(stringArr[0]), (InetAddress) null);
-    else if (stringArr[1].contains(".") || stringArr[1].contains(":"))
-      return new Subnet(InetAddress.getByName(stringArr[0]), InetAddress.getByName(stringArr[1]));
-    else
-      return new Subnet(InetAddress.getByName(stringArr[0]), Integer.parseInt(stringArr[1]));
+  public static Subnet createInstance(final String subnetMask) {
+    try {
+      final String[] stringArr = subnetMask.split("/");
+      if (2 > stringArr.length)
+        return new Subnet(InetAddress.getByName(stringArr[0]), (InetAddress) null);
+      else if (stringArr[1].contains(".") || stringArr[1].contains(":"))
+        return new Subnet(InetAddress.getByName(stringArr[0]), InetAddress.getByName(stringArr[1]));
+      else
+        return new Subnet(InetAddress.getByName(stringArr[0]), Integer.parseInt(stringArr[1]));
+    } catch (Exception e) {
+      // ignore this error, just log it
+      Log.error("Cannot create Subnet instance for: {}", subnetMask, e);
+    }
+
+    return null;
   }
 
   public boolean isInNet(final InetAddress address) {

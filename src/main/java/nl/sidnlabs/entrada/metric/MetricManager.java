@@ -68,7 +68,6 @@ public class MetricManager {
   public static final String METRIC_IMPORT_IP_VERSION_4_COUNT = ".ip.version.4.count";
   public static final String METRIC_IMPORT_IP_VERSION_6_COUNT = ".ip.version.6.count";
 
-  public static final String METRIC_IMPORT_COUNTRY_COUNT = ".country.count";
   public static final String METRIC_IMPORT_DNS_RESPONSE_BYTES_SIZE = ".dns.response.bytes.size";
   public static final String METRIC_IMPORT_DNS_QUERY_BYTES_SIZE = ".dns.request.bytes.size";
 

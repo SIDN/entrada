@@ -19,14 +19,14 @@
  */
 package nl.sidnlabs.entrada;
 
+import java.util.List;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.config.Settings;
-import nl.sidnlabs.entrada.dns.resolver.GoogleResolverCheck;
-import nl.sidnlabs.entrada.dns.resolver.OpenDNSResolverCheck;
+import nl.sidnlabs.entrada.enrich.resolver.DnsResolverCheck;
 import nl.sidnlabs.entrada.load.PcapProcessor;
 import nl.sidnlabs.entrada.metric.MetricManager;
 import nl.sidnlabs.entrada.util.FileUtil;
@@ -37,18 +37,15 @@ import nl.sidnlabs.entrada.util.FileUtil;
 public class Application implements CommandLineRunner {
 
   private MetricManager metricManager;
-  private GoogleResolverCheck googleResolverCheck;
-  private OpenDNSResolverCheck openDNSResolverCheck;
   private PcapProcessor pcapProcessor;
+  private List<DnsResolverCheck> resolverChecks;
 
-  public Application(GoogleResolverCheck googleResolverCheck,
-      OpenDNSResolverCheck openDNSResolverCheck, MetricManager metricManager,
-      PcapProcessor pcapProcessor) {
+  public Application(MetricManager metricManager, PcapProcessor pcapProcessor,
+      List<DnsResolverCheck> resolverChecks) {
 
-    this.googleResolverCheck = googleResolverCheck;
-    this.openDNSResolverCheck = openDNSResolverCheck;
     this.metricManager = metricManager;
     this.pcapProcessor = pcapProcessor;
+    this.resolverChecks = resolverChecks;
   }
 
   public static void main(String[] args) {
@@ -75,8 +72,11 @@ public class Application implements CommandLineRunner {
   @Override
   public void run(String... args) {
     long start = System.currentTimeMillis();
-    // update known resolver ips
-    update();
+    // show resolver info to make sure the resolver data has been loaded
+    resolverChecks.stream().forEach(r -> {
+      r.init();
+      log.info("Loaded {} IP subnets for {} resolver service", r.getSize(), r.getName());
+    });
 
     // do sanity check to see if files are present
     if (FileUtil
@@ -115,12 +115,6 @@ public class Application implements CommandLineRunner {
       log.info("argument " + i + " = " + args[i]);
     }
   }
-
-  private void update() {
-    googleResolverCheck.update();
-    openDNSResolverCheck.update();
-  }
-
 
 
 }

@@ -22,8 +22,8 @@ package nl.sidnlabs.entrada.parquet;
 import java.sql.Timestamp;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.commons.lang3.StringUtils;
@@ -34,13 +34,13 @@ import nl.sidnlabs.dnslib.message.Question;
 import nl.sidnlabs.dnslib.message.records.edns0.OPTResourceRecord;
 import nl.sidnlabs.dnslib.util.Domaininfo;
 import nl.sidnlabs.dnslib.util.NameUtil;
+import nl.sidnlabs.entrada.config.Settings;
+import nl.sidnlabs.entrada.enrich.AddressEnrichment;
+import nl.sidnlabs.entrada.metric.MetricManager;
+import nl.sidnlabs.entrada.support.PacketCombination;
 import nl.sidnlabs.pcap.packet.DNSPacket;
 import nl.sidnlabs.pcap.packet.ICMPPacket;
 import nl.sidnlabs.pcap.packet.Packet;
-import nl.sidnlabs.entrada.config.Settings;
-import nl.sidnlabs.entrada.ip.geo.GeoIPService;
-import nl.sidnlabs.entrada.metric.MetricManager;
-import nl.sidnlabs.entrada.support.PacketCombination;
 
 @Component
 public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
@@ -59,8 +59,9 @@ public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
   private MetricManager metricManager;
 
   public ICMPParquetPacketWriter(Settings settings, MetricManager metricManager,
-      GeoIPService geoLookup) {
-    super(geoLookup);
+      List<AddressEnrichment> enrichments) {
+
+    super(enrichments);
     this.settings = settings;
     this.metricManager = metricManager;
   }
@@ -95,8 +96,8 @@ public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
 
     // icmp packet ip+headers
     Timestamp packetTime = new Timestamp((icmpPacket.getTs() * 1000));
-    Optional<String> country = getCountry(icmpPacket.getSrc());
-    Optional<String> asn = getAsn(icmpPacket.getSrc());
+
+    enrich(icmpPacket.getSrc(), "ip_", builder);
 
     // icmp payload
     Question q = null;
@@ -128,8 +129,6 @@ public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
         .set("ip_v", (int) icmpPacket.getIpVersion())
         .set("ip_src", icmpPacket.getSrc())
         .set("ip_dst", icmpPacket.getDst())
-        .set("ip_country", country.orElse(null))
-        .set("ip_asn", asn.orElse(null))
         .set("l4_prot", (int) icmpPacket.getProtocol())
         .set("l4_srcp", icmpPacket.getSrcPort())
         .set("l4_dstp", icmpPacket.getDstPort())

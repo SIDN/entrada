@@ -50,7 +50,7 @@ public final class Quad9ResolverCheck extends AbstractResolverCheck {
       return lines
           .stream()
           .map(StringUtils::deleteWhitespace)
-          .map(s -> StringUtils.appendIfMissing(s, "/32", "/"))
+          .map(this::appendAddDefaultBits)
           .collect(Collectors.toList());
 
     } catch (Exception e) {
@@ -58,6 +58,13 @@ public final class Quad9ResolverCheck extends AbstractResolverCheck {
     }
 
     return Collections.emptyList();
+  }
+
+  private String appendAddDefaultBits(String address) {
+    if (!StringUtils.contains(address, "/")) {
+      return address + "/32";
+    }
+    return address;
   }
 
   @Override

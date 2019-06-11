@@ -21,16 +21,12 @@ package nl.sidnlabs.entrada.parquet;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Parser;
 import org.apache.avro.generic.GenericRecordBuilder;
-import org.apache.commons.lang3.StringUtils;
 import lombok.extern.log4j.Log4j2;
-import nl.sidnlabs.entrada.enrich.AddressEnrichment;
 import nl.sidnlabs.entrada.exception.ApplicationException;
-import nl.sidnlabs.entrada.support.PacketCombination;
+import nl.sidnlabs.entrada.model.Row;
 
 @Log4j2
 public abstract class AbstractParquetPacketWriter {
@@ -39,13 +35,13 @@ public abstract class AbstractParquetPacketWriter {
 
   protected int packetCounter;
   protected ParquetPartitionWriter writer;
-  private List<AddressEnrichment> enrichments;
+  // private List<AddressEnrichment> enrichments;
   protected Schema avroSchema;
 
 
-  public AbstractParquetPacketWriter(List<AddressEnrichment> enrichments) {
-    this.enrichments = enrichments;
-  }
+  // public AbstractParquetPacketWriter(List<AddressEnrichment> enrichments) {
+  // this.enrichments = enrichments;
+  // }
 
   protected Schema schema(String schema) {
     if (avroSchema != null) {
@@ -68,7 +64,7 @@ public abstract class AbstractParquetPacketWriter {
    * 
    * @param packet
    */
-  public abstract void write(PacketCombination packet);
+  public abstract void write(Row row, String server);
 
   public void open(String outputDir, String server, String name) {
     // replace any non alphanumeric chars in the servername with underscore
@@ -94,19 +90,19 @@ public abstract class AbstractParquetPacketWriter {
     return new GenericRecordBuilder(schema(schema));
   }
 
-  protected void enrich(String address, String prefix, GenericRecordBuilder builder) {
+  // protected void enrich(String address, String prefix, GenericRecordBuilder builder) {
+  //
+  // String cleanPrefix = StringUtils.trimToEmpty(prefix);
+  //
+  // // execute all enrichments and if a match is found add value to row
+  // enrichments.stream().filter(e -> e.match(address)).forEach(e -> {
+  // if (hasField(cleanPrefix + e.getColumn())) {
+  // builder.set(cleanPrefix + e.getColumn(), e.getValue());
+  // }
+  // });
+  // }
 
-    String cleanPrefix = StringUtils.trimToEmpty(prefix);
-
-    // execute all enrichments and if a match is found add value to row
-    enrichments.stream().filter(e -> e.match(address)).forEach(e -> {
-      if (hasField(cleanPrefix + e.getColumn())) {
-        builder.set(cleanPrefix + e.getColumn(), e.getValue());
-      }
-    });
-  }
-
-  private boolean hasField(String name) {
+  protected boolean hasField(String name) {
     return avroSchema.getField(name) != null;
   }
 
@@ -129,30 +125,30 @@ public abstract class AbstractParquetPacketWriter {
    * @param str string to filter
    * @return filtered version of input string
    */
-  public String filter(String str) {
-    StringBuilder filtered = new StringBuilder(str.length());
-    for (int i = 0; i < str.length(); i++) {
-      char current = str.charAt(i);
-      if (current >= 0x20 && current <= 0x7e) {
-        filtered.append(current);
-      } else {
-        filtered.append("0x" + Integer.toHexString(current));
-      }
-    }
-
-    return filtered.toString();
-  }
-
-  public abstract void writeMetrics();
-
-  protected void updateMetricMap(Map<Integer, Integer> map, Integer key) {
-    Integer currentVal = map.get(key);
-    if (currentVal != null) {
-      map.put(key, currentVal.intValue() + 1);
-    } else {
-      map.put(key, 1);
-    }
-  }
+  // public String filter(String str) {
+  // StringBuilder filtered = new StringBuilder(str.length());
+  // for (int i = 0; i < str.length(); i++) {
+  // char current = str.charAt(i);
+  // if (current >= 0x20 && current <= 0x7e) {
+  // filtered.append(current);
+  // } else {
+  // filtered.append("0x" + Integer.toHexString(current));
+  // }
+  // }
+  //
+  // return filtered.toString();
+  // }
+  //
+  // // public abstract void writeMetrics();
+  //
+  // protected void updateMetricMap(Map<Integer, Integer> map, Integer key) {
+  // Integer currentVal = map.get(key);
+  // if (currentVal != null) {
+  // map.put(key, currentVal.intValue() + 1);
+  // } else {
+  // map.put(key, 1);
+  // }
+  // }
 
 }
 

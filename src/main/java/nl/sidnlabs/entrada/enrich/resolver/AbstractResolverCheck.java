@@ -23,23 +23,23 @@ import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import java.io.File;
 import java.io.IOException;
-import java.net.InetAddress;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import org.apache.commons.lang3.time.DateUtils;
 import org.springframework.beans.factory.annotation.Value;
-import com.google.common.net.InetAddresses;
+import org.springframework.security.web.util.matcher.IpAddressMatcher;
 import lombok.extern.log4j.Log4j2;
 
 @Log4j2
 public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
-  private List<Subnet> bitSubnets = new ArrayList<>();
+  private List<IpAddressMatcher> matchers4 = new ArrayList<>();
+  private List<IpAddressMatcher> matchers6 = new ArrayList<>();
   private List<String> subnets = new ArrayList<>();
 
-  @Value("${entrada.work.dir}")
+  @Value("${entrada.location.work}")
   private String workDir;
 
   @Override
@@ -59,7 +59,16 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     subnets = fetch();
     if (!subnets.isEmpty()) {
       // create internal bitsubnets for camparissions
-      subnets.stream().forEach(s -> bitSubnets.add(Subnet.createInstance(s)));
+      subnets
+          .stream()
+          .filter(s -> s.contains("."))
+          .forEach(s -> matchers4.add(new IpAddressMatcher(s)));
+
+      subnets
+          .stream()
+          .filter(s -> s.contains(":"))
+          .forEach(s -> matchers6.add(new IpAddressMatcher(s)));
+
       // write subnets to file so we do not need to get them from source every time the app starts
       writeToFile(file);
     }
@@ -92,9 +101,17 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
       return false;
     }
 
-    lines.stream().forEach(s -> bitSubnets.add(Subnet.createInstance(s)));
+    lines
+        .stream()
+        .filter(s -> s.contains("."))
+        .forEach(s -> matchers4.add(new IpAddressMatcher(s)));
 
-    return !bitSubnets.isEmpty();
+    lines
+        .stream()
+        .filter(s -> s.contains(":"))
+        .forEach(s -> matchers6.add(new IpAddressMatcher(s)));
+
+    return !matchers4.isEmpty() || !matchers6.isEmpty();
   }
 
   private void writeToFile(File file) {
@@ -109,17 +126,30 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
   @Override
   public boolean match(String address) {
-    InetAddress ipAddress = InetAddresses.forString(address);
-    return bitCompare(ipAddress);
-  }
+    // reolver matchers are split into a v4 and v6 group
+    // to allow us to quickly skip the version we don't need
+    // to check
 
-  private boolean bitCompare(InetAddress ipAddress) {
-    return bitSubnets.stream().anyMatch(sn -> sn.isInNet(ipAddress));
+    if (address != null && address.contains(".")) {
+      for (IpAddressMatcher m : matchers4) {
+        if (m.matches(address)) {
+          return true;
+        }
+      }
+    }
+
+    for (IpAddressMatcher m : matchers6) {
+      if (m.matches(address)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
   @Override
   public int getSize() {
-    return bitSubnets.size();
+    return matchers4.size() + matchers6.size();
   }
 
 }

@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
@@ -22,9 +23,12 @@ public class PersistenceManager {
   private Output output = null;
   private Input input = null;
 
+  @Value("${entrada.location.work}")
+  private String workLocation;
+
   private String createStateFileName() {
-    return Settings.getStateDir() + "/" + DECODER_STATE_FILE + "-"
-        + Settings.getServerInfo().getFullname() + ".bin";
+    return workLocation + "/" + DECODER_STATE_FILE + "-" + Settings.getServerInfo().getFullname()
+        + ".bin";
   }
 
   public void write(Object data) {

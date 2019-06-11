@@ -27,7 +27,7 @@
 	<developers>
 		<developer>
 			<name>Maarten Wullink</name>
-			<email>maarten.wullink@sidn.nl</email>
+			<email>entrada@sidn.nl</email>
 			<organization>SIDN</organization>
 			<organizationUrl>https://www.sidn.nl</organizationUrl>
 		</developer>
@@ -45,6 +45,7 @@
 		<hadoop.version>3.1.1</hadoop.version>
 		<!-- need this for eclipse bug https://github.com/spring-projects/spring-boot/issues/16846#issuecomment-492792506 -->
 		<maven-jar-plugin.version>3.1.1</maven-jar-plugin.version>
+		<spring-cloud-version>2.1.1.RELEASE</spring-cloud-version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 
@@ -204,6 +205,33 @@
 			<artifactId>aws-java-sdk-s3</artifactId>
 			<version>1.11.566</version>
 		</dependency>
+
+		<!-- SPRING CLOUD -->
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-aws-context</artifactId>
+			<version>${spring-cloud-version}</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-aws-autoconfigure</artifactId>
+			<version>${spring-cloud-version}</version>
+		</dependency>
+
+		<!-- Athena is not in cetral repo, added it to local repo -->
+		<dependency>
+			<groupId>com.amazon.aws</groupId>
+			<artifactId>athena</artifactId>
+			<version>2.0.7</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-web</artifactId>
+			<version>5.1.5.RELEASE</version>
+		</dependency>
+
 	</dependencies>
 
 	<!-- for build and publish info see: https://central.sonatype.org/pages/apache-maven.html -->
@@ -311,5 +339,12 @@
 			</plugin>
 		</plugins>
 	</build>
+
+	<repositories>
+		<repository>
+			<id>Local</id>
+			<url>file://${basedir}/lib</url>
+		</repository>
+	</repositories>
 
 </project>

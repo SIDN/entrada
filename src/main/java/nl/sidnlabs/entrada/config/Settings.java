@@ -42,15 +42,6 @@ public class Settings {
   @Getter
   @Setter
   private static ServerInfo serverInfo = null;
-  @Getter
-  @Setter
-  private static String inputDir;
-  @Getter
-  @Setter
-  private static String outputDir;
-  @Getter
-  @Setter
-  private static String stateDir;
 
   /**
    * Load the server and optional anycast server location information. Using format
@@ -60,10 +51,11 @@ public class Settings {
    */
   public static void setServer(String name) {
     serverInfo = new ServerInfo();
+    String cleanName = StringUtils.trimToEmpty(name);
     // set the pcap input directory name.
-    serverInfo.setFullname(name);
-    if (name.contains("_")) {
-      String[] parts = StringUtils.split(name, "_");
+    serverInfo.setFullname(cleanName);
+    if (cleanName.length() > 0 && cleanName.contains("_")) {
+      String[] parts = StringUtils.split(cleanName, "_");
       if (parts.length == 2) {
         serverInfo.setName(parts[0]);
         serverInfo.setLocation(parts[1]);

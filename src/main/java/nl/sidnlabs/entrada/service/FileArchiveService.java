@@ -2,10 +2,10 @@ package nl.sidnlabs.entrada.service;
 
 import java.io.File;
 import java.util.Date;
-import javax.transaction.Transactional;
 import org.springframework.stereotype.Component;
-import nl.sidnlabs.entrada.model.FileArchive;
-import nl.sidnlabs.entrada.model.FileArchiveRepository;
+import org.springframework.transaction.annotation.Transactional;
+import nl.sidnlabs.entrada.model.jpa.FileArchive;
+import nl.sidnlabs.entrada.model.jpa.FileArchiveRepository;
 
 @Component
 public class FileArchiveService {

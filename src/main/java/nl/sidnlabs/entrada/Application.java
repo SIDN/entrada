@@ -29,7 +29,6 @@ import nl.sidnlabs.entrada.config.Settings;
 import nl.sidnlabs.entrada.enrich.resolver.DnsResolverCheck;
 import nl.sidnlabs.entrada.load.PcapProcessor;
 import nl.sidnlabs.entrada.metric.MetricManager;
-import nl.sidnlabs.entrada.util.FileUtil;
 
 @Log4j2
 @ComponentScan("nl.sidnlabs")
@@ -51,15 +50,17 @@ public class Application implements CommandLineRunner {
   public static void main(String[] args) {
 
     debug(args);
-    if (args.length != 4) {
+    if (!(args.length == 0 || args.length == 1)) {
       throw new IllegalArgumentException("Incorrect number of parameters found.");
     }
     // set the argument as static fields of Settings, cannot wait until Spring
     // creates a bean, because the constructor of Settings needs the arguments
-    Settings.setServer(args[0]);
-    Settings.setInputDir(args[1]);
-    Settings.setOutputDir(args[2]);
-    Settings.setStateDir(args[3]);
+    if (args.length == 1) {
+      Settings.setServer(args[0]);
+    }
+    // Settings.setInputDir(args[1]);
+    // Settings.setOutputDir(args[2]);
+    // Settings.setStateDir(args[3]);
 
     log.info("Starting Spring container");
 
@@ -78,13 +79,13 @@ public class Application implements CommandLineRunner {
       log.info("Loaded {} IP subnets for {} resolver service", r.getSize(), r.getName());
     });
 
-    // do sanity check to see if files are present
-    if (FileUtil
-        .countFiles(Settings.getInputDir() + System.getProperty("file.separator")
-            + Settings.getServerInfo().getFullname()) == 0) {
-      log.info("No new PCAP files found, stop.");
-      return;
-    }
+    // // do sanity check to see if files are present
+    // if (FileUtil
+    // .countFiles(Settings.getInputDir() + System.getProperty("file.separator")
+    // + Settings.getServerInfo().getFullname()) == 0) {
+    // log.info("No new PCAP files found, stop.");
+    // return;
+    // }
 
     try {
       pcapProcessor.execute();

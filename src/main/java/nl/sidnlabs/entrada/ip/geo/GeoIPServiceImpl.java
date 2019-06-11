@@ -23,13 +23,14 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.util.Optional;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import com.google.common.net.InetAddresses;
 import com.maxmind.db.CHMCache;
 import com.maxmind.geoip2.DatabaseReader;
 import com.maxmind.geoip2.model.AsnResponse;
 import lombok.extern.log4j.Log4j2;
-import nl.sidnlabs.entrada.config.Settings;
 import nl.sidnlabs.entrada.exception.ApplicationException;
 
 /**
@@ -39,23 +40,23 @@ import nl.sidnlabs.entrada.exception.ApplicationException;
 @Component
 public class GeoIPServiceImpl implements GeoIPService {
 
-  private static final String MAXMIND_DIR = "maxmind";
   private static final String MAXMIND_COUNTRY_DB = "GeoLite2-Country.mmdb";
   private static final String MAXMIND_ASN_DB = "GeoLite2-ASN.mmdb";
 
   private DatabaseReader geoReader;
   private DatabaseReader asnReader;
 
-  public GeoIPServiceImpl() {
+  public GeoIPServiceImpl(@Value("${geoip.maxmind.location}") String location) {
 
-    String path = Settings.getStateDir() + System.getProperty("file.separator") + MAXMIND_DIR
-        + System.getProperty("file.separator");
     try {
       // geo
-      File database = new File(path + MAXMIND_COUNTRY_DB);
+      File database = new File(new File(StringUtils.removeStart(location, "file://"))
+          + System.getProperty("file.separator") + MAXMIND_COUNTRY_DB);
+
       geoReader = new DatabaseReader.Builder(database).withCache(new CHMCache()).build();
       // asn
-      database = new File(path + MAXMIND_ASN_DB);
+      database = new File(StringUtils.removeStart(location, "file://")
+          + System.getProperty("file.separator") + MAXMIND_ASN_DB);
       asnReader = new DatabaseReader.Builder(database).withCache(new CHMCache()).build();
     } catch (IOException e) {
       throw new ApplicationException("Error initializing Maxmind GEO/ASN database", e);

@@ -21,7 +21,6 @@ package nl.sidnlabs.entrada.load;
 
 import java.io.DataInputStream;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -33,6 +32,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.commons.io.FileUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -44,6 +44,8 @@ import nl.sidnlabs.dnslib.types.MessageType;
 import nl.sidnlabs.dnslib.types.ResourceRecordType;
 import nl.sidnlabs.entrada.config.Settings;
 import nl.sidnlabs.entrada.exception.ApplicationException;
+import nl.sidnlabs.entrada.file.FileManager;
+import nl.sidnlabs.entrada.file.FileManagerFactory;
 import nl.sidnlabs.entrada.metric.MetricManager;
 import nl.sidnlabs.entrada.parquet.ParquetOutputHandler;
 import nl.sidnlabs.entrada.service.FileArchiveService;
@@ -82,12 +84,16 @@ public class PcapProcessor {
   @Value("${entrada.icmp.enable}")
   private boolean icmpEnabled;
 
+  @Value("${entrada.location.input}")
+  private String inputLocation;
+
+  @Value("${entrada.location.output}")
+  private String outputLocation;
+
+
 
   private PcapReader pcapReader;
   protected Map<RequestKey, MessageWrapper> requestCache = new HashMap<>();
-
-  private List<String> processedFiles = new ArrayList<>();
-  private List<String> inputFiles = new ArrayList<>();
 
   private MetricManager metricManager;
   private PersistenceManager persistenceManager;
@@ -110,13 +116,17 @@ public class PcapProcessor {
   // keep list of active zone transfers
   private Map<RequestKey, Integer> activeZoneTransfers = new HashMap<>();
 
+  private FileManagerFactory fileManagerFactory;
+
   public PcapProcessor(MetricManager metricManager, PersistenceManager persistenceManager,
-      ParquetOutputHandler outputHandler, FileArchiveService fileArchiveService) {
+      ParquetOutputHandler outputHandler, FileArchiveService fileArchiveService,
+      FileManagerFactory fileManagerFactory) {
 
     this.metricManager = metricManager;
     this.persistenceManager = persistenceManager;
     this.outputHandler = outputHandler;
     this.fileArchiveService = fileArchiveService;
+    this.fileManagerFactory = fileManagerFactory;
 
     // convert minutes to seconds
     this.cacheTimeout = 1000 * 60 * cacheTimeoutConfig;
@@ -126,7 +136,7 @@ public class PcapProcessor {
 
   public void execute() {
     // search for input files
-    scan();
+    List<String> inputFiles = scan();
     if (inputFiles.isEmpty()) {
       // no files found to process, stop
       log.info("No files found, stop.");
@@ -142,8 +152,6 @@ public class PcapProcessor {
         log.error("file {} already processed!, continue with next file", file);
         continue;
       }
-
-      fileArchiveService.save(file);
 
       read(file);
       // flush expired packets after every file, to avoid a cache explosion
@@ -189,10 +197,12 @@ public class PcapProcessor {
   }
 
   private void archiveFile(String pcap) {
+    fileArchiveService.save(pcap);
+
     String sep = System.getProperty("file.separator");
     File file = new File(pcap);
-    File archiveDir = new File(
-        Settings.getOutputDir() + sep + "archive" + sep + Settings.getServerInfo().getFullname());
+    File archiveDir =
+        new File(outputLocation + sep + "archive" + sep + Settings.getServerInfo().getFullname());
     if (!archiveDir.exists()) {
       log.info(archiveDir.getName() + " does not exist, create now.");
       if (!archiveDir.mkdirs()) {
@@ -208,7 +218,7 @@ public class PcapProcessor {
     }
   }
 
-  private String extractPcapFile(String file) {
+  private String filename(String file) {
     try {
       return FileUtils.getFile(file).getName();
     } catch (Exception e) {
@@ -228,7 +238,7 @@ public class PcapProcessor {
     log.info("Start reading packet queue");
 
     // get filename only to map parquet row to pcap file
-    String fileName = extractPcapFile(file);
+    String fileName = filename(file);
 
     long counter = 0;
     for (Packet currentPacket : pcapReader) {
@@ -486,51 +496,53 @@ public class PcapProcessor {
   public boolean createReader(String file) {
     log.info("Start loading queue from file:" + file);
     fileCount++;
+
+    FileManager fm = fileManagerFactory.getFor(file);
+    Optional<InputStream> ois = fm.open(file);
+
+    if (!ois.isPresent()) {
+      // cannot create reader, continue with next file
+      log.error("Error opening pcap file: " + file);
+      return false;
+    }
+
+    int bufSize = bufferSizeConfig > 512 ? bufferSizeConfig : DEFAULT_PCAP_READER_BUFFER_SIZE;
     try {
-      File f = FileUtils.getFile(file);
-      log.info("Load data for server: " + Settings.getServerInfo().getFullname());
-
-      FileInputStream fis = FileUtils.openInputStream(f);
-      int bufSize = bufferSizeConfig > 512 ? bufferSizeConfig : DEFAULT_PCAP_READER_BUFFER_SIZE;
-
-      InputStream decompressor = CompressionUtil.getDecompressorStreamWrapper(fis, file, bufSize);
+      InputStream decompressor =
+          CompressionUtil.getDecompressorStreamWrapper(ois.get(), file, bufSize);
       pcapReader.init(new DataInputStream(decompressor));
     } catch (IOException e) {
-      // cannot create reader, continue with next file
-      log.error("Error opening pcap file: " + file, e);
+      log.error("Error creating pcap reader for: " + file);
       return false;
     }
 
     return true;
   }
 
-  private void scan() {
-    String inputDir = Settings.getInputDir() + System.getProperty("file.separator")
-        + Settings.getServerInfo().getFullname();
+  private List<String> scan() {
+    // if server name is provided then search that location for input files.
+    // otherwise search inputDir
+    String inputDir = Settings.getServerInfo().getFullname().length() > 0 ? inputLocation
+        + System.getProperty("file.separator") + Settings.getServerInfo().getFullname()
+        : inputLocation;
+
+    FileManager fm = fileManagerFactory.getFor(inputDir);
 
     log.info("Scan for pcap files in: {}", inputDir);
 
-    File f = new File(inputDir);
-    if (!f.exists()) {
+    if (!fm.exists(inputDir)) {
       throw new ApplicationException("input directory " + inputDir + "  does not exist");
     }
 
-    Iterator<File> files =
-        FileUtils.iterateFiles(f, new String[] {"pcap", "pcap.gz", "pcap.xz"}, false);
+    List<String> files = fm.files(inputDir, "pcap", "pcap.gz", "pcap.xz");
 
-    while (files.hasNext()) {
-      File pcap = files.next();
-      String fqn = pcap.getAbsolutePath();
-      if (!processedFiles.contains(fqn) && !inputFiles.contains(fqn)) {
-        inputFiles.add(fqn);
-      }
-    }
     // sort the files by name, tcp streams and udp fragmentation may overlap multiple files.
     // so ordering is important.
-    Collections.sort(inputFiles);
-    for (String file : inputFiles) {
-      log.info("Found file: " + file);
-    }
+    Collections.sort(files);
+
+    files.stream().forEach(file -> log.info("Found inputfile: {}", file));
+
+    return files;
   }
 
 }

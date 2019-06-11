@@ -55,6 +55,16 @@ public class LocalFileManagerImpl implements FileManager {
     return Optional.empty();
   }
 
+  // @Override
+  // public boolean write(String location) {
+  // throw new UnsupportedOperationException();
+  // // TODO
+  // }
 
+  @Override
+  public boolean move(File location, String outputLocation, boolean directory) {
+    throw new UnsupportedOperationException();
+    // TODO
+  }
 
 }

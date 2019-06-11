@@ -22,6 +22,7 @@ package nl.sidnlabs.entrada.parquet;
 import java.util.Calendar;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import nl.sidnlabs.entrada.model.Row;
 
@@ -29,6 +30,10 @@ import nl.sidnlabs.entrada.model.Row;
 public class ICMPParquetPacketWriter extends AbstractParquetPacketWriter {
 
   private static final String ICMP_AVRO_SCHEMA = "icmp-packet.avsc";
+
+  public ICMPParquetPacketWriter(@Value("${entrada.parquet.max:3000000}") int maxRows) {
+    super(maxRows);
+  }
 
   @Override
   public void write(Row row, String server) {

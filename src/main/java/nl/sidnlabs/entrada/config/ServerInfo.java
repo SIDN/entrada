@@ -6,6 +6,7 @@ import lombok.Data;
 @Data
 public class ServerInfo {
   private String fullname;
+  private String normalizeName;
   private String name;
   private String location;
 

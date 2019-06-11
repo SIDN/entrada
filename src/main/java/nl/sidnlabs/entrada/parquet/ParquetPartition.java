@@ -12,15 +12,21 @@ import org.apache.parquet.avro.AvroParquetWriter;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
+import lombok.Value;
+import lombok.experimental.NonFinal;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.exception.ApplicationException;
 
 @Log4j2
+@Value
 public class ParquetPartition<T> {
 
   private static final String FILE_SEP = System.getProperty("file.separator");
   private ParquetWriter<T> writer;
-  private Path file;
+  private String filename;
+  @NonFinal
+  private int rows = 0;
+
 
   public static String partition(String path, int year, int month, int day, String server) {
     String partition =
@@ -34,8 +40,10 @@ public class ParquetPartition<T> {
   }
 
   public ParquetPartition(String partition, Schema schema) {
+
     Configuration conf = new Configuration();
-    file = new Path(partition + FILE_SEP + UUID.randomUUID() + ".parquet");
+    Path file = new Path(partition + FILE_SEP + UUID.randomUUID() + ".parquet");
+    filename = file.toString();
 
     try {
       Files.createDirectories(Paths.get(partition));
@@ -57,6 +65,7 @@ public class ParquetPartition<T> {
   public void write(T data) {
     try {
       writer.write(data);
+      rows++;
     } catch (Exception e) {
       throw new ApplicationException("Cannot write data", e);
     }
@@ -69,8 +78,7 @@ public class ParquetPartition<T> {
     try {
       writer.close();
     } catch (IOException e) {
-      throw new ApplicationException("Cannot close file: " + file, e);
+      throw new ApplicationException("Cannot close file: " + filename, e);
     }
   }
-
 }

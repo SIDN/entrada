@@ -57,8 +57,6 @@ public class DNSRowBuilder extends AbstractRowBuilder implements RowBuilder {
   int udp = 0;
   int tcp = 0;
 
-
-
   private Settings settings;
   private MetricManager metricManager;
 

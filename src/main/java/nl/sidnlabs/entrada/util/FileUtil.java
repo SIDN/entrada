@@ -57,4 +57,15 @@ public class FileUtil {
     return filecount;
   }
 
+  public static String filename(String file) {
+    try {
+      return FileUtils.getFile(file).getName();
+    } catch (Exception e) {
+      // some problem, cannot get file
+      log.error("Cannot get name from file: {}", file);
+    }
+
+    return null;
+  }
+
 }

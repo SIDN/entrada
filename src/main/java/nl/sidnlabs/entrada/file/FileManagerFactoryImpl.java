@@ -18,7 +18,6 @@ public class FileManagerFactoryImpl implements FileManagerFactory {
   @Override
   public FileManager getFor(String file) {
 
-
     return availableManagers
         .entrySet()
         .stream()

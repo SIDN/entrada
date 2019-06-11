@@ -54,6 +54,8 @@ public class Settings {
     String cleanName = StringUtils.trimToEmpty(name);
     // set the pcap input directory name.
     serverInfo.setFullname(cleanName);
+    serverInfo.setNormalizeName(cleanName.replaceAll("[^A-Za-z0-9 ]", "_"));
+
     if (cleanName.length() > 0 && cleanName.contains("_")) {
       String[] parts = StringUtils.split(cleanName, "_");
       if (parts.length == 2) {

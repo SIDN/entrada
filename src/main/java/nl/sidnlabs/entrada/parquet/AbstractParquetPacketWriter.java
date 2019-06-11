@@ -35,13 +35,12 @@ public abstract class AbstractParquetPacketWriter {
 
   protected int packetCounter;
   protected ParquetPartitionWriter writer;
-  // private List<AddressEnrichment> enrichments;
   protected Schema avroSchema;
+  private int maxRows;
 
-
-  // public AbstractParquetPacketWriter(List<AddressEnrichment> enrichments) {
-  // this.enrichments = enrichments;
-  // }
+  public AbstractParquetPacketWriter(int maxRows) {
+    this.maxRows = maxRows;
+  }
 
   protected Schema schema(String schema) {
     if (avroSchema != null) {
@@ -68,14 +67,14 @@ public abstract class AbstractParquetPacketWriter {
 
   public void open(String outputDir, String server, String name) {
     // replace any non alphanumeric chars in the servername with underscore
-    String normalizedServer = server.replaceAll("[^A-Za-z0-9 ]", "_");
-    String path = outputDir + System.getProperty("file.separator") + normalizedServer
+    // String normalizedServer = server.replaceAll("[^A-Za-z0-9 ]", "_");
+    String path = outputDir + System.getProperty("file.separator") + server
         + System.getProperty("file.separator") + name;
 
 
     log.info("Create new Parquet writer with path: " + path);
 
-    writer = new ParquetPartitionWriter(path);
+    writer = new ParquetPartitionWriter(path, maxRows);
 
     log.info("Created new Parquet writer");
   }
@@ -89,18 +88,6 @@ public abstract class AbstractParquetPacketWriter {
   protected GenericRecordBuilder recordBuilder(String schema) {
     return new GenericRecordBuilder(schema(schema));
   }
-
-  // protected void enrich(String address, String prefix, GenericRecordBuilder builder) {
-  //
-  // String cleanPrefix = StringUtils.trimToEmpty(prefix);
-  //
-  // // execute all enrichments and if a match is found add value to row
-  // enrichments.stream().filter(e -> e.match(address)).forEach(e -> {
-  // if (hasField(cleanPrefix + e.getColumn())) {
-  // builder.set(cleanPrefix + e.getColumn(), e.getValue());
-  // }
-  // });
-  // }
 
   protected boolean hasField(String name) {
     return avroSchema.getField(name) != null;
@@ -117,38 +104,6 @@ public abstract class AbstractParquetPacketWriter {
   protected void showStatus() {
     log.info(packetCounter + " packets written to parquet file.");
   }
-
-
-  /**
-   * replace all non printable ascii chars with the hex value of the char.
-   * 
-   * @param str string to filter
-   * @return filtered version of input string
-   */
-  // public String filter(String str) {
-  // StringBuilder filtered = new StringBuilder(str.length());
-  // for (int i = 0; i < str.length(); i++) {
-  // char current = str.charAt(i);
-  // if (current >= 0x20 && current <= 0x7e) {
-  // filtered.append(current);
-  // } else {
-  // filtered.append("0x" + Integer.toHexString(current));
-  // }
-  // }
-  //
-  // return filtered.toString();
-  // }
-  //
-  // // public abstract void writeMetrics();
-  //
-  // protected void updateMetricMap(Map<Integer, Integer> map, Integer key) {
-  // Integer currentVal = map.get(key);
-  // if (currentVal != null) {
-  // map.put(key, currentVal.intValue() + 1);
-  // } else {
-  // map.put(key, 1);
-  // }
-  // }
 
 }
 

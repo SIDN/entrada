@@ -22,6 +22,7 @@ package nl.sidnlabs.entrada.parquet;
 import java.util.Calendar;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.avro.generic.GenericRecordBuilder;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import nl.sidnlabs.entrada.model.Row;
 
@@ -29,6 +30,10 @@ import nl.sidnlabs.entrada.model.Row;
 public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
 
   private static final String DNS_AVRO_SCHEMA = "dns-query.avsc";
+
+  public DNSParquetPacketWriter(@Value("${entrada.parquet.max:3000000}") int maxRows) {
+    super(maxRows);
+  }
 
   /**
    * create 1 parquet record which combines values from the query and the response
@@ -59,6 +64,5 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
         .write(record, schema(DNS_AVRO_SCHEMA), cal.get(Calendar.YEAR), cal.get(Calendar.MONTH),
             cal.get(Calendar.DAY_OF_MONTH), server);
   }
-
 }
 

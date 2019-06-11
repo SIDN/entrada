@@ -8,8 +8,8 @@ import nl.sidnlabs.entrada.support.PacketCombination;
  * interface.
  *
  */
-public interface OutputHandler {
+public interface OutputWriter {
 
-  void handle(PacketCombination p);
+  void write(PacketCombination p);
 
 }

@@ -1,5 +1,6 @@
 package nl.sidnlabs.entrada.file;
 
+import java.io.File;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Optional;
@@ -15,20 +16,28 @@ public class HDFSFileManagerImpl implements FileManager {
 
   @Override
   public boolean exists(String file) {
-    // TODO Auto-generated method stub
-    return false;
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public List<String> files(String dir, String... filter) {
-    // TODO Auto-generated method stub
-    return null;
+    throw new UnsupportedOperationException();
   }
 
   @Override
   public Optional<InputStream> open(String filename) {
-    // TODO Auto-generated method stub
-    return null;
+    throw new UnsupportedOperationException();
   }
+
+  // @Override
+  // public boolean write(String location) {
+  // throw new UnsupportedOperationException();
+  // }
+
+  @Override
+  public boolean move(File location, String outputLocation, boolean directory) {
+    throw new UnsupportedOperationException();
+  }
+
 
 }

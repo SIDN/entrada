@@ -45,6 +45,8 @@ public class ParquetPartition<T> {
     Path file = new Path(partition + FILE_SEP + UUID.randomUUID() + ".parquet");
     filename = file.toString();
 
+    log.info("Create new parquet file: {}", filename);
+
     try {
       Files.createDirectories(Paths.get(partition));
 

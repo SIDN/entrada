@@ -1,9 +1,8 @@
 package nl.sidnlabs.entrada.service;
 
 import java.io.File;
-import java.util.Date;
+import javax.transaction.Transactional;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import nl.sidnlabs.entrada.model.jpa.FileArchive;
 import nl.sidnlabs.entrada.model.jpa.FileArchiveRepository;
 
@@ -22,9 +21,8 @@ public class FileArchiveService {
   }
 
   @Transactional
-  public void save(String file) {
-    File f = new File(file);
-    fileArchiveRepository.save(FileArchive.builder().date(new Date()).file(f.getName()).build());
+  public void save(FileArchive fa) {
+    fileArchiveRepository.save(fa);
   }
 
 }

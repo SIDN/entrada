@@ -19,29 +19,16 @@
  */
 package nl.sidnlabs.entrada.config;
 
-import java.util.ArrayList;
-import java.util.List;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
-import nl.sidnlabs.dnslib.util.DomainParent;
 
 
 @Data
 @Component
 public class Settings {
 
-  @Value("${entrada.tld.suffix}")
-  private String tldSuffixConfig;
-  private List<DomainParent> tldSuffixes = new ArrayList<>();
-
-  // allow for static getter/setters to set values before spring creates the bean
-  @Getter
-  @Setter
-  private static ServerInfo serverInfo = null;
+  private ServerInfo serverInfo = null;
 
   /**
    * Load the server and optional anycast server location information. Using format
@@ -49,7 +36,7 @@ public class Settings {
    * 
    * @param name server name
    */
-  public static void setServer(String name) {
+  public void setServer(String name) {
     serverInfo = new ServerInfo();
     String cleanName = StringUtils.trimToEmpty(name);
     // set the pcap input directory name.
@@ -66,43 +53,5 @@ public class Settings {
     }
     // no anycast location encoded in name
     serverInfo.setName(name);
-  }
-
-  private void createTldSuffixes() {
-    tldSuffixes = new ArrayList<>();
-    if (StringUtils.isEmpty(tldSuffixConfig)) {
-      // no value found, do nothing
-      return;
-    }
-
-    String[] tlds = StringUtils.split(tldSuffixConfig, ",");
-    // create list of DomainParents
-    for (int i = 0; i < tlds.length; i++) {
-      String parent = tlds[i];
-      if (parent == null) {
-        // skip nulls
-        continue;
-      }
-      // start and end with a dot.
-      if (!StringUtils.startsWith(parent, ".")) {
-        parent = "." + parent;
-      }
-
-      int labelCount = StringUtils.split(parent, '.').length;
-      if (StringUtils.endsWith(parent, ".")) {
-        // remove last dot (will become the used tld suffix
-        tldSuffixes.add(new DomainParent(parent, StringUtils.removeEnd(parent, "."), labelCount));
-      } else {
-        tldSuffixes.add(new DomainParent(parent + ".", parent, labelCount));
-      }
-    }
-
-  }
-
-  public List<DomainParent> getTldSuffixes() {
-    if (tldSuffixes == null) {
-      createTldSuffixes();
-    }
-    return tldSuffixes;
   }
 }

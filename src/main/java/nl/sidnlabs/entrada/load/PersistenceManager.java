@@ -26,8 +26,15 @@ public class PersistenceManager {
   @Value("${entrada.location.work}")
   private String workLocation;
 
+  private Settings settings;
+
+  public PersistenceManager(Settings settings) {
+    this.settings = settings;
+  }
+
+
   private String createStateFileName() {
-    return workLocation + "/" + DECODER_STATE_FILE + "-" + Settings.getServerInfo().getFullname()
+    return workLocation + "/" + DECODER_STATE_FILE + "-" + settings.getServerInfo().getFullname()
         + ".bin";
   }
 

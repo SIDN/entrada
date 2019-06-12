@@ -94,7 +94,7 @@ public class ICMPRowBuilder extends AbstractRowBuilder implements RowBuilder {
       dnsResponseHdr = dnsResponseMessage.getHeader();
       normalizedQname = q == null ? "" : filter(q.getQName());
       normalizedQname = StringUtils.lowerCase(normalizedQname);
-      domaininfo = NameUtil.getDomain(normalizedQname, settings.getTldSuffixes());
+      domaininfo = NameUtil.getDomain(normalizedQname);
     }
 
     // values from query now.

@@ -33,14 +33,15 @@ import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.config.Settings;
 
-@Log4j2
-@Component
+
 /**
  * MetricManager is used to recreate metrics for DNS packets found in a PCAP file. The timestamp of
  * a packets in the PCAP file is used when generating the metrics and NOT the timestamp of the point
  * in time when the packet was read from the PCAP.
  *
  */
+@Log4j2
+@Component
 public class MetricManager {
 
   // dns stats
@@ -110,9 +111,11 @@ public class MetricManager {
   @Value("${graphite.threshhold}")
   private int threshhold;
 
+  private Settings settings;
   private GraphiteAdapter graphiteAdapter;
 
-  public MetricManager(GraphiteAdapter graphiteAdapter) {
+  public MetricManager(Settings settings, GraphiteAdapter graphiteAdapter) {
+    this.settings = settings;
     this.graphiteAdapter = graphiteAdapter;
   }
 
@@ -131,9 +134,17 @@ public class MetricManager {
 
   private String createMetricName(String metric) {
     // replace dot in the server name with underscore otherwise graphite will assume nesting
-    String cleanServer = StringUtils
-        .trimToEmpty(StringUtils.replace(Settings.getServerInfo().getFullname(), ".", "_"));
-    return graphitePrefix + "." + cleanServer + metric;
+    return graphitePrefix + "." + servername() + metric;
+  }
+
+  private String servername() {
+    if (StringUtils.isBlank(settings.getServerInfo().getFullname())) {
+      // no server used, then use general purpose "all"
+      return "all";
+    }
+
+    return StringUtils
+        .trimToEmpty(StringUtils.replace(settings.getServerInfo().getFullname(), ".", "_"));
   }
 
 
@@ -181,7 +192,10 @@ public class MetricManager {
 
 
       String data = buffer.toString();
-      log.info("Send metrics:\n" + data);
+      log.debug("Sending metrics");
+      if (log.isDebugEnabled()) {
+        log.debug("Metric: {}", data);
+      }
       graphiteAdapter.send(data);
       graphiteAdapter.close();
     }

@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
@@ -31,13 +32,15 @@ public class S3FileManagerImpl implements FileManager {
   private TransferManager transferManager;
 
   public S3FileManagerImpl(AmazonS3 amazonS3,
-      @org.springframework.beans.factory.annotation.Value("${cloud.aws.upload.multipart.mb.size}") int multipartSize) {
+      @org.springframework.beans.factory.annotation.Value("${cloud.aws.upload.multipart.mb.size}") int multipartSize,
+      @org.springframework.beans.factory.annotation.Value("${cloud.aws.upload.parallelism}") int parallelism) {
     this.amazonS3 = amazonS3;
 
     transferManager = TransferManagerBuilder
         .standard()
         .withS3Client(amazonS3)
         .withMultipartUploadThreshold(multipartSize * 1024L * 1024L)
+        .withExecutorFactory(() -> Executors.newFixedThreadPool(parallelism))
         .build();
   }
 

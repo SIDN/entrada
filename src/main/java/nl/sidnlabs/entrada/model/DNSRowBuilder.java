@@ -25,7 +25,6 @@ import nl.sidnlabs.dnslib.types.RcodeType;
 import nl.sidnlabs.dnslib.types.ResourceRecordType;
 import nl.sidnlabs.dnslib.util.Domaininfo;
 import nl.sidnlabs.dnslib.util.NameUtil;
-import nl.sidnlabs.entrada.config.Settings;
 import nl.sidnlabs.entrada.enrich.AddressEnrichment;
 import nl.sidnlabs.entrada.metric.MetricManager;
 import nl.sidnlabs.entrada.support.PacketCombination;
@@ -57,13 +56,10 @@ public class DNSRowBuilder extends AbstractRowBuilder implements RowBuilder {
   int udp = 0;
   int tcp = 0;
 
-  private Settings settings;
   private MetricManager metricManager;
 
-  public DNSRowBuilder(Settings settings, List<AddressEnrichment> enrichments,
-      MetricManager metricManager) {
+  public DNSRowBuilder(List<AddressEnrichment> enrichments, MetricManager metricManager) {
     super(enrichments);
-    this.settings = settings;
     this.metricManager = metricManager;
   }
 
@@ -101,7 +97,7 @@ public class DNSRowBuilder extends AbstractRowBuilder implements RowBuilder {
     // get the qname domain name details
     String normalizedQname = question == null ? "" : filter(question.getQName());
     normalizedQname = StringUtils.lowerCase(normalizedQname);
-    Domaininfo domaininfo = NameUtil.getDomain(normalizedQname, settings.getTldSuffixes());
+    Domaininfo domaininfo = NameUtil.getDomain(normalizedQname);
     // check to see it a response was found, if not then save -1 value
     // otherwise use the rcode returned by the server in the response.
     // no response might be caused by rate limiting

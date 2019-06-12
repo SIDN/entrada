@@ -27,11 +27,21 @@ public class FileArchive {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private int id;
 
-  @Column(name = "date")
+  @Column(name = "date_start")
   @Temporal(TemporalType.TIMESTAMP)
-  private Date date;
+  private Date dateStart;
+
+  @Column(name = "date_end")
+  @Temporal(TemporalType.TIMESTAMP)
+  private Date dateEnd;
 
   @Column(name = "file")
   private String file;
+
+  @Column(name = "path")
+  private String path;
+
+  @Column(name = "rows")
+  private long rows;
 
 }

@@ -26,6 +26,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -34,6 +35,7 @@ import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.util.FileSystemUtils;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.TreeMultimap;
 import lombok.extern.log4j.Log4j2;
@@ -45,6 +47,7 @@ import nl.sidnlabs.entrada.exception.ApplicationException;
 import nl.sidnlabs.entrada.file.FileManager;
 import nl.sidnlabs.entrada.file.FileManagerFactory;
 import nl.sidnlabs.entrada.metric.MetricManager;
+import nl.sidnlabs.entrada.model.jpa.FileArchive;
 import nl.sidnlabs.entrada.parquet.ParquetOutputWriter;
 import nl.sidnlabs.entrada.service.FileArchiveService;
 import nl.sidnlabs.entrada.support.MessageWrapper;
@@ -66,6 +69,7 @@ import nl.sidnlabs.pcap.packet.TCPFlow;
 public class PcapProcessor {
 
   private static final int DEFAULT_PCAP_READER_BUFFER_SIZE = 65536;
+  private static final String FILE_SEP = System.getProperty("file.separator");
 
   private enum ArchiveOption {
     NONE, ARCHIVE, DELETE;
@@ -103,7 +107,7 @@ public class PcapProcessor {
 
 
   private PcapReader pcapReader;
-  protected Map<RequestKey, MessageWrapper> requestCache = new HashMap<>();
+  protected Map<RequestKey, MessageWrapper> requestCache;
 
   private MetricManager metricManager;
   private PersistenceManager persistenceManager;
@@ -113,6 +117,7 @@ public class PcapProcessor {
   private int multiCounter;
 
   // metrics
+  private int packetCounter;
   private int queryCounter;
   private int responseCounter;
   private int fileCount = 0;
@@ -124,15 +129,18 @@ public class PcapProcessor {
   private int cacheTimeout;
 
   // keep list of active zone transfers
-  private Map<RequestKey, Integer> activeZoneTransfers = new HashMap<>();
+  private Map<RequestKey, Integer> activeZoneTransfers;
 
   private FileManagerFactory fileManagerFactory;
 
-  public PcapProcessor(MetricManager metricManager, PersistenceManager persistenceManager,
-      ParquetOutputWriter outputWriter, FileArchiveService fileArchiveService,
-      FileManagerFactory fileManagerFactory,
+  private Settings settings;
+
+  public PcapProcessor(Settings settings, MetricManager metricManager,
+      PersistenceManager persistenceManager, ParquetOutputWriter outputWriter,
+      FileArchiveService fileArchiveService, FileManagerFactory fileManagerFactory,
       @Value("${entrada.pcap.archive.mode}") String archiveMode) {
 
+    this.settings = settings;
     this.metricManager = metricManager;
     this.persistenceManager = persistenceManager;
     this.outputWriter = outputWriter;
@@ -148,6 +156,9 @@ public class PcapProcessor {
 
 
   public void execute() {
+    // reset all counters and reused data structures
+    reset();
+
     // search for input files
     List<String> inputFiles = scan();
     if (inputFiles.isEmpty()) {
@@ -157,39 +168,64 @@ public class PcapProcessor {
     }
     // get the state from the previous run
     loadState();
-    // open the output file writer
-    outputWriter.open(true, icmpEnabled);
-    for (String file : inputFiles) {
 
+    int filesProcessed = 0;
+    for (String file : inputFiles) {
       if (fileArchiveService.exists(file)) {
-        log.error("file {} already processed!, continue with next file", file);
+        log.info("file {} already processed!, continue with next file", file);
         continue;
       }
+      filesProcessed++;
+      Date start = new Date();
 
+      if (!outputWriter.isOpen()) {
+        // open the output file writer
+        outputWriter.open(true, icmpEnabled);
+      }
       read(file);
 
       // flush expired packets after every file, to avoid a cache explosion
       purgeCache();
 
-      archive(file);
+      archive(file, start);
     }
     // save unmatched packet state to file
     // the next pcap might have the missing responses
     persistState();
 
+    if (outputWriter.isOpen()) {
+      // close file handler(s)
+      outputWriter.close();
+    }
+
+    if (filesProcessed > 0) {
+      upload();
+      writeMetrics();
+    }
+
+    log();
+  }
+
+  private void reset() {
+    multiCounter = 0;
+    packetCounter = 0;
+    queryCounter = 0;
+    responseCounter = 0;
+    fileCount = 0;
+    purgeCounter = 0;
+    noQueryFoundCounter = 0;
+    requestCache = new HashMap<>();
+    activeZoneTransfers = new HashMap<>();
+  }
+
+  public void log() {
     log.info("--------- Done loading queue ------------");
-    log.info("Loaded {} packets", queryCounter + responseCounter);
-    log.info("Loaded {} query packets", queryCounter);
-    log.info("Loaded {} response packets", responseCounter);
-    log.info("Loaded {} messages from TCP streams with > 1 mesg", multiCounter);
-    log.info("Found {} response packets without request", noQueryFoundCounter);
+    log.info("{} packets", queryCounter + responseCounter);
+    log.info("{} query packets", queryCounter);
+    log.info("{} response packets", responseCounter);
+    log.info("{} messages from TCP streams with > 1 mesg", multiCounter);
+    log.info("{} response packets without request", noQueryFoundCounter);
     log.info("-----------------------------------------");
-
-    writeMetrics();
-    // close file handler(s)
-    outputWriter.close();
-
-    upload();
   }
 
   /**
@@ -199,36 +235,43 @@ public class PcapProcessor {
     FileManager fm = fileManagerFactory.getFor(outputLocation);
 
     // move dns data
-    String location = workLocation + System.getProperty("file.separator")
-        + Settings.getServerInfo().getNormalizeName() + System.getProperty("file.separator")
-        + "dnsdata/";
+    String location = dnsDataLocation();
+    if (new File(location).exists()) {
+      String targetLocation =
+          StringUtils.appendIfMissing(outputLocation, FILE_SEP, FILE_SEP) + "dns";
 
-    fm
-        .move(new File(location),
-            StringUtils
-                .appendIfMissing(outputLocation, System.getProperty("file.separator"),
-                    System.getProperty("file.separator"))
-                + "dns",
-            true);
+      log.info("Upload work location: {} to target location: {}", location, targetLocation);
+      fm.move(new File(location), targetLocation, true);
+
+      log.info("Delete work location: {}", location);
+      FileSystemUtils.deleteRecursively(new File(location));
+    }
 
     if (icmpEnabled) {
       // move icmp data
-      location = workLocation + System.getProperty("file.separator")
-          + Settings.getServerInfo().getNormalizeName() + System.getProperty("file.separator")
-          + "icmpdata/";
+      location = icmpDataLocation();
+      if (new File(location).exists()) {
+        String targetLocation =
+            StringUtils.appendIfMissing(outputLocation, FILE_SEP, FILE_SEP) + "icmp";
 
-      fm
-          .move(new File(location),
-              StringUtils
-                  .appendIfMissing(outputLocation, System.getProperty("file.separator"),
-                      System.getProperty("file.separator"))
-                  + "icmp",
-              true);
+        log.info("Upload work location: {} to target location: {}", location, targetLocation);
+        fm.move(new File(location), targetLocation, true);
 
+        log.info("Delete work location: {}", location);
+        FileSystemUtils.deleteRecursively(new File(location));
+      }
     }
-
   }
 
+  private String dnsDataLocation() {
+    return StringUtils.appendIfMissing(workLocation, FILE_SEP, FILE_SEP)
+        + settings.getServerInfo().getNormalizeName() + FILE_SEP + "dnsdata/";
+  }
+
+  private String icmpDataLocation() {
+    return StringUtils.appendIfMissing(workLocation, FILE_SEP, FILE_SEP)
+        + settings.getServerInfo().getNormalizeName() + FILE_SEP + "icmpdata/";
+  }
 
   /**
    * Write the loader metrics to the metrics queue
@@ -251,29 +294,39 @@ public class PcapProcessor {
         .send(MetricManager.METRIC_IMPORT_DNS_DECODE_ERROR_COUNT, pcapReader.getDnsDecodeError());
   }
 
-  private void archive(String pcap) {
+  private void archive(String file, Date start) {
+    log.info("Archive: {} with mode {}", file, archiveOption);
     // keep track of processed files
-    fileArchiveService.save(pcap);
 
-    if (ArchiveOption.NONE == archiveOption) {
-      // do nothing
-      return;
+    File f = new File(file);
+    FileArchive fa = FileArchive
+        .builder()
+        .dateEnd(new Date())
+        .file(f.getName())
+        .path(f.getParent())
+        .dateStart(start)
+        .rows(packetCounter)
+        .build();
+
+    fileArchiveService.save(fa);
+
+    if (ArchiveOption.ARCHIVE == archiveOption) {
+      // archive pcap file
+
+
     } else if (ArchiveOption.DELETE == archiveOption) {
       // delete pcap file
-      return;
-    } else {
-      // archive pcap file
+
     }
 
     // TODO:
 
     /*
-     * String sep = System.getProperty("file.separator"); File file = new File(pcap); File
-     * archiveDir = new File(outputLocation + sep + "archive" + sep +
-     * Settings.getServerInfo().getFullname()); if (!archiveDir.exists()) {
-     * log.info(archiveDir.getName() + " does not exist, create now."); if (!archiveDir.mkdirs()) {
-     * throw new ApplicationException("creating archive dir: " + archiveDir.getAbsolutePath()); } }
-     * File newFile = new File(archiveDir.getPath() + sep + file.getName()); try {
+     * String sep = FILE_SEP; File file = new File(pcap); File archiveDir = new File(outputLocation
+     * + sep + "archive" + sep + Settings.getServerInfo().getFullname()); if (!archiveDir.exists())
+     * { log.info(archiveDir.getName() + " does not exist, create now."); if (!archiveDir.mkdirs())
+     * { throw new ApplicationException("creating archive dir: " + archiveDir.getAbsolutePath()); }
+     * } File newFile = new File(archiveDir.getPath() + sep + file.getName()); try {
      * Files.move(Paths.get(file.getAbsolutePath()), Paths.get(newFile.getAbsolutePath()));
      * log.info(pcap + " is archived!"); } catch (Exception e) { throw new
      * ApplicationException("Error moving " + pcap + " to the archive: " + e); }
@@ -293,11 +346,11 @@ public class PcapProcessor {
     // get filename only to map parquet row to pcap file
     String fileName = FileUtil.filename(file);
 
-    long counter = 0;
+    packetCounter = 0;
     for (Packet currentPacket : pcapReader) {
-      counter++;
-      if (counter % 100000 == 0) {
-        log.info("Processed " + counter + " packets");
+      packetCounter++;
+      if (packetCounter % 100000 == 0) {
+        log.info("Processed " + packetCounter + " packets");
       }
       if (currentPacket != null && currentPacket.getIpVersion() != 0) {
 
@@ -312,7 +365,7 @@ public class PcapProcessor {
 
           // handle icmp
           outputWriter
-              .write(new PacketCombination(currentPacket, null, Settings.getServerInfo(), null,
+              .write(new PacketCombination(currentPacket, null, settings.getServerInfo(), null,
                   null, false, fileName));
 
         } else {
@@ -391,7 +444,7 @@ public class PcapProcessor {
 
                 outputWriter
                     .write(new PacketCombination(request.getPacket(), request.getMessage(),
-                        Settings.getServerInfo(), dnsPacket, msg, false, fileName));
+                        settings.getServerInfo(), dnsPacket, msg, false, fileName));
 
               } else {
                 // no request found, this could happen if the query was in previous pcap
@@ -401,7 +454,7 @@ public class PcapProcessor {
                 noQueryFoundCounter++;
 
                 outputWriter
-                    .write(new PacketCombination(null, null, Settings.getServerInfo(), dnsPacket,
+                    .write(new PacketCombination(null, null, settings.getServerInfo(), dnsPacket,
                         msg, false, fileName));
               }
             }
@@ -530,7 +583,7 @@ public class PcapProcessor {
 
           outputWriter
               .write(new PacketCombination(mw.getPacket(), mw.getMessage(),
-                  Settings.getServerInfo(), null, null, true, mw.getFilename()));
+                  settings.getServerInfo(), null, null, true, mw.getFilename()));
 
           purgeCounter++;
 
@@ -575,20 +628,16 @@ public class PcapProcessor {
   private List<String> scan() {
     // if server name is provided then search that location for input files.
     // otherwise search inputDir
-    String inputDir = Settings.getServerInfo().getFullname().length() > 0
-        ? StringUtils
-            .appendIfMissing(inputLocation, System.getProperty("file.separator"),
-                System.getProperty("file.separator"))
-            + Settings.getServerInfo().getFullname()
+    String inputDir = settings.getServerInfo().getFullname().length() > 0
+        ? StringUtils.appendIfMissing(inputLocation, FILE_SEP, FILE_SEP)
+            + settings.getServerInfo().getFullname()
         : inputLocation;
 
     FileManager fm = fileManagerFactory.getFor(inputDir);
 
     log.info("Scan for pcap files in: {}", inputDir);
 
-    inputDir = StringUtils
-        .appendIfMissing(inputDir, System.getProperty("file.separator"),
-            System.getProperty("file.separator"));
+    inputDir = StringUtils.appendIfMissing(inputDir, FILE_SEP, FILE_SEP);
 
     if (!fm.exists(inputDir)) {
       throw new ApplicationException("input directory " + inputDir + "  does not exist");

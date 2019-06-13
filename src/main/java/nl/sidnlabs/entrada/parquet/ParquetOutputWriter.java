@@ -25,7 +25,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import lombok.extern.log4j.Log4j2;
-import nl.sidnlabs.entrada.config.Settings;
+import nl.sidnlabs.entrada.config.ServerContext;
 import nl.sidnlabs.entrada.load.OutputWriter;
 import nl.sidnlabs.entrada.metric.MetricManager;
 import nl.sidnlabs.entrada.model.Row;
@@ -62,9 +62,9 @@ public class ParquetOutputWriter implements OutputWriter {
   private MetricManager metricManager;
   private RowBuilder dnsRowBuilder;
   private RowBuilder icmpRowBuilder;
-  private Settings settings;
+  private ServerContext settings;
 
-  public ParquetOutputWriter(Settings settings, DNSParquetPacketWriter dnsWriter,
+  public ParquetOutputWriter(ServerContext settings, DNSParquetPacketWriter dnsWriter,
       ICMPParquetPacketWriter icmpWriter, MetricManager metricManager,
       @Qualifier("dnsBuilder") RowBuilder dnsRowBuilder,
       @Qualifier("icmpBuilder") RowBuilder icmpRowBuilder) {

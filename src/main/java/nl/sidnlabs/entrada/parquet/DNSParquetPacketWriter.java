@@ -39,7 +39,7 @@ public class DNSParquetPacketWriter extends AbstractParquetPacketWriter {
    * create 1 parquet record which combines values from the query and the response
    *
    * @param row row to write row to Parquet formatted file
-   * @param servers the name server the row is linked to
+   * @param server the name server the row is linked to
    */
   @Override
   public void write(Row row, String server) {

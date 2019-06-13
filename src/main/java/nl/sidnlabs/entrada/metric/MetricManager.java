@@ -31,7 +31,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
-import nl.sidnlabs.entrada.config.Settings;
+import nl.sidnlabs.entrada.config.ServerContext;
 
 
 /**
@@ -111,10 +111,10 @@ public class MetricManager {
   @Value("${graphite.threshhold}")
   private int threshhold;
 
-  private Settings settings;
+  private ServerContext settings;
   private GraphiteAdapter graphiteAdapter;
 
-  public MetricManager(Settings settings, GraphiteAdapter graphiteAdapter) {
+  public MetricManager(ServerContext settings, GraphiteAdapter graphiteAdapter) {
     this.settings = settings;
     this.graphiteAdapter = graphiteAdapter;
   }

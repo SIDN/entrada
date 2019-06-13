@@ -66,11 +66,8 @@ public abstract class AbstractParquetPacketWriter {
   public abstract void write(Row row, String server);
 
   public void open(String outputDir, String server, String name) {
-    // replace any non alphanumeric chars in the servername with underscore
-    // String normalizedServer = server.replaceAll("[^A-Za-z0-9 ]", "_");
     String path = outputDir + System.getProperty("file.separator") + server
         + System.getProperty("file.separator") + name;
-
 
     log.info("Create new Parquet writer with path: " + path);
 

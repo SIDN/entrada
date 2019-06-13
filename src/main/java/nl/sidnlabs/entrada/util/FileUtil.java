@@ -22,13 +22,29 @@ package nl.sidnlabs.entrada.util;
 import java.io.File;
 import java.util.Iterator;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.StringUtils;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.exception.ApplicationException;
 
 @Log4j2
 public class FileUtil {
 
+  public static final String FILE_SEP = System.getProperty("file.separator");
+
   private FileUtil() {}
+
+  public static String appendPath(String parent, String path, String... toAppend) {
+    String str =
+        !StringUtils.isBlank(path) ? StringUtils.appendIfMissing(parent, FILE_SEP, FILE_SEP) + path
+            : parent;
+
+    for (int i = 0; i < toAppend.length; i++) {
+      if (!StringUtils.isBlank(toAppend[i])) {
+        str = str + FILE_SEP + toAppend[i];
+      }
+    }
+    return str;
+  }
 
   public static int countFiles(String inputDir) {
     log.info("Scan for pcap files in: " + inputDir);

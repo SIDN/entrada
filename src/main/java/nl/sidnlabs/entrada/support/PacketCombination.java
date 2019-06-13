@@ -22,8 +22,8 @@ package nl.sidnlabs.entrada.support;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import nl.sidnlabs.dnslib.message.Message;
+import nl.sidnlabs.entrada.config.ServerContext;
 import nl.sidnlabs.pcap.packet.Packet;
-import nl.sidnlabs.entrada.config.ServerInfo;
 
 @Data
 @AllArgsConstructor
@@ -34,7 +34,7 @@ public class PacketCombination {
 
   private Packet request;
   private Message requestMessage;
-  private ServerInfo server;
+  private ServerContext.ServerInfo server;
   private Packet response;
   private Message responseMessage;
   // true if this packet has expired from cache

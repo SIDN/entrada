@@ -13,7 +13,7 @@ import nl.sidnlabs.dnslib.message.Question;
 import nl.sidnlabs.dnslib.message.records.edns0.OPTResourceRecord;
 import nl.sidnlabs.dnslib.util.Domaininfo;
 import nl.sidnlabs.dnslib.util.NameUtil;
-import nl.sidnlabs.entrada.config.Settings;
+import nl.sidnlabs.entrada.config.ServerContext;
 import nl.sidnlabs.entrada.enrich.AddressEnrichment;
 import nl.sidnlabs.entrada.metric.MetricManager;
 import nl.sidnlabs.entrada.support.PacketCombination;
@@ -34,10 +34,10 @@ public class ICMPRowBuilder extends AbstractRowBuilder implements RowBuilder {
   private Map<Integer, Integer> typesV6 = new HashMap<>();
   int icmp = 0;
 
-  private Settings settings;
+  private ServerContext settings;
   private MetricManager metricManager;
 
-  public ICMPRowBuilder(Settings settings, List<AddressEnrichment> enrichments,
+  public ICMPRowBuilder(ServerContext settings, List<AddressEnrichment> enrichments,
       MetricManager metricManager) {
     super(enrichments);
     this.settings = settings;

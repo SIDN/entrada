@@ -7,25 +7,25 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import lombok.extern.log4j.Log4j2;
-import nl.sidnlabs.entrada.config.Settings;
+import nl.sidnlabs.entrada.config.ServerContext;
 import nl.sidnlabs.entrada.enrich.resolver.DnsResolverCheck;
-import nl.sidnlabs.entrada.load.PcapProcessor;
+import nl.sidnlabs.entrada.load.PacketProcessor;
 import nl.sidnlabs.entrada.metric.MetricManager;
 
 @Log4j2
 @Component
 public class ScheduledExecution {
 
-  private Settings settings;
+  private ServerContext settings;
   private MetricManager metricManager;
-  private PcapProcessor pcapProcessor;
+  private PacketProcessor pcapProcessor;
   private List<DnsResolverCheck> resolverChecks;
 
   @Value("${entrada.serverlist}")
   private String servers;
 
-  public ScheduledExecution(Settings settings, MetricManager metricManager,
-      PcapProcessor pcapProcessor, List<DnsResolverCheck> resolverChecks) {
+  public ScheduledExecution(ServerContext settings, MetricManager metricManager,
+      PacketProcessor pcapProcessor, List<DnsResolverCheck> resolverChecks) {
 
     this.settings = settings;
     this.metricManager = metricManager;
@@ -49,7 +49,7 @@ public class ScheduledExecution {
       runLocation("");
     } else {
       // individual servers configured, process each server directory
-      Arrays.stream(StringUtils.split(servers, ";")).forEach(this::runLocation);
+      Arrays.stream(StringUtils.split(servers, ",")).forEach(this::runLocation);
     }
   }
 

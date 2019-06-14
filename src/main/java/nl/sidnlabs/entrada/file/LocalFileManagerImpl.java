@@ -21,7 +21,7 @@ import org.springframework.util.FileSystemUtils;
 import lombok.extern.log4j.Log4j2;
 
 @Log4j2
-@Component
+@Component("local")
 public class LocalFileManagerImpl implements FileManager {
 
   private static final String LOCAL_SCHEME = "file://";
@@ -129,7 +129,7 @@ public class LocalFileManagerImpl implements FileManager {
   public boolean supported(String location) {
     try {
       URI uri = new URI(location);
-      return StringUtils.equalsIgnoreCase(uri.getScheme(), LOCAL_SCHEME);
+      return StringUtils.equalsIgnoreCase(uri.getScheme(), "file");
     } catch (URISyntaxException e) {
       log.error("Invalid location URI: " + location);
     }

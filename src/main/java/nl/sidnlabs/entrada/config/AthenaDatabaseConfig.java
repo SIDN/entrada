@@ -9,6 +9,7 @@ import org.springframework.core.env.Environment;
 import org.springframework.jdbc.core.JdbcTemplate;
 import com.simba.athena.jdbc.DataSource;
 import lombok.extern.log4j.Log4j2;
+import nl.sidnlabs.entrada.exception.ApplicationException;
 
 @Log4j2
 @Configuration
@@ -22,6 +23,12 @@ public class AthenaDatabaseConfig {
   @ConditionalOnProperty(name = "entrada.engine", havingValue = "aws")
   public DataSource athenaDataSource(Environment env) {
     log.info("Create Athena datasource");
+
+    try {
+      Class.forName(env.getProperty("athena.driver.name"));
+    } catch (ClassNotFoundException e) {
+      throw new ApplicationException("Failed to load Athena JDBC driver", e);
+    }
 
     DataSource ds = new com.simba.athena.jdbc.DataSource();
     ds.setCustomProperty("LogPath", env.getProperty("athena.log.path"));

@@ -16,15 +16,15 @@ public class HadoopInitializer implements Initializer {
   }
 
   @Override
-  public boolean createStorage() {
+  public void createStorage() {
     // TODO Auto-generated method stub
-    return false;
+
   }
 
   @Override
-  public boolean createDatabase() {
+  public void createDatabase() {
     // TODO Auto-generated method stub
-    return false;
+
   }
 
 }

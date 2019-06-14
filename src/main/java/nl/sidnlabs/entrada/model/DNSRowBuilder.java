@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import nl.sidnlabs.dnslib.message.Header;
 import nl.sidnlabs.dnslib.message.Message;
@@ -35,8 +34,7 @@ import nl.sidnlabs.pcap.packet.Packet;
  * Create output format independent row model
  *
  */
-@Component
-@Qualifier("dnsBuilder")
+@Component("dnsBuilder")
 public class DNSRowBuilder extends AbstractRowBuilder implements RowBuilder {
 
   private static final int RCODE_QUERY_WITHOUT_RESPONSE = -1;

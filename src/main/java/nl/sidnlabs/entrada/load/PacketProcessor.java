@@ -39,11 +39,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.TreeMultimap;
+import com.sun.xml.internal.ws.api.ha.StickyFeature;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.dnslib.message.Message;
 import nl.sidnlabs.dnslib.types.MessageType;
 import nl.sidnlabs.dnslib.types.ResourceRecordType;
 import nl.sidnlabs.entrada.config.ServerContext;
+import nl.sidnlabs.entrada.engine.QueryEngine;
 import nl.sidnlabs.entrada.exception.ApplicationException;
 import nl.sidnlabs.entrada.file.FileManager;
 import nl.sidnlabs.entrada.file.FileManagerFactory;
@@ -95,6 +97,14 @@ public class PacketProcessor {
   @Value("${entrada.location.output}")
   private String outputLocation;
 
+  @Value("${entrada.database.table.dns}")
+  private String tableNameDns;
+
+  @Value("${entrada.database.table.icmp}")
+  private String tableNameIcmp;
+
+
+
   @Value("${entrada.input.file.skipfirst}")
   private boolean skipFirst;
 
@@ -124,12 +134,14 @@ public class PacketProcessor {
   private Map<RequestKey, Integer> activeZoneTransfers;
 
   private FileManagerFactory fileManagerFactory;
+  private QueryEngine queryEngine;
 
   private ServerContext settings;
 
   public PacketProcessor(ServerContext settings, MetricManager metricManager,
       PersistenceManager persistenceManager, ParquetOutputWriter outputWriter,
-      FileArchiveService fileArchiveService, FileManagerFactory fileManagerFactory) {
+      FileArchiveService fileArchiveService, FileManagerFactory fileManagerFactory,
+      QueryEngine QueryEngine) {
 
     this.settings = settings;
     this.metricManager = metricManager;
@@ -137,6 +149,7 @@ public class PacketProcessor {
     this.outputWriter = outputWriter;
     this.fileArchiveService = fileArchiveService;
     this.fileManagerFactory = fileManagerFactory;
+    this.queryEngine = queryEngine;
 
     // convert minutes to seconds
     this.cacheTimeout = 1000 * 60 * cacheTimeoutConfig;
@@ -221,23 +234,31 @@ public class PacketProcessor {
   private void upload() {
     FileManager fmOutput = fileManagerFactory.getFor(outputLocation);
 
-    // move dns data
+    // move dns data to the database location on local or remote fs
     String location = dnsDataLocation();
     FileManager fmInput = fileManagerFactory.getFor(location);
     if (new File(location).exists()) {
-      String targetLocation = FileUtil.appendPath(outputLocation, "dns");
+      String targetLocation = FileUtil.appendPath(outputLocation, tableNameDns);
 
       if (fmOutput.upload(location, targetLocation, false)) {
+        
+        /*
+         * get the list of partitions created from the writer and make sure the db table contains all the required partitions.
+         * If not create the missing database partition(s)
+         */
+        Map<String, String> params = new HashMap<>();
+        queryEngine.addPartition(tableNameDns, year, month, day, server, targetLocation)
+        
         log.info("Delete work location: {}", location);
         fmInput.delete(location);
-      }
+      }  
     }
 
     if (icmpEnabled) {
       // move icmp data
       location = icmpDataLocation();
       if (new File(location).exists()) {
-        String targetLocation = FileUtil.appendPath(outputLocation, "icmp");
+        String targetLocation = FileUtil.appendPath(outputLocation, tableNameIcmp);
 
         if (fmOutput.upload(location, targetLocation, false)) {
           log.info("Delete work location: {}", location);

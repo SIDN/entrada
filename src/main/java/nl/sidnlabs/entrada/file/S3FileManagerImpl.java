@@ -33,7 +33,7 @@ import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.util.FileUtil;
 
 @Log4j2
-@Component
+@Component("s3")
 public class S3FileManagerImpl implements FileManager {
 
   private static final String S3_SCHEME = "s3://";
@@ -281,7 +281,7 @@ public class S3FileManagerImpl implements FileManager {
   public boolean supported(String location) {
     try {
       URI uri = new URI(location);
-      return StringUtils.equalsIgnoreCase(uri.getScheme(), S3_SCHEME);
+      return StringUtils.equalsIgnoreCase(uri.getScheme(), "s3");
     } catch (URISyntaxException e) {
       log.error("Invalid location URI: " + location);
     }

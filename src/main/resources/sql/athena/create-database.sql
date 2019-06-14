@@ -1,0 +1,4 @@
+CREATE DATABASE IF NOT EXISTS ${DATABASE_NAME}
+  COMMENT 'ENTRADA database'
+  LOCATION '${S3_LOC}'
+  WITH DBPROPERTIES ('creator'='ENTRADA', 'developer.'='www.sidnlabs.nl');

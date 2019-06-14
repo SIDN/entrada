@@ -10,7 +10,7 @@ import org.springframework.stereotype.Component;
 import lombok.extern.log4j.Log4j2;
 
 @Log4j2
-@Component
+@Component("hdfs")
 public class HDFSFileManagerImpl implements FileManager {
 
   private static final String HDFS_SCHEME = "hdfs://";
@@ -48,7 +48,7 @@ public class HDFSFileManagerImpl implements FileManager {
   public boolean supported(String location) {
     try {
       URI uri = new URI(location);
-      return StringUtils.equalsIgnoreCase(uri.getScheme(), HDFS_SCHEME);
+      return StringUtils.equalsIgnoreCase(uri.getScheme(), "hdfs");
     } catch (URISyntaxException e) {
       log.error("Invalid location URI: " + location);
     }

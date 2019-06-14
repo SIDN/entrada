@@ -1,6 +1,5 @@
 package nl.sidnlabs.entrada.config;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,11 +12,8 @@ import lombok.extern.log4j.Log4j2;
 @Configuration
 public class EntradaDatabaseConfig {
 
-  @Autowired
-  private Environment env;
-
   /**
-   * Create primary database as bean so we set it as primary othwise flyway might connect to the
+   * Create primary database as bean so we set it as primary otherwise flyway might connect to the
    * wrong data source.
    * 
    * @return
@@ -25,7 +21,7 @@ public class EntradaDatabaseConfig {
   @Primary
   @Bean(name = "dataSource")
   @ConfigurationProperties(prefix = "spring.datasource")
-  public DriverManagerDataSource dataSource() {
+  public DriverManagerDataSource dataSource(Environment env) {
     log.info("Create ENTRADA datasource");
 
     DriverManagerDataSource dataSource = new DriverManagerDataSource();

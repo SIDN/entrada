@@ -19,10 +19,21 @@
  */
 package nl.sidnlabs.entrada.ip.geo;
 
+import java.io.BufferedOutputStream;
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetAddress;
+import java.nio.file.Paths;
+import java.util.Calendar;
 import java.util.Optional;
+import javax.annotation.PostConstruct;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -32,6 +43,8 @@ import com.maxmind.geoip2.DatabaseReader;
 import com.maxmind.geoip2.model.AsnResponse;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.exception.ApplicationException;
+import nl.sidnlabs.entrada.util.DownloadUtil;
+import nl.sidnlabs.entrada.util.FileUtil;
 
 /**
  * Utility class to lookup IP adress information such as country and asn. Uses the maxmind database
@@ -40,27 +53,62 @@ import nl.sidnlabs.entrada.exception.ApplicationException;
 @Component
 public class GeoIPServiceImpl implements GeoIPService {
 
-  private static final String MAXMIND_COUNTRY_DB = "GeoLite2-Country.mmdb";
-  private static final String MAXMIND_ASN_DB = "GeoLite2-ASN.mmdb";
+  @Value("${geoip.maxmind.db.name.country}")
+  private String dbCountry;
+  @Value("${geoip.maxmind.db.name.asn}")
+  private String dbASN;
+  @Value("${geoip.maxmind.db.url.country}")
+  private String dbCountryUrl;
+  @Value("${geoip.maxmind.db.url.asn}")
+  private String dbAsnUrl;
+  @Value("${geoip.maxmind.location}")
+  private String location;
+  @Value("${geoip.maxmind.age.max}")
+  private int maxAge;
 
   private DatabaseReader geoReader;
   private DatabaseReader asnReader;
 
-  public GeoIPServiceImpl(@Value("${geoip.maxmind.location}") String location) {
+  @PostConstruct
+  public void initialize() {
+
+    if (update(dbCountry)) {
+      log.info("GEOIP country database does not exist or is too old, fetch latest version");
+      download(dbCountry, dbCountryUrl, 30);
+    }
+
+    if (update(dbASN)) {
+      log.info("GEOIP ASN database does not exist or is too old, fetch latest version");
+      download(dbASN, dbAsnUrl, 30);
+    }
 
     try {
       // geo
-      File database = new File(new File(StringUtils.removeStart(location, "file://"))
-          + System.getProperty("file.separator") + MAXMIND_COUNTRY_DB);
-
+      File database = new File(FileUtil.appendPath(location, dbCountry));
       geoReader = new DatabaseReader.Builder(database).withCache(new CHMCache()).build();
       // asn
-      database = new File(StringUtils.removeStart(location, "file://")
-          + System.getProperty("file.separator") + MAXMIND_ASN_DB);
+      database = new File(FileUtil.appendPath(location, dbASN));
       asnReader = new DatabaseReader.Builder(database).withCache(new CHMCache()).build();
     } catch (IOException e) {
       throw new ApplicationException("Error initializing Maxmind GEO/ASN database", e);
     }
+  }
+
+  /**
+   * Check if the database should be updated
+   * 
+   * @param database named of database
+   * @return true if database file does not exist or is too old
+   */
+  private boolean update(String database) {
+    File f = new File(FileUtil.appendPath(location, database));
+    return !f.exists() || tooOld(f, maxAge);
+  }
+
+  private boolean tooOld(File f, int max) {
+    Calendar calendar = Calendar.getInstance();
+    calendar.add(Calendar.DATE, -1 * max);
+    return FileUtils.isFileOlder(f, calendar.getTime());
   }
 
   /*
@@ -135,5 +183,45 @@ public class GeoIPServiceImpl implements GeoIPService {
     }
     return lookupASN(inetAddr);
   }
+
+
+  public boolean download(String database, String url, int timeout) {
+    Optional<byte[]> data = DownloadUtil.getAsBytes(url, timeout);
+    if (data.isPresent()) {
+      InputStream is = new ByteArrayInputStream(data.get());
+      try {
+        extractDatabase(is, database);
+      } catch (IOException e) {
+        log.error("Error while extracting {}", database, e);
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  private void extractDatabase(InputStream in, String database) throws IOException {
+    GzipCompressorInputStream gzipIn = new GzipCompressorInputStream(in);
+    try (TarArchiveInputStream tarIn = new TarArchiveInputStream(gzipIn)) {
+      TarArchiveEntry entry;
+
+      while ((entry = (TarArchiveEntry) tarIn.getNextEntry()) != null) {
+        if (StringUtils.endsWith(entry.getName(), database)) {
+          int count;
+          byte[] data = new byte[4096];
+
+          String outFile = Paths.get(entry.getName()).getFileName().toString();
+          FileOutputStream fos =
+              new FileOutputStream(FileUtil.appendPath(location, outFile), false);
+          try (BufferedOutputStream dest = new BufferedOutputStream(fos, 4096)) {
+            while ((count = tarIn.read(data, 0, 4096)) != -1) {
+              dest.write(data, 0, count);
+            }
+          }
+        }
+      }
+    }
+  }
+
 
 }

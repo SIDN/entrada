@@ -140,7 +140,6 @@ public class PacketProcessor {
 
     // convert minutes to seconds
     this.cacheTimeout = 1000 * 60 * cacheTimeoutConfig;
-    this.pcapReader = new PcapReader();
   }
 
 
@@ -562,7 +561,7 @@ public class PacketProcessor {
     try {
       InputStream decompressor =
           CompressionUtil.getDecompressorStreamWrapper(ois.get(), file, bufSize);
-      pcapReader.init(new DataInputStream(decompressor));
+      this.pcapReader = new PcapReader(new DataInputStream(decompressor));
     } catch (IOException e) {
       log.error("Error creating pcap reader for: " + file);
       return false;

@@ -22,6 +22,7 @@ package nl.sidnlabs.entrada;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import lombok.extern.log4j.Log4j2;
 
@@ -29,6 +30,7 @@ import lombok.extern.log4j.Log4j2;
 @ComponentScan("nl.sidnlabs")
 @SpringBootApplication
 @EnableScheduling
+@EnableAsync
 public class Application {
 
   public static void main(String[] args) {

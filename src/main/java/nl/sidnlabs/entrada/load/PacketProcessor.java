@@ -31,7 +31,11 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 import org.apache.commons.io.comparator.LastModifiedFileComparator;
 import org.apache.commons.lang3.StringUtils;
@@ -39,7 +43,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.TreeMultimap;
-import com.sun.xml.internal.ws.api.ha.StickyFeature;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.dnslib.message.Message;
 import nl.sidnlabs.dnslib.types.MessageType;
@@ -50,7 +53,7 @@ import nl.sidnlabs.entrada.exception.ApplicationException;
 import nl.sidnlabs.entrada.file.FileManager;
 import nl.sidnlabs.entrada.file.FileManagerFactory;
 import nl.sidnlabs.entrada.metric.MetricManager;
-import nl.sidnlabs.entrada.parquet.ParquetOutputWriter;
+import nl.sidnlabs.entrada.model.Partition;
 import nl.sidnlabs.entrada.service.FileArchiveService;
 import nl.sidnlabs.entrada.support.MessageWrapper;
 import nl.sidnlabs.entrada.support.PacketCombination;
@@ -71,6 +74,7 @@ import nl.sidnlabs.pcap.packet.TCPFlow;
 public class PacketProcessor {
 
   private static final int DEFAULT_PCAP_READER_BUFFER_SIZE = 65536;
+  private static final int MAX_QUEUE_SIZE = 100000;
 
   // config options from application.properties
   @Value("${entrada.cache.timeout}")
@@ -103,8 +107,6 @@ public class PacketProcessor {
   @Value("${entrada.database.table.icmp}")
   private String tableNameIcmp;
 
-
-
   @Value("${entrada.input.file.skipfirst}")
   private boolean skipFirst;
 
@@ -113,7 +115,7 @@ public class PacketProcessor {
 
   private MetricManager metricManager;
   private PersistenceManager persistenceManager;
-  private ParquetOutputWriter outputWriter;
+  private OutputWriter outputWriter;
   private FileArchiveService fileArchiveService;
 
   private int multiCounter;
@@ -138,10 +140,13 @@ public class PacketProcessor {
 
   private ServerContext settings;
 
+  private Future<Map<String, Set<Partition>>> outputFuture;
+  private LinkedBlockingQueue<PacketCombination> packetQueue;
+
   public PacketProcessor(ServerContext settings, MetricManager metricManager,
-      PersistenceManager persistenceManager, ParquetOutputWriter outputWriter,
+      PersistenceManager persistenceManager, OutputWriter outputWriter,
       FileArchiveService fileArchiveService, FileManagerFactory fileManagerFactory,
-      QueryEngine QueryEngine) {
+      QueryEngine queryEngine) {
 
     this.settings = settings;
     this.metricManager = metricManager;
@@ -167,21 +172,17 @@ public class PacketProcessor {
       log.info("No files found, stop.");
       return;
     }
-    // get the state from the previous run
-    loadState();
 
-    int filesProcessed = 0;
     for (String file : inputFiles) {
       if (fileArchiveService.exists(file)) {
         log.info("file {} already processed!, continue with next file", file);
         continue;
       }
-      filesProcessed++;
       Date start = new Date();
 
-      if (!outputWriter.isOpen()) {
+      if (outputFuture == null) {
         // open the output file writer
-        outputWriter.open(true, icmpEnabled);
+        outputFuture = outputWriter.start(true, icmpEnabled, packetQueue);
       }
       read(file);
       // flush expired packets after every file, to avoid a large cache eating up the heap
@@ -193,16 +194,29 @@ public class PacketProcessor {
     // the next pcap might have the missing responses
     persistState();
 
-    if (outputWriter.isOpen()) {
-      // close file handler(s)
-      outputWriter.close();
-    }
-
-    if (filesProcessed > 0) {
-      upload();
+    // check if any file have been processed if so, send "end" packet to writer and wait foor writer
+    // to finish
+    if (Objects.nonNull(outputFuture)) {
+      // mark all data procssed
+      pushPacket(PacketCombination.NULL);
+      // wait until writer is done
+      Map<String, Set<Partition>> partitions = waitForWriter(outputFuture);
+      // upload newly created data to fs
+      upload(partitions);
       writeMetrics();
       logStats();
     }
+  }
+
+  private Map<String, Set<Partition>> waitForWriter(
+      Future<Map<String, Set<Partition>>> outputFuture) {
+    try {
+      return outputFuture.get();
+    } catch (Exception e) {
+      // ignore this error, return empty set
+    }
+
+    return Collections.emptyMap();
   }
 
   private void reset() {
@@ -215,6 +229,8 @@ public class PacketProcessor {
     noQueryFoundCounter = 0;
     requestCache = new HashMap<>();
     activeZoneTransfers = new HashMap<>();
+    outputFuture = null;
+    packetQueue = new LinkedBlockingQueue<>(MAX_QUEUE_SIZE);
   }
 
   public void logStats() {
@@ -228,39 +244,40 @@ public class PacketProcessor {
   }
 
   /**
-   * Move a newly created output file from the work location to the output location. The original
-   * data will be deleted.
+   * Move created data from the work location to the output location. The original data will be
+   * deleted.
    */
-  private void upload() {
+  private void upload(Map<String, Set<Partition>> partitions) {
     FileManager fmOutput = fileManagerFactory.getFor(outputLocation);
 
     // move dns data to the database location on local or remote fs
-    String location = dnsDataLocation();
+    String location = locationForDNS();
     FileManager fmInput = fileManagerFactory.getFor(location);
     if (new File(location).exists()) {
       String targetLocation = FileUtil.appendPath(outputLocation, tableNameDns);
 
       if (fmOutput.upload(location, targetLocation, false)) {
-        
         /*
-         * get the list of partitions created from the writer and make sure the db table contains all the required partitions.
-         * If not create the missing database partition(s)
+         * make sure the database table contains all the required partitions. If not create the
+         * missing database partition(s)
          */
-        Map<String, String> params = new HashMap<>();
-        queryEngine.addPartition(tableNameDns, year, month, day, server, targetLocation)
-        
+        queryEngine.addPartition(tableNameDns, partitions.get("dns"), targetLocation);
+
         log.info("Delete work location: {}", location);
         fmInput.delete(location);
-      }  
+      }
     }
 
     if (icmpEnabled) {
       // move icmp data
-      location = icmpDataLocation();
+      location = locationForICMP();
       if (new File(location).exists()) {
         String targetLocation = FileUtil.appendPath(outputLocation, tableNameIcmp);
 
         if (fmOutput.upload(location, targetLocation, false)) {
+
+          queryEngine.addPartition(tableNameDns, partitions.get("icmp"), targetLocation);
+
           log.info("Delete work location: {}", location);
           fmInput.delete(location);
         }
@@ -268,12 +285,12 @@ public class PacketProcessor {
     }
   }
 
-  private String dnsDataLocation() {
+  private String locationForDNS() {
     return FileUtil
         .appendPath(workLocation, settings.getServerInfo().getNormalizeName(), "dnsdata/");
   }
 
-  private String icmpDataLocation() {
+  private String locationForICMP() {
     return FileUtil
         .appendPath(workLocation, settings.getServerInfo().getNormalizeName(), "icmpdata/");
   }
@@ -306,6 +323,9 @@ public class PacketProcessor {
       return;
     }
 
+    // get the state from the previous run
+    loadState();
+
     long readStart = System.currentTimeMillis();
     log.info("Start reading packet queue");
 
@@ -330,9 +350,8 @@ public class PacketProcessor {
           }
 
           // handle icmp
-          outputWriter
-              .write(new PacketCombination(currentPacket, null, settings.getServerInfo(), null,
-                  null, false, fileName));
+          pushPacket(new PacketCombination(currentPacket, null, settings.getServerInfo(), null,
+              null, false, fileName));
 
         } else {
           DNSPacket dnsPacket = (DNSPacket) currentPacket;
@@ -408,9 +427,8 @@ public class PacketProcessor {
 
               if (request != null && request.getPacket() != null && request.getMessage() != null) {
 
-                outputWriter
-                    .write(new PacketCombination(request.getPacket(), request.getMessage(),
-                        settings.getServerInfo(), dnsPacket, msg, false, fileName));
+                pushPacket(new PacketCombination(request.getPacket(), request.getMessage(),
+                    settings.getServerInfo(), dnsPacket, msg, false, fileName));
 
               } else {
                 // no request found, this could happen if the query was in previous pcap
@@ -419,9 +437,8 @@ public class PacketProcessor {
                 log.debug("Found no request for response");
                 noQueryFoundCounter++;
 
-                outputWriter
-                    .write(new PacketCombination(null, null, settings.getServerInfo(), dnsPacket,
-                        msg, false, fileName));
+                pushPacket(new PacketCombination(null, null, settings.getServerInfo(), dnsPacket,
+                    msg, false, fileName));
               }
             }
           }
@@ -435,6 +452,15 @@ public class PacketProcessor {
     // clear expired cache entries
     pcapReader.clearCache(cacheTimeoutTCPConfig * 60 * 1000, cacheTimeoutIPFragConfig * 60 * 1000);
     pcapReader.close();
+  }
+
+  private void pushPacket(PacketCombination pc) {
+    try {
+      packetQueue.put(pc);
+    } catch (InterruptedException e) {
+      // ignoire error, just log
+      log.error("Error while sending packet to writer queue.");
+    }
   }
 
   /**
@@ -547,9 +573,8 @@ public class PacketProcessor {
 
         if (mw.getMessage() != null && mw.getMessage().getHeader().getQr() == MessageType.QUERY) {
 
-          outputWriter
-              .write(new PacketCombination(mw.getPacket(), mw.getMessage(),
-                  settings.getServerInfo(), null, null, true, mw.getFilename()));
+          pushPacket(new PacketCombination(mw.getPacket(), mw.getMessage(),
+              settings.getServerInfo(), null, null, true, mw.getFilename()));
 
           purgeCounter++;
 

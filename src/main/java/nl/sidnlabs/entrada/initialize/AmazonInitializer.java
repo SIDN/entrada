@@ -2,12 +2,12 @@ package nl.sidnlabs.entrada.initialize;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.ClassPathResource;
-import org.springframework.dao.DataAccessException;
 import org.springframework.stereotype.Component;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.PublicAccessBlockConfiguration;
@@ -130,8 +130,11 @@ public class AmazonInitializer implements Initializer {
 
   private void executeSQL(String sql) {
     try {
-      queryEngine.executeSql(sql);
-    } catch (DataAccessException e) {
+      if (queryEngine.execute(sql).get(5, TimeUnit.MINUTES).equals(Boolean.FALSE)) {
+        // failed to execute sql
+        throw new ApplicationException("Query failed");
+      }
+    } catch (Exception e) {
       throw new ApplicationException("Query failed");
     }
   }

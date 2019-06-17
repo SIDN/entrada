@@ -24,12 +24,14 @@ import java.io.IOException;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Parser;
 import org.apache.avro.generic.GenericRecordBuilder;
+import org.springframework.core.io.ClassPathResource;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.exception.ApplicationException;
-import nl.sidnlabs.entrada.model.Row;
+import nl.sidnlabs.entrada.load.RowWriter;
+import nl.sidnlabs.entrada.util.FileUtil;
 
 @Log4j2
-public abstract class AbstractParquetPacketWriter {
+public abstract class AbstractParquetRowWriter implements RowWriter {
 
   protected static final int STATUS_COUNT = 100000;
 
@@ -38,36 +40,29 @@ public abstract class AbstractParquetPacketWriter {
   protected Schema avroSchema;
   private int maxRows;
 
-  public AbstractParquetPacketWriter(int maxRows) {
+  public AbstractParquetRowWriter(int maxRows) {
     this.maxRows = maxRows;
   }
 
-  protected Schema schema(String schema) {
+  public Schema schema(String schema) {
     if (avroSchema != null) {
+      // use cached version of schema
       return avroSchema;
     }
 
-    String f = getClass().getClassLoader().getResource(schema).getFile();
-    Parser parser = new Schema.Parser().setValidate(true);
     try {
-      avroSchema = parser.parse(new File(f));
+      File f = new ClassPathResource(schema, getClass()).getFile();
+      Parser parser = new Schema.Parser().setValidate(true);
+      avroSchema = parser.parse(f);
     } catch (IOException e) {
-      throw new ApplicationException("Cannot load schema from file: " + f);
+      throw new ApplicationException("Cannot load schema from file: " + schema);
     }
 
     return avroSchema;
   }
 
-  /**
-   * create a parquet record which combines values from the query and the response
-   * 
-   * @param packet
-   */
-  public abstract void write(Row row, String server);
-
   public void open(String outputDir, String server, String name) {
-    String path = outputDir + System.getProperty("file.separator") + server
-        + System.getProperty("file.separator") + name;
+    String path = FileUtil.appendPath(outputDir, server, name);
 
     log.info("Create new Parquet writer with path: " + path);
 
@@ -99,7 +94,7 @@ public abstract class AbstractParquetPacketWriter {
   }
 
   protected void showStatus() {
-    log.info(packetCounter + " packets written to parquet file.");
+    log.info(packetCounter + " rows written to file.");
   }
 
 }

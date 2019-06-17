@@ -5,7 +5,6 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.UUID;
 import org.apache.avro.Schema;
-import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.avro.AvroParquetWriter;
@@ -21,28 +20,16 @@ import nl.sidnlabs.entrada.exception.ApplicationException;
 @Value
 public class ParquetPartition<T> {
 
-  private static final String FILE_SEP = System.getProperty("file.separator");
   private ParquetWriter<T> writer;
   private String filename;
   @NonFinal
   private int rows = 0;
 
-
-  public static String partition(String path, int year, int month, int day, String server) {
-    String partition =
-        path + FILE_SEP + "year=" + year + FILE_SEP + "month=" + month + FILE_SEP + "day=" + day;
-
-    if (StringUtils.isNotBlank(server)) {
-      partition = partition + FILE_SEP + "server=" + server;
-    }
-
-    return partition;
-  }
-
   public ParquetPartition(String partition, Schema schema) {
 
     Configuration conf = new Configuration();
-    Path file = new Path(partition + FILE_SEP + UUID.randomUUID() + ".parquet");
+    Path file =
+        new Path(partition + System.getProperty("file.separator") + UUID.randomUUID() + ".parquet");
     filename = file.toString();
 
     log.info("Create new parquet file: {}", filename);

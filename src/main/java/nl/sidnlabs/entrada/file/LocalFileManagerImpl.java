@@ -8,6 +8,7 @@ import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.Optional;
 import java.util.Spliterator;
@@ -117,7 +118,7 @@ public class LocalFileManagerImpl implements FileManager {
     log.info("Move local file: {} to: {} " + src, dst);
 
     try {
-      Files.move(Paths.get(src), Paths.get(dst));
+      Files.move(Paths.get(src), Paths.get(dst), StandardCopyOption.REPLACE_EXISTING);
       return true;
     } catch (IOException e) {
       log.error("Error while moving file {} to {}", src, dst, e);

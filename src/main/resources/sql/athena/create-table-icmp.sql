@@ -54,9 +54,9 @@ CREATE EXTERNAL TABLE IF NOT EXISTS ${DATABASE_NAME}.${TABLE_NAME}(
 	query_ts TIMESTAMP,
 	pcap_file STRING
 ) PARTITIONED BY (
-  year string,
-  month string,
-  day string,
+  year int,
+  month int,
+  day int,
   server string
 )
 ROW FORMAT SERDE

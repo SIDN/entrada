@@ -6,6 +6,8 @@ import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import lombok.Value;
 import lombok.extern.log4j.Log4j2;
+import nl.sidnlabs.entrada.model.Partition;
+import nl.sidnlabs.entrada.util.FileUtil;
 
 @Log4j2
 @Value
@@ -22,16 +24,12 @@ public class ParquetPartitionWriter {
     this.maxRows = maxRows;
   }
 
-  public void write(GenericRecord rec, Schema schema, int year, int month, int day) {
-    write(rec, schema, year, month, day, null);
-  }
+  public void write(GenericRecord rec, Schema schema, Partition partition) {
 
-  public void write(GenericRecord rec, Schema schema, int year, int month, int day, String server) {
-
+    String partitionStr = FileUtil.appendPath(path, partition.toPath());
     // check is partition already exists, if not create a new partition
-    String partition = ParquetPartition.partition(path, year, month, day, server);
     ParquetPartition<GenericRecord> parquetPartition =
-        partitions.computeIfAbsent(partition, k -> new ParquetPartition<>(partition, schema));
+        partitions.computeIfAbsent(partitionStr, k -> new ParquetPartition<>(partitionStr, schema));
 
     // write the rec to the partition
     parquetPartition.write(rec);
@@ -41,12 +39,12 @@ public class ParquetPartitionWriter {
       log
           .info(
               "Max DNS packets reached for this Parquet parition {}, close current file and create new",
-              partition);
+              partitionStr);
 
       parquetPartition.close();
       // remove partition from partitions map, for a possible next row fot this partitions
       // a new partition object and parquet file will be created.
-      partitions.remove(partition);
+      partitions.remove(partitionStr);
     }
 
   }

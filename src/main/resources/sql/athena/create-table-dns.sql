@@ -64,9 +64,9 @@ CREATE EXTERNAL TABLE IF NOT EXISTS ${DATABASE_NAME}.${TABLE_NAME}(
   q_rcode int,
   pub_resolver string
 ) PARTITIONED BY (
-  year string,
-  month string,
-  day string,
+  year int,
+  month int,
+  day int,
   server string
 )
 ROW FORMAT SERDE

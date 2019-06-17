@@ -23,7 +23,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 import lombok.Data;
 
-
 @Data
 @Component
 public class ServerContext {
@@ -38,21 +37,24 @@ public class ServerContext {
    */
   public void setServer(String name) {
     serverInfo = new ServerInfo();
-    String cleanName = StringUtils.trimToEmpty(name);
-    // set the pcap input directory name.
+    // String cleanName = "default";
+    // if (!StringUtils.isBlank(name)) {
+    // cleanName = StringUtils.trim(name);
+    // }
+
+    String cleanName = StringUtils.stripToEmpty(name);
+    serverInfo.setName(cleanName);
     serverInfo.setFullname(cleanName);
     serverInfo.setNormalizeName(cleanName.replaceAll("[^A-Za-z0-9 ]", "_"));
 
     if (cleanName.length() > 0 && cleanName.contains("_")) {
       String[] parts = StringUtils.split(cleanName, "_");
       if (parts.length == 2) {
+        // found anyvast location in name, split into name and location part
         serverInfo.setName(parts[0]);
         serverInfo.setLocation(parts[1]);
-        return;
       }
     }
-    // no anycast location encoded in name
-    serverInfo.setName(name);
   }
 
 
@@ -62,9 +64,5 @@ public class ServerContext {
     private String normalizeName;
     private String name;
     private String location;
-
-    public boolean hasAnycastLocation() {
-      return StringUtils.isNotBlank(location);
-    }
   }
 }

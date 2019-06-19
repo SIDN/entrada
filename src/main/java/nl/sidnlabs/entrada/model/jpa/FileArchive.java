@@ -35,6 +35,9 @@ public class FileArchive {
   @Temporal(TemporalType.TIMESTAMP)
   private Date dateEnd;
 
+  @Column(name = "time")
+  private int time;
+
   @Column(name = "file")
   private String file;
 

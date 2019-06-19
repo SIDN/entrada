@@ -1,4 +1,4 @@
-package nl.sidnlabs.entrada.ip.geo;
+package nl.sidnlabs.entrada.enrich.geoip;
 
 import java.net.InetAddress;
 import java.util.Optional;

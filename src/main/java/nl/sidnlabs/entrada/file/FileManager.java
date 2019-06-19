@@ -34,8 +34,8 @@ public interface FileManager {
    */
   boolean upload(String location, String outputLocation, boolean archive);
 
-  boolean delete(String file);
+  boolean delete(String file, boolean children);
 
-  boolean move(String src, String dest);
+  boolean move(String src, String dest, boolean archive);
 
 }

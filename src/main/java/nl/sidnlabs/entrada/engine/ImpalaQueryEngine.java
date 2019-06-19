@@ -17,6 +17,7 @@ import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.stereotype.Component;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.model.Partition;
+import nl.sidnlabs.entrada.model.jpa.TablePartition;
 import nl.sidnlabs.entrada.util.FileUtil;
 import nl.sidnlabs.entrada.util.TemplateUtil;
 
@@ -54,6 +55,8 @@ public class ImpalaQueryEngine implements QueryEngine {
     return new AsyncResult<>(Boolean.TRUE);
   }
 
+  @Override
+  @Async
   public Future<Boolean> addPartition(String table, Set<Partition> partitions, String location) {
 
     String partitionsStr = partitions
@@ -89,6 +92,13 @@ public class ImpalaQueryEngine implements QueryEngine {
       return TemplateUtil.template(SQL_PARTITION_SVR_TEMPLATE, values);
     }
     return TemplateUtil.template(SQL_PARTITION_TEMPLATE, values);
+  }
+
+
+  @Override
+  public boolean compact(TablePartition p) {
+    // TODO Auto-generated method stub
+    return false;
   }
 
 }

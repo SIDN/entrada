@@ -40,7 +40,6 @@ public class ParquetPartition<T> {
       writer = AvroParquetWriter
           .<T>builder(file)
           .enableDictionaryEncoding()
-          .enableValidation()
           .withCompressionCodec(CompressionCodecName.SNAPPY)
           .withConf(conf)
           .withWriterVersion(WriterVersion.PARQUET_1_0)

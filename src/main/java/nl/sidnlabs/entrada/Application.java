@@ -29,8 +29,8 @@ import lombok.extern.log4j.Log4j2;
 @Log4j2
 @ComponentScan("nl.sidnlabs")
 @SpringBootApplication
-@EnableScheduling
 @EnableAsync
+@EnableScheduling
 public class Application {
 
   public static void main(String[] args) {

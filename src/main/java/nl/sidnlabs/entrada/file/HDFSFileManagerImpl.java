@@ -56,14 +56,14 @@ public class HDFSFileManagerImpl implements FileManager {
   }
 
   @Override
-  public boolean delete(String location) {
+  public boolean delete(String location, boolean children) {
     log.info("Delete HDFS file: " + location);
 
     throw new UnsupportedOperationException();
   }
 
   @Override
-  public boolean move(String src, String dest) {
+  public boolean move(String src, String dest, boolean archive) {
     log.info("Move HDFS file: {} to: {} " + src, dest);
 
     throw new UnsupportedOperationException();

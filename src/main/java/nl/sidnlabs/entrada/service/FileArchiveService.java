@@ -59,14 +59,16 @@ public class FileArchiveService {
     log.info("Archive: {} with mode {}", file, archiveOption);
     // keep track of processed files
 
+    Date now = new Date();
     File f = new File(file);
     FileArchive fa = FileArchive
         .builder()
-        .dateEnd(new Date())
+        .dateEnd(now)
         .file(f.getName())
         .path(f.getParent())
         .dateStart(start)
         .rows(packets)
+        .time((int) (now.getTime() - start.getTime()) / 1000)
         .build();
 
     fileArchiveRepository.save(fa);
@@ -91,7 +93,7 @@ public class FileArchiveService {
         String dst = FileUtil
             .appendPath(archiveLocation, serverContext.getServerInfo().getFullname(), f.getName());
 
-        fmSrc.move(file, dst);
+        fmSrc.move(file, dst, true);
       } else if (fmSrc.isLocal() && !fmDst.isLocal()) {
         // move data from local to remote fs
         fmDst
@@ -103,7 +105,7 @@ public class FileArchiveService {
 
     // delete pcap file when archive or delete option is chosen
     if (ArchiveOption.ARCHIVE == archiveOption || ArchiveOption.DELETE == archiveOption) {
-      fmSrc.delete(file);
+      fmSrc.delete(file, false);
     }
   }
 

@@ -3,7 +3,6 @@ package nl.sidnlabs.entrada.enrich.geoip;
 import java.util.Optional;
 import org.springframework.stereotype.Component;
 import nl.sidnlabs.entrada.enrich.AddressEnrichment;
-import nl.sidnlabs.entrada.ip.geo.GeoIPService;
 
 @Component
 public class ASNEnrichment implements AddressEnrichment {

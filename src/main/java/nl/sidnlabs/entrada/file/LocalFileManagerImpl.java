@@ -9,12 +9,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
-import java.util.Spliterator;
-import java.util.Spliterators;
 import java.util.stream.Collectors;
-import java.util.stream.StreamSupport;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
@@ -42,16 +40,19 @@ public class LocalFileManagerImpl implements FileManager {
   @Override
   public List<String> files(String dir, String... filter) {
 
-    Spliterator<File> spliterator = Spliterators
-        .spliteratorUnknownSize(FileUtils.iterateFiles(new File(dir), filter, false),
-            Spliterator.NONNULL);
-
-    return StreamSupport
-        .stream(spliterator, false)
+    return Arrays
+        .stream(new File(dir).listFiles())
         .filter(File::isFile)
         .map(File::getAbsolutePath)
+        .filter(f -> checkFilter(f, Arrays.asList(filter)))
         .collect(Collectors.toList());
+  }
 
+  private boolean checkFilter(String file, List<String> filters) {
+    if (filters.isEmpty()) {
+      return true;
+    }
+    return filters.stream().anyMatch(f -> StringUtils.endsWith(file, f));
   }
 
   @Override
@@ -76,7 +77,8 @@ public class LocalFileManagerImpl implements FileManager {
     Path dest = Paths.get(outputLocation);
 
     try {
-      Files.walk(src).forEach(s -> copy(s, src, dest));
+      // upload all data but skip .crc files
+      Files.walk(src).filter(p -> !p.endsWith(".crc")).forEach(s -> copy(s, src, dest));
       return true;
     } catch (Exception ex) {
       log.error("Cannot copy directory: {}", src, ex);
@@ -101,7 +103,7 @@ public class LocalFileManagerImpl implements FileManager {
   }
 
   @Override
-  public boolean delete(String location) {
+  public boolean delete(String location, boolean children) {
     log.info("Delete local file: " + location);
 
     File f = new File(location);
@@ -114,7 +116,7 @@ public class LocalFileManagerImpl implements FileManager {
 
 
   @Override
-  public boolean move(String src, String dst) {
+  public boolean move(String src, String dst, boolean archive) {
     log.info("Move local file: {} to: {} " + src, dst);
 
     try {

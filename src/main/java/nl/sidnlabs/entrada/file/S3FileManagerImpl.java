@@ -7,7 +7,10 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
@@ -18,9 +21,10 @@ import com.amazonaws.event.ProgressListener;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.Headers;
 import com.amazonaws.services.s3.model.CopyObjectRequest;
+import com.amazonaws.services.s3.model.CopyObjectResult;
 import com.amazonaws.services.s3.model.GetObjectRequest;
-import com.amazonaws.services.s3.model.ListObjectsRequest;
-import com.amazonaws.services.s3.model.ObjectListing;
+import com.amazonaws.services.s3.model.ListObjectsV2Request;
+import com.amazonaws.services.s3.model.ListObjectsV2Result;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.amazonaws.services.s3.model.StorageClass;
@@ -39,18 +43,26 @@ public class S3FileManagerImpl implements FileManager {
   private static final String S3_SCHEME = "s3://";
   private AmazonS3 amazonS3;
 
-  @org.springframework.beans.factory.annotation.Value("${cloud.aws.upload.multipart.mb.size}")
-  private int multipartSize;
-  @org.springframework.beans.factory.annotation.Value("${cloud.aws.upload.parallelism}")
-  private int parallelism;
+
+  ;
   @org.springframework.beans.factory.annotation.Value("${cloud.aws.upload.upload.storage-class}")
   private String uploadStorageClass;
   @org.springframework.beans.factory.annotation.Value("${cloud.aws.upload.archive.storage-class}")
   private String archiveStorageClass;
 
+  private TransferManager transferManager;
 
-  public S3FileManagerImpl(AmazonS3 amazonS3) {
+  public S3FileManagerImpl(AmazonS3 amazonS3,
+      @org.springframework.beans.factory.annotation.Value("${cloud.aws.upload.parallelism}") int parallelism,
+      @org.springframework.beans.factory.annotation.Value("${cloud.aws.upload.multipart.mb.size}") int multipartSize) {
     this.amazonS3 = amazonS3;
+
+    this.transferManager = TransferManagerBuilder
+        .standard()
+        .withS3Client(amazonS3)
+        .withMultipartUploadThreshold(multipartSize * 1024L * 1024L)
+        .withExecutorFactory(() -> Executors.newFixedThreadPool(parallelism))
+        .build();
   }
 
   @Override
@@ -83,33 +95,34 @@ public class S3FileManagerImpl implements FileManager {
       return files;
     }
 
-    ListObjectsRequest lor = new ListObjectsRequest()
+    ListObjectsV2Request lor = new ListObjectsV2Request()
         .withBucketName(details.get().getBucket())
-        .withPrefix(StringUtils.appendIfMissing(details.get().getKey(), "/", "/"))
-        .withDelimiter("/");
+        .withPrefix(StringUtils.appendIfMissing(details.get().getKey(), "/", "/"));
 
     try {
-      ObjectListing listing = amazonS3.listObjects(lor);
-      listing.getObjectSummaries().stream().forEach(os -> files.add(os.getKey()));
+      ListObjectsV2Result listing;
 
-      while (listing.isTruncated()) {
-        listing = amazonS3.listNextBatchOfObjects(listing);
+      do {
+        listing = amazonS3.listObjectsV2(lor);
         listing.getObjectSummaries().stream().forEach(os -> files.add(os.getKey()));
-      }
+      } while (listing.isTruncated());
+
     } catch (Exception e) {
       log.error("Error while getting file listing for location {}", location, e);
       return Collections.emptyList();
     }
 
-    List<String> filters = Arrays.asList(filter);
     return files
         .stream()
-        .filter(f -> checkFilter(f, filters))
+        .filter(f -> checkFilter(f, Arrays.asList(filter)))
         .map(f -> S3_SCHEME + details.get().getBucket() + "/" + f)
         .collect(Collectors.toList());
   }
 
   private boolean checkFilter(String file, List<String> filters) {
+    if (filters.isEmpty()) {
+      return true;
+    }
     return filters.stream().anyMatch(f -> StringUtils.endsWith(file, f));
   }
 
@@ -190,12 +203,7 @@ public class S3FileManagerImpl implements FileManager {
   }
 
   private boolean uploadDirectory(File location, S3Details dstDetails, boolean archive) {
-    TransferManager transferManager = TransferManagerBuilder
-        .standard()
-        .withS3Client(amazonS3)
-        .withMultipartUploadThreshold(multipartSize * 1024L * 1024L)
-        .withExecutorFactory(() -> Executors.newFixedThreadPool(parallelism))
-        .build();
+
 
     // make sure to set the storage class for newly uploaded files
     ObjectMetadataProvider metaDataProvider = (file, meta) -> {
@@ -209,6 +217,9 @@ public class S3FileManagerImpl implements FileManager {
             .setHeader(Headers.STORAGE_CLASS,
                 StorageClass.fromValue(StringUtils.upperCase(uploadStorageClass)));
       }
+      Map<String, String> um = new HashMap<>();
+      um.put("Compacted", "false");
+      meta.setUserMetadata(um);
     };
 
 
@@ -228,16 +239,14 @@ public class S3FileManagerImpl implements FileManager {
       return true;
     } catch (Exception e) {
       log.error("Error while uploading: {}");
-    } finally {
-      transferManager.shutdownNow();
     }
 
     return false;
   }
 
   @Override
-  public boolean move(String src, String dst) {
-    log.info("Archive: {} to {}", src, dst);
+  public boolean move(String src, String dst, boolean archive) {
+    log.info("Move: {} to {}", src, dst);
     // s3 has no move operation, so do a copy and delete
     // this is not an atomic operation
     Optional<S3Details> srcDetails = S3Details.from(src);
@@ -246,12 +255,22 @@ public class S3FileManagerImpl implements FileManager {
     if (srcDetails.isPresent() && dstDetails.isPresent()) {
       CopyObjectRequest cor = new CopyObjectRequest(srcDetails.get().getBucket(),
           srcDetails.get().getKey(), dstDetails.get().getBucket(), dstDetails.get().getKey());
-      // make sure tos et the storage class for file copy
-      cor.setStorageClass(StorageClass.fromValue(StringUtils.upperCase(archiveStorageClass)));
+      // make sure to set the storage class for file copy
+      if (archive) {
+        // set class for archive file
+        cor.setStorageClass(StorageClass.fromValue(StringUtils.upperCase(archiveStorageClass)));
+      } else {
+        // set class for parquet files
+        cor.setStorageClass(StorageClass.fromValue(StringUtils.upperCase(uploadStorageClass)));
+      }
       try {
-        amazonS3
-            .copyObject(srcDetails.get().getBucket(), srcDetails.get().getKey(),
-                dstDetails.get().getBucket(), dstDetails.get().getKey());
+        CopyObjectResult r = amazonS3.copyObject(cor);
+
+        if (Objects.nonNull(r.getETag())) {
+          // copy ok, delete src
+          amazonS3.deleteObject(srcDetails.get().getBucket(), srcDetails.get().getKey());
+        }
+
         return true;
       } catch (Exception e) {
         log.error("Error during copying {} to ", src, dst, e);
@@ -261,19 +280,35 @@ public class S3FileManagerImpl implements FileManager {
   }
 
   @Override
-  public boolean delete(String location) {
+  public boolean delete(String location, boolean children) {
     log.info("Delete S3 file: " + location);
 
     Optional<S3Details> details = S3Details.from(location);
-
     if (details.isPresent()) {
-      try {
-        amazonS3.deleteObject(details.get().getBucket(), details.get().getKey());
-        return true;
-      } catch (Exception e) {
-        log.error("Error while trying to delete {}", location, e);
+      if (children) {
+        // also delete children
+        List<String> objects = files(location);
+        objects.stream().forEach(o -> {
+          Optional<S3Details> childDetails = S3Details.from(o);
+          deleteObject(childDetails.get());
+        });
       }
+      // delete parent
+      deleteObject(details.get());
+      // everything ok
+      return true;
     }
+    return false;
+  }
+
+  private boolean deleteObject(S3Details object) {
+    try {
+      amazonS3.deleteObject(object.getBucket(), object.getKey());
+      return true;
+    } catch (Exception e) {
+      log.error("Error while trying to delete {}", object, e);
+    }
+
     return false;
   }
 

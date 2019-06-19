@@ -17,7 +17,7 @@
  * [<http://www.gnu.org/licenses/].
  *
  */
-package nl.sidnlabs.entrada.ip.geo;
+package nl.sidnlabs.entrada.enrich.geoip;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;

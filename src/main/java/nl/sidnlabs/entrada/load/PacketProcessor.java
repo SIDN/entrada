@@ -55,6 +55,7 @@ import nl.sidnlabs.entrada.file.FileManagerFactory;
 import nl.sidnlabs.entrada.metric.MetricManager;
 import nl.sidnlabs.entrada.model.Partition;
 import nl.sidnlabs.entrada.service.FileArchiveService;
+import nl.sidnlabs.entrada.service.PartitionService;
 import nl.sidnlabs.entrada.support.MessageWrapper;
 import nl.sidnlabs.entrada.support.PacketCombination;
 import nl.sidnlabs.entrada.support.RequestKey;
@@ -137,7 +138,7 @@ public class PacketProcessor {
 
   private FileManagerFactory fileManagerFactory;
   private QueryEngine queryEngine;
-
+  private PartitionService partitionService;
   private ServerContext settings;
 
   private Future<Map<String, Set<Partition>>> outputFuture;
@@ -146,7 +147,7 @@ public class PacketProcessor {
   public PacketProcessor(ServerContext settings, MetricManager metricManager,
       PersistenceManager persistenceManager, OutputWriter outputWriter,
       FileArchiveService fileArchiveService, FileManagerFactory fileManagerFactory,
-      QueryEngine queryEngine) {
+      QueryEngine queryEngine, PartitionService partitionService) {
 
     this.settings = settings;
     this.metricManager = metricManager;
@@ -155,6 +156,7 @@ public class PacketProcessor {
     this.fileArchiveService = fileArchiveService;
     this.fileManagerFactory = fileManagerFactory;
     this.queryEngine = queryEngine;
+    this.partitionService = partitionService;
 
     // convert minutes to seconds
     this.cacheTimeout = 1000 * 60 * cacheTimeoutConfig;
@@ -190,23 +192,30 @@ public class PacketProcessor {
       // move the pcap file to archive location or delete
       fileArchiveService.archive(file, start, packetCounter);
     }
-    // save unmatched packet state to file
-    // the next pcap might have the missing responses
-    persistState();
 
     // check if any file have been processed if so, send "end" packet to writer and wait foor writer
     // to finish
     if (Objects.nonNull(outputFuture)) {
+      // save unmatched packet state to file
+      // the next pcap might have the missing responses
+      persistState();
       // mark all data procssed
       pushPacket(PacketCombination.NULL);
       // wait until writer is done
       Map<String, Set<Partition>> partitions = waitForWriter(outputFuture);
       // upload newly created data to fs
       upload(partitions);
+      register(partitions);
       writeMetrics();
       logStats();
     }
   }
+
+  private void register(Map<String, Set<Partition>> partitions) {
+    partitions.entrySet().stream().forEach(e -> partitionService.create(e.getKey(), e.getValue()));
+
+  }
+
 
   private Map<String, Set<Partition>> waitForWriter(
       Future<Map<String, Set<Partition>>> outputFuture) {
@@ -255,6 +264,8 @@ public class PacketProcessor {
     FileManager fmInput = fileManagerFactory.getFor(location);
     if (new File(location).exists()) {
       String targetLocation = FileUtil.appendPath(outputLocation, tableNameDns);
+      // delete .crc files
+      cleanup(fmInput, location, partitions.get("dns"));
 
       if (fmOutput.upload(location, targetLocation, false)) {
         /*
@@ -264,7 +275,7 @@ public class PacketProcessor {
         queryEngine.addPartition(tableNameDns, partitions.get("dns"), targetLocation);
 
         log.info("Delete work location: {}", location);
-        fmInput.delete(location);
+        fmInput.delete(location, true);
       }
     }
 
@@ -273,16 +284,26 @@ public class PacketProcessor {
       location = locationForICMP();
       if (new File(location).exists()) {
         String targetLocation = FileUtil.appendPath(outputLocation, tableNameIcmp);
+        // delete .crc files
+        cleanup(fmInput, location, partitions.get("icmp"));
 
         if (fmOutput.upload(location, targetLocation, false)) {
 
-          queryEngine.addPartition(tableNameDns, partitions.get("icmp"), targetLocation);
+          queryEngine.addPartition(tableNameIcmp, partitions.get("icmp"), targetLocation);
 
           log.info("Delete work location: {}", location);
-          fmInput.delete(location);
+          fmInput.delete(location, true);
         }
       }
     }
+  }
+
+  private void cleanup(FileManager fm, String location, Set<Partition> partitions) {
+    partitions
+        .stream()
+        .forEach(p -> fm
+            .files(FileUtil.appendPath(location, p.toPath()), ".crc")
+            .forEach(f -> fm.delete(f, false)));
   }
 
   private String locationForDNS() {
@@ -635,7 +656,7 @@ public class PacketProcessor {
       throw new ApplicationException("input directory " + inputDir + "  does not exist");
     }
 
-    List<String> files = fm.files(inputDir, "pcap", "pcap.gz", "pcap.xz");
+    List<String> files = fm.files(inputDir, ".pcap", ".pcap.gz", ".pcap.xz");
 
     if (skipFirst && fm.isLocal()) {
       // order by date and skip the youngest file

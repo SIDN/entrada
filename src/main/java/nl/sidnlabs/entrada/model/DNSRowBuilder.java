@@ -35,7 +35,7 @@ import nl.sidnlabs.pcap.packet.Packet;
  *
  */
 @Component("dnsBuilder")
-public class DNSRowBuilder extends AbstractRowBuilder implements RowBuilder {
+public class DNSRowBuilder extends AbstractRowBuilder {
 
   private static final int RCODE_QUERY_WITHOUT_RESPONSE = -1;
 

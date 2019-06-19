@@ -8,7 +8,7 @@ import nl.sidnlabs.entrada.enrich.AddressEnrichment;
 import nl.sidnlabs.entrada.model.Row.Column;
 
 @Log4j2
-public abstract class AbstractRowBuilder {
+public abstract class AbstractRowBuilder implements RowBuilder {
 
   protected static final int STATUS_COUNT = 100000;
 

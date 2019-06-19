@@ -12,7 +12,6 @@ import nl.sidnlabs.dnslib.message.Question;
 import nl.sidnlabs.dnslib.message.records.edns0.OPTResourceRecord;
 import nl.sidnlabs.dnslib.util.Domaininfo;
 import nl.sidnlabs.dnslib.util.NameUtil;
-import nl.sidnlabs.entrada.config.ServerContext;
 import nl.sidnlabs.entrada.enrich.AddressEnrichment;
 import nl.sidnlabs.entrada.metric.MetricManager;
 import nl.sidnlabs.entrada.support.PacketCombination;
@@ -21,7 +20,7 @@ import nl.sidnlabs.pcap.packet.ICMPPacket;
 import nl.sidnlabs.pcap.packet.Packet;
 
 @Component("icmpBuilder")
-public class ICMPRowBuilder extends AbstractRowBuilder implements RowBuilder {
+public class ICMPRowBuilder extends AbstractRowBuilder {
 
   // stats counters
   private int v4;
@@ -32,13 +31,10 @@ public class ICMPRowBuilder extends AbstractRowBuilder implements RowBuilder {
   private Map<Integer, Integer> typesV6 = new HashMap<>();
   int icmp = 0;
 
-  private ServerContext settings;
   private MetricManager metricManager;
 
-  public ICMPRowBuilder(ServerContext settings, List<AddressEnrichment> enrichments,
-      MetricManager metricManager) {
+  public ICMPRowBuilder(List<AddressEnrichment> enrichments, MetricManager metricManager) {
     super(enrichments);
-    this.settings = settings;
     this.metricManager = metricManager;
   }
 

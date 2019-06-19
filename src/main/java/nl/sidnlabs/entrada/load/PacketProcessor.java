@@ -298,6 +298,13 @@ public class PacketProcessor {
     }
   }
 
+  /**
+   * Cleanup generated data, parquet-mr generates .crc files, these files should not be uploaded.
+   * 
+   * @param fm filemanager to use
+   * @param location location of the generated data
+   * @param partitions created partitions
+   */
   private void cleanup(FileManager fm, String location, Set<Partition> partitions) {
     partitions
         .stream()

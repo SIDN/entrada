@@ -79,7 +79,7 @@ public class ImpalaQueryEngine implements QueryEngine {
 
   }
 
-  public String createPartitionStmt(Partition partition, String location) {
+  private String createPartitionStmt(Partition partition, String location) {
 
     Map<String, Object> values = new HashMap<>();
     values.put("YEAR", Integer.valueOf(partition.getYear()));

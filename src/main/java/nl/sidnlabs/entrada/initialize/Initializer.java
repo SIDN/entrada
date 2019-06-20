@@ -6,11 +6,11 @@ public interface Initializer {
    * Create the directories required for ENTRADA to function.
    * 
    */
-  void createStorage();
+  boolean initializeStorage();
 
   /**
    * Create the database and tables required for ENTRADA to function.
    * 
    */
-  void createDatabase();
+  boolean initializeDatabase();
 }

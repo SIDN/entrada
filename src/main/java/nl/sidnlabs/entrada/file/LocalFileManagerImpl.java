@@ -143,4 +143,15 @@ public class LocalFileManagerImpl implements FileManager {
   public boolean isLocal() {
     return true;
   }
+
+  @Override
+  public boolean mkdir(String path) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public boolean chown(String path, String owner, String group) {
+    throw new UnsupportedOperationException();
+  }
+
 }

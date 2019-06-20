@@ -64,5 +64,5 @@ ROW FORMAT SERDE
 WITH SERDEPROPERTIES (
     'serialization.format' = '1' )
 LOCATION
-   '${S3_LOC}'
+   '${TABLE_LOC}'
 TBLPROPERTIES ('has_encrypted_data'='false')

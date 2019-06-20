@@ -55,6 +55,6 @@ query_ts TIMESTAMP,
 pcap_file STRING)
  partitioned by (year INT, month INT, day INT, server string)
   STORED AS PARQUETFILE
-  LOCATION '${HDFS_LOC}';
+  LOCATION '${TABLE_LOC}';
 
  

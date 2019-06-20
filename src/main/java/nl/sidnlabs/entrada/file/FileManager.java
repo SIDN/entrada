@@ -38,4 +38,8 @@ public interface FileManager {
 
   boolean move(String src, String dest, boolean archive);
 
+  boolean mkdir(String path);
+
+  boolean chown(String path, String owner, String group);
+
 }

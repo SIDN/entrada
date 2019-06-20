@@ -7,9 +7,7 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.Executors;
@@ -147,6 +145,13 @@ public class S3FileManagerImpl implements FileManager {
   }
 
 
+
+  /**
+   * Upload new parquet files or archive processed pcap files. make sure to set the storage class
+   * for newly uploaded files that are archived. the normal parquet upload must use s3 standard
+   * storage class because there is no minimum day limit for standard class. after compaction the
+   * files are changed to STANDARD-IA
+   */
   @Override
   public boolean upload(String location, String outputLocation, boolean archive) {
     log.info("Upload work location: {} to target location: {}", location, outputLocation);
@@ -185,10 +190,6 @@ public class S3FileManagerImpl implements FileManager {
       meta
           .setHeader(Headers.STORAGE_CLASS,
               StorageClass.fromValue(StringUtils.upperCase(archiveStorageClass)));
-    } else {
-      meta
-          .setHeader(Headers.STORAGE_CLASS,
-              StorageClass.fromValue(StringUtils.upperCase(uploadStorageClass)));
     }
 
     request.setMetadata(meta);
@@ -204,24 +205,14 @@ public class S3FileManagerImpl implements FileManager {
 
   private boolean uploadDirectory(File location, S3Details dstDetails, boolean archive) {
 
-
-    // make sure to set the storage class for newly uploaded files
     ObjectMetadataProvider metaDataProvider = (file, meta) -> {
 
       if (archive) {
         meta
             .setHeader(Headers.STORAGE_CLASS,
                 StorageClass.fromValue(StringUtils.upperCase(archiveStorageClass)));
-      } else {
-        meta
-            .setHeader(Headers.STORAGE_CLASS,
-                StorageClass.fromValue(StringUtils.upperCase(uploadStorageClass)));
       }
-      Map<String, String> um = new HashMap<>();
-      um.put("Compacted", "false");
-      meta.setUserMetadata(um);
     };
-
 
     MultipleFileUpload upload = transferManager
         .uploadDirectory(dstDetails.getBucket(), dstDetails.getKey(), location, true,
@@ -344,6 +335,16 @@ public class S3FileManagerImpl implements FileManager {
   @Override
   public boolean isLocal() {
     return false;
+  }
+
+  @Override
+  public boolean mkdir(String path) {
+    throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public boolean chown(String path, String owner, String group) {
+    throw new UnsupportedOperationException();
   }
 
 }

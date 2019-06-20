@@ -82,7 +82,7 @@ public class AthenaQueryEngine implements QueryEngine {
     Map<String, Object> values = new HashMap<>();
     values.put("DATABASE_NAME", database);
     values.put("TABLE_NAME", p.getTable());
-    values.put("S3_LOC", prefix + p.getPath());
+    values.put("TABLE_LOC", prefix + p.getPath());
     values.put("YEAR", p.getYear());
     values.put("MONTH", p.getMonth());
     values.put("DAY", p.getDay());

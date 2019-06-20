@@ -65,6 +65,6 @@ create external table if not exists ${DATABASE_NAME}.${TABLE_NAME} (
  pub_resolver STRING) 
  partitioned by (year INT, month INT, day INT, server string)
   STORED AS PARQUETFILE
-  LOCATION '${HDFS_LOC}';
+  LOCATION '${TABLE_LOC}';
   
   

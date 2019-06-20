@@ -58,14 +58,14 @@ public abstract class AbstractInitializer implements Initializer {
     // create database
     Map<String, Object> parameters = dbParameters();
     String sql = TemplateUtil
-        .template(new ClassPathResource(scriptPrefix + "/create-database.sql",
+        .template(new ClassPathResource("/sql/" + scriptPrefix + "/create-database.sql",
             TemplateUtil.class.getClass()), parameters);
     executeSQL(sql);
 
     // create dns table
     parameters = dnsParameters();
     sql = TemplateUtil
-        .template(new ClassPathResource(scriptPrefix + "/create-table-dns.sql",
+        .template(new ClassPathResource("/sql/" + scriptPrefix + "/create-table-dns.sql",
             TemplateUtil.class.getClass()), parameters);
     executeSQL(sql);
 
@@ -74,7 +74,7 @@ public abstract class AbstractInitializer implements Initializer {
       // create dns table
       parameters = icmpParameters();
       sql = TemplateUtil
-          .template(new ClassPathResource(scriptPrefix + "/create-table-icmp.sql",
+          .template(new ClassPathResource("/sql/" + scriptPrefix + "/create-table-icmp.sql",
               TemplateUtil.class.getClass()), parameters);
       executeSQL(sql);
     }

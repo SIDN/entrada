@@ -25,7 +25,7 @@ public class AmazonInitializer extends AbstractInitializer {
   public AmazonInitializer(AmazonS3 amazonS3, @Qualifier("s3") FileManager fileManager,
       @Qualifier("athena") QueryEngine queryEngine) {
 
-    super(queryEngine, "/sql/athena");
+    super(queryEngine, "athena");
     this.amazonS3 = amazonS3;
     this.fileManager = fileManager;
   }

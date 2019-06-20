@@ -24,7 +24,7 @@ public class HadoopInitializer extends AbstractInitializer {
       @Qualifier("impala") QueryEngine queryEngine,
       @Value("${entrada.icmp.enable}") boolean icmpEnabled) {
 
-    super(queryEngine, "/sql/impala");
+    super(queryEngine, "impala");
     this.fileManager = fileManager;
   }
 

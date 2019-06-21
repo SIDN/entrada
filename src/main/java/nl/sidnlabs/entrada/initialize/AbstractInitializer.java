@@ -2,7 +2,6 @@ package nl.sidnlabs.entrada.initialize;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 import javax.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
@@ -51,8 +50,6 @@ public abstract class AbstractInitializer implements Initializer {
     }
   }
 
-
-
   @Override
   public boolean initializeDatabase() {
     // create database
@@ -60,14 +57,14 @@ public abstract class AbstractInitializer implements Initializer {
     String sql = TemplateUtil
         .template(new ClassPathResource("/sql/" + scriptPrefix + "/create-database.sql",
             TemplateUtil.class.getClass()), parameters);
-    executeSQL(sql);
+    queryEngine.execute(sql);
 
     // create dns table
     parameters = dnsParameters();
     sql = TemplateUtil
         .template(new ClassPathResource("/sql/" + scriptPrefix + "/create-table-dns.sql",
             TemplateUtil.class.getClass()), parameters);
-    executeSQL(sql);
+    queryEngine.execute(sql);
 
     // create icmp table
     if (icmpEnabled) {
@@ -76,7 +73,7 @@ public abstract class AbstractInitializer implements Initializer {
       sql = TemplateUtil
           .template(new ClassPathResource("/sql/" + scriptPrefix + "/create-table-icmp.sql",
               TemplateUtil.class.getClass()), parameters);
-      executeSQL(sql);
+      queryEngine.execute(sql);
     }
 
     return true;
@@ -108,14 +105,14 @@ public abstract class AbstractInitializer implements Initializer {
     return parameters;
   }
 
-  protected void executeSQL(String sql) {
-    try {
-      if (queryEngine.execute(sql).get(5, TimeUnit.MINUTES).equals(Boolean.FALSE)) {
-        // failed to execute sql
-        throw new ApplicationException("Query failed");
-      }
-    } catch (Exception e) {
-      throw new ApplicationException("Query failed");
-    }
-  }
+  // protected void executeSQL(String sql) {
+  // try {
+  // if (queryEngine.execute(sql).get(5, TimeUnit.MINUTES).equals(Boolean.FALSE)) {
+  // // failed to execute sql
+  // throw new ApplicationException("Query failed");
+  // }
+  // } catch (Exception e) {
+  // throw new ApplicationException("Query failed");
+  // }
+  // }
 }

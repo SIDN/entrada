@@ -151,11 +151,11 @@ public class OutputWriterImpl implements OutputWriter {
   private void open(boolean dns, boolean icmp) {
     open = true;
     if (dns) {
-      dnsWriter.open(workLocation, settings.getServerInfo().getNormalizeName(), "dnsdata");
+      dnsWriter.open(workLocation, settings.getServerInfo().getNormalizeName(), "dns");
     }
 
     if (icmp) {
-      icmpWriter.open(workLocation, settings.getServerInfo().getNormalizeName(), "icmpdata");
+      icmpWriter.open(workLocation, settings.getServerInfo().getNormalizeName(), "icmp");
     }
   }
 
@@ -189,9 +189,20 @@ public class OutputWriterImpl implements OutputWriter {
   public Future<Map<String, Set<Partition>>> start(boolean dns, boolean icmp,
       LinkedBlockingQueue<PacketCombination> input) {
 
-    log.info("Open writer");
-    open(dns, icmp);
+    try {
+      log.info("Open writer");
+      open(dns, icmp);
+      // read data from queue
+      read(input);
+    } catch (Exception e) {
+      log.error("Writer thread exception", e);
+    }
 
+    // return future with the created partitions
+    return new AsyncResult<>(close());
+  }
+
+  private void read(LinkedBlockingQueue<PacketCombination> input) {
     List<PacketCombination> batch = new ArrayList<>();
     while (true) {
       batch.clear();
@@ -206,8 +217,7 @@ public class OutputWriterImpl implements OutputWriter {
           dnsRowBuilder.writeMetrics();
           icmpRowBuilder.writeMetrics();
 
-          // return future with the created partitions
-          return new AsyncResult<>(close());
+          return;
         }
       } else {
         // no data from queue, sleep for a while

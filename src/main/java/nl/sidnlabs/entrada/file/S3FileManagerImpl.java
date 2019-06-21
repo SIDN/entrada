@@ -285,7 +285,7 @@ public class S3FileManagerImpl implements FileManager {
         });
       }
       // delete parent
-      deleteObject(details.get());
+      // deleteObject(details.get());
       // everything ok
       return true;
     }

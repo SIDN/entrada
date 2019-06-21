@@ -7,7 +7,6 @@ import org.springframework.stereotype.Component;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.PublicAccessBlockConfiguration;
 import com.amazonaws.services.s3.model.SetPublicAccessBlockRequest;
-import com.amazonaws.services.s3.model.SetPublicAccessBlockResult;
 import nl.sidnlabs.entrada.engine.QueryEngine;
 import nl.sidnlabs.entrada.exception.ApplicationException;
 import nl.sidnlabs.entrada.file.FileManager;
@@ -42,7 +41,7 @@ public class AmazonInitializer extends AbstractInitializer {
       amazonS3.createBucket(bucket);
 
       // make sure to block all public access to the bucket
-      SetPublicAccessBlockResult r = amazonS3
+      amazonS3
           .setPublicAccessBlock(new SetPublicAccessBlockRequest()
               .withBucketName(bucket)
               .withPublicAccessBlockConfiguration(new PublicAccessBlockConfiguration()

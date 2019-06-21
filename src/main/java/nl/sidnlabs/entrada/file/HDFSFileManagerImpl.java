@@ -1,11 +1,15 @@
 package nl.sidnlabs.entrada.file;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileSystem;
@@ -25,18 +29,11 @@ public class HDFSFileManagerImpl implements FileManager {
   @Value("${hdfs.nameservice}")
   private String hdfsNameservice;
 
-  @Value("${hdfs.username}")
-  private String username;
-
   @Value("${kerberos.username}")
   private String krbUsername;
 
-  @Value("${kerberos.password}")
-  private String krbPassword;
-
   @Value("${kerberos.keytab}")
   private String krbKeyTab;
-
 
   @Override
   public String schema() {
@@ -57,21 +54,76 @@ public class HDFSFileManagerImpl implements FileManager {
 
   @Override
   public List<String> files(String dir, String... filter) {
-    throw new UnsupportedOperationException();
+
+    if (!exists(dir)) {
+      log.error("Location {} does not exist, cannot continue");
+      return Collections.emptyList();
+    }
+
+    FileSystem fs = createFS();
+
+    try {
+      return Arrays
+          .stream(fs.listStatus(new Path(dir)))
+          .map(s -> s.getPath().toString())
+          .filter(p -> checkFilter(p, Arrays.asList(filter)))
+          .collect(Collectors.toList());
+    } catch (Exception e) {
+      log.error("Error while checking for files in dir: {}", dir, e);
+    }
+
+    return Collections.emptyList();
+  }
+
+  private boolean checkFilter(String file, List<String> filters) {
+    if (filters.isEmpty()) {
+      return true;
+    }
+    return filters.stream().anyMatch(f -> StringUtils.endsWith(file, f));
   }
 
   @Override
   public Optional<InputStream> open(String location) {
     log.info("Open HDFS file: " + location);
 
-    throw new UnsupportedOperationException();
+    if (!exists(location)) {
+      log.error("Location {} does not exist, cannot continue");
+      return Optional.empty();
+    }
+
+    FileSystem fs = createFS();
+    try {
+      return Optional.of(fs.open(new Path(location)));
+    } catch (Exception e) {
+      log.error("Cannot open {}", location, e);
+    }
+
+    return Optional.empty();
   }
 
   @Override
-  public boolean upload(String location, String outputLocation, boolean archive) {
-    log.info("Upload work location: {} to target location: {}", location, outputLocation);
+  public boolean upload(String src, String dst, boolean archive) {
+    log.info("Upload src location: {} to dst location: {}", src, dst);
 
-    throw new UnsupportedOperationException();
+    File f = new File(src);
+
+    if (!f.exists()) {
+      log.error("Location {} does not exist, cannot continue with upload");
+      return false;
+    }
+
+    FileSystem fs = createFS();
+    try {
+      Path pathDst = new Path(dst);
+      if (!fs.exists(pathDst)) {
+        fs.mkdirs(pathDst);
+      }
+      fs.copyFromLocalFile(false, true, new Path(src), pathDst);
+      return true;
+    } catch (Exception e) {
+      log.error("Error while uploading {} to {}", src, dst);
+    }
+    return false;
   }
 
   @Override
@@ -86,17 +138,37 @@ public class HDFSFileManagerImpl implements FileManager {
   }
 
   @Override
-  public boolean delete(String location, boolean children) {
+  public boolean delete(String location, boolean recursive) {
     log.info("Delete HDFS file: " + location);
 
-    throw new UnsupportedOperationException();
+    FileSystem fs = createFS();
+    try {
+      Path path = new Path(location);
+      // do not try to delete non-existing path, just return true
+      if (fs.exists(path)) {
+        return fs.delete(path, recursive);
+      }
+
+      return true;
+    } catch (IllegalArgumentException | IOException e) {
+      log.error("Cannot delete {} ", location, e);
+    }
+
+    return false;
   }
 
   @Override
-  public boolean move(String src, String dest, boolean archive) {
-    log.info("Move HDFS file: {} to: {} " + src, dest);
+  public boolean move(String src, String dst, boolean archive) {
+    log.info("Move HDFS file: {} to: {} " + src, dst);
 
-    throw new UnsupportedOperationException();
+    FileSystem fs = createFS();
+    try {
+      return fs.rename(new Path(src), new Path(dst));
+    } catch (IllegalArgumentException | IOException e) {
+      log.error("Cannot rename {} to {}", src, dst, e);
+    }
+
+    return false;
   }
 
 
@@ -108,13 +180,22 @@ public class HDFSFileManagerImpl implements FileManager {
   private FileSystem createNonSecureFS() {
     Configuration conf = new Configuration();
     conf.set("fs.defaultFS", hdfsNameservice);
-    System.setProperty("HADOOP_USER_NAME", username);
+    System.setProperty("HADOOP_USER_NAME", hdfsUser());
 
     try {
       return FileSystem.get(conf);
     } catch (IOException e) {
       throw new ApplicationException("Cannot create non-secure HDFS filesystem", e);
     }
+  }
+
+  private String hdfsUser() {
+    String[] parts = StringUtils.split(krbUsername, "@");
+    if (parts.length == 2) {
+      return parts[1];
+    }
+    throw new ApplicationException(
+        "Invalid kerberos username format, must be: <use>r@<REALM> found: " + krbUsername);
   }
 
 

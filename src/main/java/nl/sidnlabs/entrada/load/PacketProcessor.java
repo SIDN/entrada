@@ -49,7 +49,6 @@ import nl.sidnlabs.dnslib.types.MessageType;
 import nl.sidnlabs.dnslib.types.ResourceRecordType;
 import nl.sidnlabs.entrada.config.ServerContext;
 import nl.sidnlabs.entrada.engine.QueryEngine;
-import nl.sidnlabs.entrada.exception.ApplicationException;
 import nl.sidnlabs.entrada.file.FileManager;
 import nl.sidnlabs.entrada.file.FileManagerFactory;
 import nl.sidnlabs.entrada.metric.MetricManager;
@@ -263,16 +262,16 @@ public class PacketProcessor {
     String location = locationForDNS();
     FileManager fmInput = fileManagerFactory.getFor(location);
     if (new File(location).exists()) {
-      String targetLocation = FileUtil.appendPath(outputLocation, tableNameDns);
+      // String targetLocation = outputLocation;
       // delete .crc files
       cleanup(fmInput, location, partitions.get("dns"));
 
-      if (fmOutput.upload(location, targetLocation, false)) {
+      if (fmOutput.upload(location, outputLocation, false)) {
         /*
          * make sure the database table contains all the required partitions. If not create the
          * missing database partition(s)
          */
-        queryEngine.addPartition(tableNameDns, partitions.get("dns"), targetLocation);
+        queryEngine.addPartition(tableNameDns, partitions.get("dns"), outputLocation);
 
         log.info("Delete work location: {}", location);
         fmInput.delete(location, true);
@@ -283,13 +282,13 @@ public class PacketProcessor {
       // move icmp data
       location = locationForICMP();
       if (new File(location).exists()) {
-        String targetLocation = FileUtil.appendPath(outputLocation, tableNameIcmp);
+        // String targetLocation = outputLocation;
         // delete .crc files
         cleanup(fmInput, location, partitions.get("icmp"));
 
-        if (fmOutput.upload(location, targetLocation, false)) {
+        if (fmOutput.upload(location, outputLocation, false)) {
 
-          queryEngine.addPartition(tableNameIcmp, partitions.get("icmp"), targetLocation);
+          queryEngine.addPartition(tableNameIcmp, partitions.get("icmp"), outputLocation);
 
           log.info("Delete work location: {}", location);
           fmInput.delete(location, true);
@@ -314,13 +313,11 @@ public class PacketProcessor {
   }
 
   private String locationForDNS() {
-    return FileUtil
-        .appendPath(workLocation, settings.getServerInfo().getNormalizeName(), "dnsdata/");
+    return FileUtil.appendPath(workLocation, settings.getServerInfo().getNormalizeName(), "dns/");
   }
 
   private String locationForICMP() {
-    return FileUtil
-        .appendPath(workLocation, settings.getServerInfo().getNormalizeName(), "icmpdata/");
+    return FileUtil.appendPath(workLocation, settings.getServerInfo().getNormalizeName(), "icmp/");
   }
 
   /**
@@ -660,7 +657,8 @@ public class PacketProcessor {
             System.getProperty("file.separator"));
 
     if (!fm.exists(inputDir)) {
-      throw new ApplicationException("input directory " + inputDir + "  does not exist");
+      log.error("input directory " + inputDir + "  does not exist");
+      return Collections.emptyList();
     }
 
     List<String> files = fm.files(inputDir, ".pcap", ".pcap.gz", ".pcap.xz");

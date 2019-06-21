@@ -46,6 +46,7 @@ create external table if not exists ${DATABASE_NAME}.${TABLE_NAME} (
  edns_client_subnet_country STRING,
  labels INT,
  res_len INT,
+ svr string,
  time_micro bigint,
  resp_frag INT,
  proc_time INT,

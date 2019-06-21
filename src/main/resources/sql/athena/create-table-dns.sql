@@ -54,6 +54,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS ${DATABASE_NAME}.${TABLE_NAME}(
   is_opendns boolean,
   dns_res_len int,
   server_location string,
+  query_ts TIMESTAMP,
   edns_padding int,
   pcap_file string,
   edns_keytag_count int,

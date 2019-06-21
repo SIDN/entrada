@@ -101,9 +101,6 @@ public class DNSRowBuilder extends AbstractRowBuilder {
     // no response might be caused by rate limiting
     int rcode = RCODE_QUERY_WITHOUT_RESPONSE; // default no reply, use non standard rcode value -1
 
-    // set the nameserver the queries are going to/coming from
-    row.addColumn(column("svr", combo.getServer().getName()));
-
     // if no anycast location is encoded in the name then the anycast location will be null
     row.addColumn(column("server_location", combo.getServer().getLocation()));
 
@@ -111,8 +108,9 @@ public class DNSRowBuilder extends AbstractRowBuilder {
     // in case of of debugging.
     row.addColumn(column("pcap_file", combo.getPcapFilename()));
 
-    // add meta data
-    String addressToCheck = (reqTransport != null) ? reqTransport.getSrc() : respTransport.getSrc();
+    // add meta data for the client IP
+    String addressToCheck =
+        StringUtils.defaultString(reqTransport.getSrc(), respTransport.getDst());
     enrich(addressToCheck, "", row);
 
     // these are the values that are retrieved from the response
@@ -164,8 +162,7 @@ public class DNSRowBuilder extends AbstractRowBuilder {
     // if no request found in the request then use values from the response.
     row
         .addColumn(column("rcode", rcode))
-        .addColumn(
-            column("unixtime", reqTransport != null ? reqTransport.getTs() : respTransport.getTs()))
+        .addColumn(column("unixtime", time(reqTransport, respTransport)))
         .addColumn(column("time", ts.getTime()))
         .addColumn(column("time_micro",
             reqTransport != null ? reqTransport.getTsmicros() : respTransport.getTsmicros()))
@@ -271,6 +268,10 @@ public class DNSRowBuilder extends AbstractRowBuilder {
 
 
     return row;
+  }
+
+  private long time(Packet reqTransport, Packet respTransport) {
+    return (reqTransport != null) ? reqTransport.getTs() : respTransport.getTs();
   }
 
   /**

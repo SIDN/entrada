@@ -109,8 +109,8 @@ public class DNSRowBuilder extends AbstractRowBuilder {
     row.addColumn(column("pcap_file", combo.getPcapFilename()));
 
     // add meta data for the client IP
-    String addressToCheck =
-        StringUtils.defaultString(reqTransport.getSrc(), respTransport.getDst());
+    String addressToCheck = reqTransport != null ? reqTransport.getSrc() : respTransport.getDst();
+
     enrich(addressToCheck, "", row);
 
     // these are the values that are retrieved from the response

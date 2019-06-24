@@ -77,39 +77,65 @@ public abstract class AbstractQueryEngine implements QueryEngine {
             values);
 
     // create tmp table with compacted parquet files AND delete old parquet files from src table
-    if (!execute(sql) || !fileManager
-        .delete(FileUtil.appendPath(outputLocation, p.getTable(), p.getPath()), true)) {
+    if (!execute(sql)
+        || !deleteSrcParquetData(fileManager,
+            FileUtil.appendPath(outputLocation, p.getTable(), p.getPath()))
+        || !move(p, FileUtil.appendPath(location, p.getPath()))) {
       return false;
     }
 
-    // get list of compacted files
-    List<String> filesToMove = fileManager.files(FileUtil.appendPath(location, p.getPath()));
-    // move new parquet files to src table now.
-    for (String f : filesToMove) {
-      if (!move(f, p)) {
-        return false;
-      }
-    }
+    // // get list of compacted files
+    // List<String> filesToMove = fileManager.files(FileUtil.appendPath(location, p.getPath()));
+    // // move new parquet files to src table now.
+    // for (String f : filesToMove) {
+    // if (!move(f, p)) {
+    // return false;
+    // }
+    // }
 
     // cleanup
     return cleanup(location, dropTableSql);
   }
 
-  private boolean move(String src, TablePartition p) {
-    // create a new filename and encode the date and nameserver info in the filename
-    String newName = FileUtil
-        .appendPath(outputLocation, p.getTable(), p.getPath(),
-            StringUtils
-                .join(p.getYear(), StringUtils.leftPad(String.valueOf(p.getMonth()), 2, "0"),
-                    StringUtils.leftPad(String.valueOf(p.getDay()), 2, "0"))
-                + "-" + p.getServer() + "-" + UUID.randomUUID() + ".parquet");
-
-    return fileManager.move(src, newName, false);
+  private boolean deleteSrcParquetData(FileManager fileManager, String location) {
+    List<String> files = fileManager.files(location);
+    for (String f : files) {
+      if (!fileManager.delete(f)) {
+        return false;
+      }
+    }
+    return true;
   }
 
-  private boolean cleanup(String prefix, String dropTableSql) {
-    // delete any old data files on s3 and make sure the tmp table is not still around
-    return fileManager.delete(prefix, true) && execute(dropTableSql);
+  private boolean move(TablePartition p, String location) {
+
+    // get list of compacted files
+    List<String> filesToMove = fileManager.files(FileUtil.appendPath(location, p.getPath()));
+    // move new parquet files to src table now.
+    for (String f : filesToMove) {
+
+      // create a new filename and encode the date and nameserver info in the filename
+      String newName = FileUtil
+          .appendPath(outputLocation, p.getTable(), p.getPath(),
+              StringUtils
+                  .join(p.getYear(), StringUtils.leftPad(String.valueOf(p.getMonth()), 2, "0"),
+                      StringUtils.leftPad(String.valueOf(p.getDay()), 2, "0"))
+                  + "-" + p.getServer() + "-" + UUID.randomUUID() + ".parquet");
+
+      if (!fileManager.move(f, newName, false)) {
+        return false;
+      }
+
+      // if (!move(f, p)) {
+      // return false;
+      // }
+    }
+    return true;
+  }
+
+  private boolean cleanup(String location, String dropTableSql) {
+    // delete any old data and make sure the tmp table is not still around
+    return fileManager.rmdir(location) && execute(dropTableSql);
   }
 
   // private boolean exec(String sql) {

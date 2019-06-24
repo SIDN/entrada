@@ -271,21 +271,35 @@ public class S3FileManagerImpl implements FileManager {
   }
 
   @Override
-  public boolean delete(String location, boolean children) {
+  public boolean rmdir(String location) {
     log.info("Delete S3 file: " + location);
 
     Optional<S3Details> details = S3Details.from(location);
     if (details.isPresent()) {
-      if (children) {
-        // also delete children
-        List<String> objects = files(location);
-        objects.stream().forEach(o -> {
-          Optional<S3Details> childDetails = S3Details.from(o);
-          deleteObject(childDetails.get());
-        });
-      }
-      // delete parent
+
+      // delete all objects with "location" prefix
+      List<String> objects = files(location);
+      objects.stream().forEach(o -> {
+        Optional<S3Details> childDetails = S3Details.from(o);
+        deleteObject(childDetails.get());
+      });
+
+      // delete dir
       // deleteObject(details.get());
+      // everything ok
+      return true;
+    }
+    return false;
+  }
+
+  @Override
+  public boolean delete(String location) {
+    log.info("Delete S3 file: " + location);
+
+    Optional<S3Details> details = S3Details.from(location);
+    if (details.isPresent()) {
+      // delete file
+      deleteObject(details.get());
       // everything ok
       return true;
     }

@@ -72,6 +72,11 @@ public class GeoIPServiceImpl implements GeoIPService {
   @PostConstruct
   public void initialize() {
 
+    File loc = new File(location);
+    if (!loc.exists()) {
+      loc.mkdirs();
+    }
+
     if (update(dbCountry)) {
       log.info("GEOIP country database does not exist or is too old, fetch latest version");
       download(dbCountry, dbCountryUrl, 30);

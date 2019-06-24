@@ -9,7 +9,7 @@ public interface QueryEngine {
 
   boolean execute(String sql);
 
-  Future<Boolean> addPartition(String table, Set<Partition> partitions, String location);
+  Future<Boolean> addPartition(String table, Set<Partition> partitions);
 
   boolean compact(TablePartition p);
 

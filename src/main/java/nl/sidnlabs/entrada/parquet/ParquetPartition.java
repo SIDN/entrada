@@ -20,6 +20,8 @@ import nl.sidnlabs.entrada.exception.ApplicationException;
 @Value
 public class ParquetPartition<T> {
 
+  private static final int ROWGROUP_SIZE = 512 * 1024 * 1024;;
+
   private ParquetWriter<T> writer;
   private String filename;
   @NonFinal
@@ -44,6 +46,7 @@ public class ParquetPartition<T> {
           .withConf(conf)
           .withWriterVersion(WriterVersion.PARQUET_1_0)
           .withSchema(schema)
+          .withRowGroupSize(ROWGROUP_SIZE)
           .build();
     } catch (IOException e) {
       throw new ApplicationException("Cannot create a Parquet parition", e);

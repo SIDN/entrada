@@ -105,7 +105,7 @@ public class FileArchiveService {
 
     // delete pcap file when archive or delete option is chosen
     if (ArchiveOption.ARCHIVE == archiveOption || ArchiveOption.DELETE == archiveOption) {
-      fmSrc.delete(file, false);
+      fmSrc.delete(file);
     }
   }
 

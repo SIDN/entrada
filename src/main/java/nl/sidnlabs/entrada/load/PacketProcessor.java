@@ -19,6 +19,7 @@
  */
 package nl.sidnlabs.entrada.load;
 
+import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.IOException;
@@ -73,7 +74,6 @@ import nl.sidnlabs.pcap.packet.TCPFlow;
 @Component
 public class PacketProcessor {
 
-  private static final int DEFAULT_PCAP_READER_BUFFER_SIZE = 65536;
   private static final int MAX_QUEUE_SIZE = 100000;
 
   // config options from application.properties
@@ -86,7 +86,7 @@ public class PacketProcessor {
   @Value("${entrada.cache.timeout.ip.fragmented}")
   private int cacheTimeoutIPFragConfig;
 
-  @Value("${entrada.buffer.pcap.reader}")
+  @Value("${entrada.inputstream.buffer:32}")
   private int bufferSizeConfig;
 
   @Value("${entrada.icmp.enable}")
@@ -262,19 +262,19 @@ public class PacketProcessor {
     String location = locationForDNS();
     FileManager fmInput = fileManagerFactory.getFor(location);
     if (new File(location).exists()) {
-      // String targetLocation = outputLocation;
       // delete .crc files
       cleanup(fmInput, location, partitions.get("dns"));
 
-      if (fmOutput.upload(location, outputLocation, false)) {
+      String dstLocation = FileUtil.appendPath(outputLocation, "dns");
+      if (fmOutput.upload(location, dstLocation, false)) {
         /*
          * make sure the database table contains all the required partitions. If not create the
          * missing database partition(s)
          */
-        queryEngine.addPartition(tableNameDns, partitions.get("dns"), outputLocation);
+        queryEngine.addPartition(tableNameDns, partitions.get("dns"));
 
         log.info("Delete work location: {}", location);
-        fmInput.delete(location, true);
+        fmInput.rmdir(location);
       }
     }
 
@@ -282,16 +282,16 @@ public class PacketProcessor {
       // move icmp data
       location = locationForICMP();
       if (new File(location).exists()) {
-        // String targetLocation = outputLocation;
         // delete .crc files
         cleanup(fmInput, location, partitions.get("icmp"));
 
-        if (fmOutput.upload(location, outputLocation, false)) {
+        String dstLocation = FileUtil.appendPath(outputLocation, "dns");
+        if (fmOutput.upload(location, dstLocation, false)) {
 
-          queryEngine.addPartition(tableNameIcmp, partitions.get("icmp"), outputLocation);
+          queryEngine.addPartition(tableNameIcmp, partitions.get("icmp"));
 
           log.info("Delete work location: {}", location);
-          fmInput.delete(location, true);
+          fmInput.rmdir(location);
         }
       }
     }
@@ -309,7 +309,7 @@ public class PacketProcessor {
         .stream()
         .forEach(p -> fm
             .files(FileUtil.appendPath(location, p.toPath()), ".crc")
-            .forEach(f -> fm.delete(f, false)));
+            .forEach(f -> fm.delete(f)));
   }
 
   private String locationForDNS() {
@@ -628,11 +628,14 @@ public class PacketProcessor {
       return false;
     }
 
-    int bufSize = bufferSizeConfig > 512 ? bufferSizeConfig : DEFAULT_PCAP_READER_BUFFER_SIZE;
+    // int bufSize = bufferSizeConfig > 512 ? bufferSizeConfig : DEFAULT_PCAP_READER_BUFFER_SIZE;
+    // create bufferedinputstream and use large buffer to avoid having lots of
+    // os calls to read data fromn disk.
     try {
       InputStream decompressor =
-          CompressionUtil.getDecompressorStreamWrapper(ois.get(), file, bufSize);
-      this.pcapReader = new PcapReader(new DataInputStream(decompressor));
+          CompressionUtil.getDecompressorStreamWrapper(ois.get(), file, bufferSizeConfig * 2014);
+      this.pcapReader = new PcapReader(
+          new DataInputStream(new BufferedInputStream(decompressor, bufferSizeConfig * 1024)));
     } catch (IOException e) {
       log.error("Error creating pcap reader for: " + file);
       return false;

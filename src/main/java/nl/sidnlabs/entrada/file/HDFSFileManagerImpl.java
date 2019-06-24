@@ -138,7 +138,7 @@ public class HDFSFileManagerImpl implements FileManager {
   }
 
   @Override
-  public boolean delete(String location, boolean recursive) {
+  public boolean delete(String location) {
     log.info("Delete HDFS file: " + location);
 
     FileSystem fs = createFS();
@@ -146,7 +146,27 @@ public class HDFSFileManagerImpl implements FileManager {
       Path path = new Path(location);
       // do not try to delete non-existing path, just return true
       if (fs.exists(path)) {
-        return fs.delete(path, recursive);
+        return fs.delete(path, false);
+      }
+
+      return true;
+    } catch (IllegalArgumentException | IOException e) {
+      log.error("Cannot delete {} ", location, e);
+    }
+
+    return false;
+  }
+
+  @Override
+  public boolean rmdir(String location) {
+    log.info("Delete HDFS directory: " + location);
+
+    FileSystem fs = createFS();
+    try {
+      Path path = new Path(location);
+      // do not try to delete non-existing path, just return true
+      if (fs.exists(path)) {
+        return fs.delete(path, true);
       }
 
       return true;

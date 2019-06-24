@@ -34,7 +34,21 @@ public interface FileManager {
    */
   boolean upload(String location, String outputLocation, boolean archive);
 
-  boolean delete(String file, boolean children);
+  /**
+   * Delete a file
+   * 
+   * @param file the file to delete
+   * @return true if file has been deleted or did not exist
+   */
+  boolean delete(String file);
+
+  /**
+   * Delete a directory and its children
+   * 
+   * @param dir the directory to delete
+   * @return true if file has been deleted or did not exist
+   */
+  boolean rmdir(String dir);
 
   boolean move(String src, String dest, boolean archive);
 

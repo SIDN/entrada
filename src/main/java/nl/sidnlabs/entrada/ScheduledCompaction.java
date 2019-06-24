@@ -5,6 +5,7 @@ import java.util.Date;
 import java.util.List;
 import org.apache.commons.lang3.time.DateUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import lombok.extern.log4j.Log4j2;
@@ -14,6 +15,7 @@ import nl.sidnlabs.entrada.service.PartitionService;
 
 @Log4j2
 @Component
+@ConditionalOnExpression("{'aws', 'hadoop'}.contains('${entrada.engine}')")
 public class ScheduledCompaction {
 
   @Value("${entrada.parquet.compaction.age}")

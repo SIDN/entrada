@@ -27,6 +27,8 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import javax.annotation.PostConstruct;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.web.util.matcher.IpAddressMatcher;
@@ -37,12 +39,13 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
   private List<IpAddressMatcher> matchers4 = new ArrayList<>();
   private List<IpAddressMatcher> matchers6 = new ArrayList<>();
+
   private List<String> subnets = new ArrayList<>();
 
   @Value("${entrada.location.work}")
   private String workDir;
 
-  @Override
+  @PostConstruct
   public void init() {
 
     String filename = workDir + System.getProperty("file.separator") + getFilename();
@@ -111,6 +114,8 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
         .filter(s -> s.contains(":"))
         .forEach(s -> matchers6.add(new IpAddressMatcher(s)));
 
+    log.info("Loaded {} resolver addresses from file: {}", getSize(), file);
+
     return !matchers4.isEmpty() || !matchers6.isEmpty();
   }
 
@@ -126,16 +131,17 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
   @Override
   public boolean match(String address) {
-    // reolver matchers are split into a v4 and v6 group
+    // matchers are split into a v4 and v6 group
     // to allow us to quickly skip the version we don't need
     // to check
 
-    if (address != null && address.contains(".")) {
+    if (StringUtils.contains(address, ".")) {
       for (IpAddressMatcher m : matchers4) {
         if (m.matches(address)) {
           return true;
         }
       }
+      return false;
     }
 
     for (IpAddressMatcher m : matchers6) {

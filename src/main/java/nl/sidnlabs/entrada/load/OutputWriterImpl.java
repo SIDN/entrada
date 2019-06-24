@@ -53,7 +53,7 @@ import nl.sidnlabs.pcap.packet.Packet;
 @Component
 public class OutputWriterImpl implements OutputWriter {
 
-  private static final int ROW_BATCH_SIZE = 5000;
+  private static final int ROW_BATCH_SIZE = 10000;
 
   protected final Map<RequestKey, Packet> requestCache = new HashMap<>();
 

@@ -44,22 +44,9 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
     super(jdbcTemplate, fileManager, "impala");
   }
 
-  // @Override
-  // @Async
-  // public Future<Boolean> execute(String sql) {
-  // try {
-  // jdbcTemplate.execute(sql);
-  // } catch (DataAccessException e) {
-  // log.error("SQL execution failed, sql: {}", sql, e);
-  // return new AsyncResult<>(Boolean.FALSE);
-  // }
-  //
-  // return new AsyncResult<>(Boolean.TRUE);
-  // }
-
   @Override
   @Async
-  public Future<Boolean> addPartition(String table, Set<Partition> partitions, String location) {
+  public Future<Boolean> addPartition(String table, Set<Partition> partitions) {
 
     Map<String, Object> values = new HashMap<>();
     values.put("DATABASE_NAME", database);

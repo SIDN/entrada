@@ -54,7 +54,7 @@ public class AthenaQueryEngine extends AbstractQueryEngine {
 
   @Override
   @Async
-  public Future<Boolean> addPartition(String table, Set<Partition> partitions, String location) {
+  public Future<Boolean> addPartition(String table, Set<Partition> partitions) {
     // The data is already in Hive format, no need to create individual partitions
     // just run "MSCK REPAIR TABLE" to have Athena discover then new partitions.
     if (execute(SQL_REPAIR_TABLE + database + "." + table)) {

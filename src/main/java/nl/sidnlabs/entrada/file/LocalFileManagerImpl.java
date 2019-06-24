@@ -3,8 +3,6 @@ package nl.sidnlabs.entrada.file;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -70,18 +68,21 @@ public class LocalFileManagerImpl implements FileManager {
   }
 
   @Override
-  public boolean upload(String location, String outputLocation, boolean archive) {
-    log.info("Upload work location: {} to target location: {}", location, outputLocation);
+  public boolean upload(String src, String dst, boolean archive) {
+    log.info("Upload work location: {} to target location: {}", src, dst);
 
-    Path src = Paths.get(location);
-    Path dest = Paths.get(outputLocation);
+    // Path src = Paths.get(location);
+    // Path dest = Paths.get(outputLocation);
 
     try {
       // upload all data but skip .crc files
-      Files.walk(src).filter(p -> !p.endsWith(".crc")).forEach(s -> copy(s, src, dest));
+      // Files.walk(src).filter(p -> !p.endsWith(".crc")).forEach(s -> copy(s, src, dest));
+      FileUtils.copyDirectory(new File(src), new File(dst), true);
+      // Files.copy(Paths.get(src), Paths.get(dst));
       return true;
+      // return true;
     } catch (Exception ex) {
-      log.error("Cannot copy directory: {}", src, ex);
+      log.error("Cannot upload directory: {} to {}", src, dst, ex);
     }
 
     return false;
@@ -103,12 +104,29 @@ public class LocalFileManagerImpl implements FileManager {
   }
 
   @Override
-  public boolean delete(String location, boolean children) {
+  public boolean rmdir(String location) {
+    log.info("Delete local directory: " + location);
+
+    File f = new File(location);
+    if (f.exists() && f.isDirectory()) {
+      return FileSystemUtils.deleteRecursively(f);
+    }
+
+    return false;
+  }
+
+  @Override
+  public boolean delete(String location) {
     log.info("Delete local file: " + location);
 
     File f = new File(location);
-    if (f.exists()) {
-      return FileSystemUtils.deleteRecursively(f);
+    if (f.exists() && f.isFile()) {
+      try {
+        Files.delete(Paths.get(location));
+        return true;
+      } catch (IOException e) {
+        log.error("Cannot delete file: {}", location, e);
+      }
     }
 
     return false;
@@ -117,10 +135,13 @@ public class LocalFileManagerImpl implements FileManager {
 
   @Override
   public boolean move(String src, String dst, boolean archive) {
-    log.info("Move local file: {} to: {} " + src, dst);
+    log.info("Move local file: {} to: {} ", src, dst);
+    Path dstPath = Paths.get(dst);
+    // make sure the directory exists
+    mkdir(dstPath.getParent().toString());
 
     try {
-      Files.move(Paths.get(src), Paths.get(dst), StandardCopyOption.REPLACE_EXISTING);
+      Files.move(Paths.get(src), dstPath, StandardCopyOption.REPLACE_EXISTING);
       return true;
     } catch (IOException e) {
       log.error("Error while moving file {} to {}", src, dst, e);
@@ -130,13 +151,7 @@ public class LocalFileManagerImpl implements FileManager {
 
   @Override
   public boolean supported(String location) {
-    try {
-      URI uri = new URI(location);
-      return StringUtils.equalsIgnoreCase(uri.getScheme(), "file");
-    } catch (URISyntaxException e) {
-      log.error("Invalid location URI: " + location);
-    }
-    return false;
+    return StringUtils.startsWith(location, "/");
   }
 
   @Override
@@ -146,7 +161,15 @@ public class LocalFileManagerImpl implements FileManager {
 
   @Override
   public boolean mkdir(String path) {
-    throw new UnsupportedOperationException();
+    log.info("Create directory: {} ", path);
+    File f = new File(path);
+
+    if (!f.exists()) {
+      return f.mkdirs();
+    }
+
+    // dir already exists
+    return true;
   }
 
   @Override

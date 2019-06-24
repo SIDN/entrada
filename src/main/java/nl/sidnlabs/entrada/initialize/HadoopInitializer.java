@@ -18,11 +18,16 @@ public class HadoopInitializer extends AbstractInitializer {
   @Value("${entrada.location.archive}")
   private String archiveLocation;
 
+  @Value("${hdfs.data.owner}")
+  private String owner;
+
+  @Value("${hdfs.data.group}")
+  private String group;
+
   private FileManager fileManager;
 
   public HadoopInitializer(@Qualifier("hdfs") FileManager fileManager,
-      @Qualifier("impala") QueryEngine queryEngine,
-      @Value("${entrada.icmp.enable}") boolean icmpEnabled) {
+      @Qualifier("impala") QueryEngine queryEngine) {
 
     super(queryEngine, "impala");
     this.fileManager = fileManager;
@@ -42,7 +47,7 @@ public class HadoopInitializer extends AbstractInitializer {
 
     if ((fileManager.supported(outputLocation) && !fileManager.exists(outputLocation))
         && (!fileManager.mkdir(outputLocation)
-            || !fileManager.chown(outputLocation, "impala", "impala"))) {
+            || !fileManager.chown(outputLocation, owner, group))) {
       return false;
     }
 

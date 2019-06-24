@@ -265,7 +265,7 @@ public class PacketProcessor {
       // delete .crc files
       cleanup(fmInput, location, partitions.get("dns"));
 
-      String dstLocation = FileUtil.appendPath(outputLocation, "dns");
+      String dstLocation = FileUtil.appendPath(outputLocation, tableNameDns);
       if (fmOutput.upload(location, dstLocation, false)) {
         /*
          * make sure the database table contains all the required partitions. If not create the
@@ -285,7 +285,7 @@ public class PacketProcessor {
         // delete .crc files
         cleanup(fmInput, location, partitions.get("icmp"));
 
-        String dstLocation = FileUtil.appendPath(outputLocation, "dns");
+        String dstLocation = FileUtil.appendPath(outputLocation, tableNameIcmp);
         if (fmOutput.upload(location, dstLocation, false)) {
 
           queryEngine.addPartition(tableNameIcmp, partitions.get("icmp"));
@@ -307,9 +307,8 @@ public class PacketProcessor {
   private void cleanup(FileManager fm, String location, Set<Partition> partitions) {
     partitions
         .stream()
-        .forEach(p -> fm
-            .files(FileUtil.appendPath(location, p.toPath()), ".crc")
-            .forEach(f -> fm.delete(f)));
+        .forEach(
+            p -> fm.files(FileUtil.appendPath(location, p.toPath()), ".crc").forEach(fm::delete));
   }
 
   private String locationForDNS() {
@@ -628,12 +627,9 @@ public class PacketProcessor {
       return false;
     }
 
-    // int bufSize = bufferSizeConfig > 512 ? bufferSizeConfig : DEFAULT_PCAP_READER_BUFFER_SIZE;
-    // create bufferedinputstream and use large buffer to avoid having lots of
-    // os calls to read data fromn disk.
     try {
       InputStream decompressor =
-          CompressionUtil.getDecompressorStreamWrapper(ois.get(), file, bufferSizeConfig * 2014);
+          CompressionUtil.getDecompressorStreamWrapper(ois.get(), file, bufferSizeConfig * 1024);
       this.pcapReader = new PcapReader(
           new DataInputStream(new BufferedInputStream(decompressor, bufferSizeConfig * 1024)));
     } catch (IOException e) {

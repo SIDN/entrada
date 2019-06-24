@@ -71,10 +71,7 @@ public abstract class AbstractQueryEngine implements QueryEngine {
       return false;
     }
 
-    String sql = TemplateUtil
-        .template(
-            new ClassPathResource("/sql/" + scriptPrefix + "/partition-compaction.sql", getClass()),
-            values);
+    String sql = TemplateUtil.template(getCompactionScript(p.getTable()), values);
 
     // create tmp table with compacted parquet files AND delete old parquet files from src table
     if (!execute(sql)
@@ -84,17 +81,13 @@ public abstract class AbstractQueryEngine implements QueryEngine {
       return false;
     }
 
-    // // get list of compacted files
-    // List<String> filesToMove = fileManager.files(FileUtil.appendPath(location, p.getPath()));
-    // // move new parquet files to src table now.
-    // for (String f : filesToMove) {
-    // if (!move(f, p)) {
-    // return false;
-    // }
-    // }
-
     // cleanup
     return cleanup(location, dropTableSql);
+  }
+
+  private ClassPathResource getCompactionScript(String table) {
+    return new ClassPathResource("/sql/" + scriptPrefix + "/partition-compaction-" + table + ".sql",
+        getClass());
   }
 
   private boolean deleteSrcParquetData(FileManager fileManager, String location) {
@@ -125,10 +118,6 @@ public abstract class AbstractQueryEngine implements QueryEngine {
       if (!fileManager.move(f, newName, false)) {
         return false;
       }
-
-      // if (!move(f, p)) {
-      // return false;
-      // }
     }
     return true;
   }
@@ -137,16 +126,5 @@ public abstract class AbstractQueryEngine implements QueryEngine {
     // delete any old data and make sure the tmp table is not still around
     return fileManager.rmdir(location) && execute(dropTableSql);
   }
-
-  // private boolean exec(String sql) {
-  // try {
-  // return execute(sql).get(5, TimeUnit.MINUTES).equals(Boolean.TRUE);
-  // } catch (Exception e) {
-  // log.error("Failed executing SQL: " + sql);
-  // }
-  //
-  // return false;
-  // }
-
 
 }

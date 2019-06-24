@@ -71,36 +71,14 @@ public class LocalFileManagerImpl implements FileManager {
   public boolean upload(String src, String dst, boolean archive) {
     log.info("Upload work location: {} to target location: {}", src, dst);
 
-    // Path src = Paths.get(location);
-    // Path dest = Paths.get(outputLocation);
-
     try {
-      // upload all data but skip .crc files
-      // Files.walk(src).filter(p -> !p.endsWith(".crc")).forEach(s -> copy(s, src, dest));
       FileUtils.copyDirectory(new File(src), new File(dst), true);
-      // Files.copy(Paths.get(src), Paths.get(dst));
       return true;
-      // return true;
     } catch (Exception ex) {
       log.error("Cannot upload directory: {} to {}", src, dst, ex);
     }
 
     return false;
-  }
-
-  private void copy(Path s, Path src, Path dest) {
-    try {
-      Path d = dest.resolve(src.relativize(s));
-      if (s.toFile().isDirectory()) {
-        if (!d.toFile().exists())
-          Files.createDirectory(d);
-        return;
-      }
-      // copy when on same fs, move when src and dest are on different fs systems
-      Files.move(s, d);
-    } catch (Exception e) {
-      log.error("Cannot copy file: {}", s, e);
-    }
   }
 
   @Override

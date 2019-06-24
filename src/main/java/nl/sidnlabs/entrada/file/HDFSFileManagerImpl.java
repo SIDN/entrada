@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.security.UserGroupInformation;
@@ -34,6 +35,12 @@ public class HDFSFileManagerImpl implements FileManager {
 
   @Value("${kerberos.keytab}")
   private String krbKeyTab;
+
+  @Value("${hdfs.data.owner}")
+  private String owner;
+
+  @Value("${hdfs.data.group}")
+  private String group;
 
   @Override
   public String schema() {
@@ -113,12 +120,23 @@ public class HDFSFileManagerImpl implements FileManager {
     }
 
     FileSystem fs = createFS();
+    Path pathSrc = new Path(src);
+    Path pathDst = new Path(dst);
+    if (StringUtils.equals(pathSrc.getName(), pathDst.getName())) {
+      // end of path is the same, use parent of dst path, to avoid creating
+      // duplicate directory
+      pathDst = pathDst.getParent();
+    }
+
     try {
-      Path pathDst = new Path(dst);
       if (!fs.exists(pathDst)) {
         fs.mkdirs(pathDst);
       }
       fs.copyFromLocalFile(false, true, new Path(src), pathDst);
+      if (!archive) {
+        // when uploading non-pcap data files set the correct hdfs permissions
+        return chown(dst, owner, group);
+      }
       return true;
     } catch (Exception e) {
       log.error("Error while uploading {} to {}", src, dst);
@@ -259,20 +277,37 @@ public class HDFSFileManagerImpl implements FileManager {
     return false;
   }
 
-  @Override
+
   public boolean chown(String path, String owner, String group) {
     log.info("Chown directory: {} owner: {} group: {}", path, owner, group);
-
     FileSystem fs = createFS();
+
+    Path p = new Path(path);
     try {
-      fs.setOwner(new Path(path), owner, group);
-      return true;
+      if (owner != null || group != null) {
+        if (fs.isDirectory(p)) {
+          for (FileStatus child : fs.listStatus(p)) {
+            chown(child.getPath().toString(), owner, group);
+          }
+        }
+        fs.setOwner(p, owner, group);
+      }
     } catch (Exception e) {
-      log.error("Cannot chown directory: {}", path, e);
+      //
+      return false;
     }
 
-    return true;
-  }
 
+    return true;
+
+    // try {
+    // // fs.setOwner(new Path(path), owner, group);
+    // return true;
+    // } catch (Exception e) {
+    // log.error("Cannot chown directory: {}", path, e);
+    // }
+    //
+    // return true;
+  }
 
 }

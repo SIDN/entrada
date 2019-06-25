@@ -91,6 +91,18 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
     return compactionLocation(p);
   }
 
+  @Override
+  public boolean postCompact(String table, TablePartition p) {
+    // update meta data
+    Map<String, Object> values = new HashMap<>();
+    values.put("DATABASE_NAME", database);
+    values.put("TABLE_NAME", table);
+    values.put("YEAR", Integer.valueOf(p.getYear()));
+    values.put("MONTH", Integer.valueOf(p.getMonth()));
+    values.put("DAY", Integer.valueOf(p.getDay()));
+    values.put("SERVER", p.getServer());
 
+    return execute(TemplateUtil.template(SQL_REFRESH_TABLE, values));
+  }
 
 }

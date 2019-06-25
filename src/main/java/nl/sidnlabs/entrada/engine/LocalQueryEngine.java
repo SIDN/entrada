@@ -42,4 +42,10 @@ public class LocalQueryEngine implements QueryEngine {
     return true;
   }
 
+  @Override
+  public boolean postCompact(String table, TablePartition p) {
+    // do nothing
+    return true;
+  }
+
 }

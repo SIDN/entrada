@@ -290,8 +290,6 @@ public class S3FileManagerImpl implements FileManager {
         deleteObject(childDetails.get());
       });
 
-      // delete dir
-      // deleteObject(details.get());
       // everything ok
       return true;
     }

@@ -16,4 +16,6 @@ public interface QueryEngine {
   String compactionLocation(TablePartition p);
 
   String tableLocation(TablePartition p);
+
+  boolean postCompact(String table, TablePartition p);
 }

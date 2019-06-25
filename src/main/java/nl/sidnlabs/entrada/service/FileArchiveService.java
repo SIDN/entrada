@@ -57,22 +57,24 @@ public class FileArchiveService {
   @Transactional
   public void archive(String file, Date start, int packets) {
     log.info("Archive: {} with mode {}", file, archiveOption);
-    // keep track of processed files
 
-    Date now = new Date();
     File f = new File(file);
-    FileArchive fa = FileArchive
-        .builder()
-        .dateEnd(now)
-        .file(f.getName())
-        .path(f.getParent())
-        .server(f.getParentFile().getName())
-        .dateStart(start)
-        .rows(packets)
-        .time((int) (now.getTime() - start.getTime()) / 1000)
-        .build();
 
-    fileArchiveRepository.save(fa);
+    if (!exists(file, serverContext.getServerInfo().getFullname())) {
+      Date now = new Date();
+      FileArchive fa = FileArchive
+          .builder()
+          .dateEnd(now)
+          .file(f.getName())
+          .path(f.getParent())
+          .server(serverContext.getServerInfo().getFullname())
+          .dateStart(start)
+          .rows(packets)
+          .time((int) (now.getTime() - start.getTime()) / 1000)
+          .build();
+
+      fileArchiveRepository.save(fa);
+    }
 
     FileManager fmSrc = fileManagerFactory.getFor(file);
     // archive the pcap file

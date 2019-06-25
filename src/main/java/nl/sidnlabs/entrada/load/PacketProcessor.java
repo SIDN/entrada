@@ -175,11 +175,14 @@ public class PacketProcessor {
     }
 
     for (String file : inputFiles) {
-      if (fileArchiveService.exists(file, serverCtx.getServerInfo().getName())) {
+      Date start = new Date();
+
+      if (fileArchiveService.exists(file, serverCtx.getServerInfo().getFullname())) {
         log.info("file {} already processed!, continue with next file", file);
+        // move the pcap file to archive location or delete
+        fileArchiveService.archive(file, start, packetCounter);
         continue;
       }
-      Date start = new Date();
 
       if (outputFuture == null) {
         // open the output file writer

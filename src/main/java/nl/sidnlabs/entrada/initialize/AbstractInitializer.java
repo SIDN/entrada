@@ -58,33 +58,32 @@ public abstract class AbstractInitializer implements Initializer {
   public boolean initializeDatabase() {
     // create database
     Map<String, Object> parameters = dbParameters();
-    String sql = TemplateUtil
-        .template(new ClassPathResource("/sql/" + scriptPrefix + "/create-database.sql",
-            TemplateUtil.class.getClass()), parameters);
+    String sql = TemplateUtil.template(sqlResource("create-database.sql"), parameters);
     queryEngine.execute(sql);
 
     // create dns table
     parameters = dnsParameters();
-    sql = TemplateUtil
-        .template(new ClassPathResource("/sql/" + scriptPrefix + "/create-table-dns.sql",
-            TemplateUtil.class.getClass()), parameters);
+    sql = TemplateUtil.template(sqlResource("create-table-dns.sql"), parameters);
     queryEngine.execute(sql);
 
     // create icmp table
     if (icmpEnabled) {
       // create dns table
       parameters = icmpParameters();
-      sql = TemplateUtil
-          .template(new ClassPathResource("/sql/" + scriptPrefix + "/create-table-icmp.sql",
-              TemplateUtil.class.getClass()), parameters);
+      sql = TemplateUtil.template(sqlResource("create-table-icmp.sql"), parameters);
       queryEngine.execute(sql);
     }
 
     return true;
   }
 
+  private ClassPathResource sqlResource(String script) {
+    return new ClassPathResource("/sql/" + scriptPrefix + "/" + script,
+        TemplateUtil.class.getClass());
+  }
 
-  Map<String, Object> dbParameters() {
+
+  private Map<String, Object> dbParameters() {
     Map<String, Object> parameters = new HashMap<>();
     parameters.put("DATABASE_NAME", database);
     parameters.put("DB_LOC", outputLocation);
@@ -92,7 +91,7 @@ public abstract class AbstractInitializer implements Initializer {
   }
 
 
-  Map<String, Object> dnsParameters() {
+  private Map<String, Object> dnsParameters() {
     Map<String, Object> parameters = new HashMap<>();
     parameters.put("DATABASE_NAME", database);
     parameters.put("TABLE_NAME", tableDns);
@@ -102,7 +101,7 @@ public abstract class AbstractInitializer implements Initializer {
   }
 
 
-  Map<String, Object> icmpParameters() {
+  private Map<String, Object> icmpParameters() {
     Map<String, Object> parameters = new HashMap<>();
     parameters.put("DATABASE_NAME", database);
     parameters.put("TABLE_NAME", tableIcmp);

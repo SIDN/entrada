@@ -54,4 +54,10 @@ public class AthenaQueryEngine extends AbstractQueryEngine {
     return FileUtil.appendPath(compactionLocation(p), p.getPath());
   }
 
+  @Override
+  public boolean postCompact(String table, TablePartition p) {
+    // update meta data
+    return execute(SQL_REPAIR_TABLE + database + "." + table);
+  }
+
 }

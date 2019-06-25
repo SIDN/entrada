@@ -1,21 +1,30 @@
 package nl.sidnlabs.entrada.initialize;
 
+import java.util.ArrayList;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.GetBucketEncryptionResult;
 import com.amazonaws.services.s3.model.PublicAccessBlockConfiguration;
+import com.amazonaws.services.s3.model.SSEAlgorithm;
+import com.amazonaws.services.s3.model.ServerSideEncryptionByDefault;
+import com.amazonaws.services.s3.model.ServerSideEncryptionConfiguration;
+import com.amazonaws.services.s3.model.ServerSideEncryptionRule;
+import com.amazonaws.services.s3.model.SetBucketEncryptionRequest;
 import com.amazonaws.services.s3.model.SetPublicAccessBlockRequest;
+import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.engine.QueryEngine;
 import nl.sidnlabs.entrada.exception.ApplicationException;
 import nl.sidnlabs.entrada.file.FileManager;
 
+@Log4j2
 @Component
 @ConditionalOnProperty(name = "entrada.engine", havingValue = "aws")
 public class AmazonInitializer extends AbstractInitializer {
 
-  @Value("${cloud.aws.bucket}")
+  @Value("${aws.bucket}")
   private String bucket;
 
   private AmazonS3 amazonS3;
@@ -38,6 +47,8 @@ public class AmazonInitializer extends AbstractInitializer {
 
     // check if the s3 bucket and required directories exist and if not create these
     if (!amazonS3.doesBucketExistV2(bucket)) {
+      log.info("Create bucket: " + bucket);
+
       amazonS3.createBucket(bucket);
 
       // make sure to block all public access to the bucket
@@ -49,13 +60,49 @@ public class AmazonInitializer extends AbstractInitializer {
                   .withIgnorePublicAcls(Boolean.TRUE)
                   .withBlockPublicPolicy(Boolean.TRUE)
                   .withRestrictPublicBuckets(Boolean.TRUE)));
+
+      // check to see if we should enable default encryption
+      if (encrypt) {
+        return enableEncryption();
+      }
+
     }
 
     /*
      * no need to check if directories are present. in S3 there are no directories, just prefixes
      * that are set on a file when it is uploaded.
      */
-    return true;
+    return amazonS3.doesBucketExistV2(bucket);
+  }
+
+  private boolean enableEncryption() {
+
+    ServerSideEncryptionRule serverSideEncryptionRule = new ServerSideEncryptionRule();
+
+    ServerSideEncryptionByDefault serverSideEncryptionByDefault =
+        new ServerSideEncryptionByDefault();
+
+    serverSideEncryptionByDefault.setSSEAlgorithm(SSEAlgorithm.AES256.getAlgorithm());
+
+    serverSideEncryptionRule.setApplyServerSideEncryptionByDefault(serverSideEncryptionByDefault);
+
+    SetBucketEncryptionRequest setBucketEncryptionRequest = new SetBucketEncryptionRequest();
+    setBucketEncryptionRequest.setBucketName(bucket);
+
+    ServerSideEncryptionConfiguration serverSideEncryptionConfiguration =
+        new ServerSideEncryptionConfiguration();
+
+    ArrayList<ServerSideEncryptionRule> serverSideEncryptionRules = new ArrayList<>();
+    serverSideEncryptionRules.add(serverSideEncryptionRule);
+    serverSideEncryptionConfiguration.setRules(serverSideEncryptionRules);
+
+    setBucketEncryptionRequest
+        .setServerSideEncryptionConfiguration(serverSideEncryptionConfiguration);
+
+    amazonS3.setBucketEncryption(setBucketEncryptionRequest);
+
+    GetBucketEncryptionResult result = amazonS3.getBucketEncryption(bucket);
+    return !result.getServerSideEncryptionConfiguration().getRules().isEmpty();
   }
 
 }

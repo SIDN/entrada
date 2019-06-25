@@ -6,6 +6,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface FileArchiveRepository extends CrudRepository<FileArchive, Integer> {
 
-  FileArchive findByFile(String file);
+  FileArchive findByFileAndServer(String file, String server);
 
 }

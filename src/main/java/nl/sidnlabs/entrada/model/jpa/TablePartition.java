@@ -54,6 +54,9 @@ public class TablePartition {
   @Temporal(TemporalType.TIMESTAMP)
   private Date compaction;
 
+  @Column(name = "compaction_time")
+  private int compactionTime;
+
   @Column(name = "updated_ts")
   @Temporal(TemporalType.TIMESTAMP)
   private Date updated;

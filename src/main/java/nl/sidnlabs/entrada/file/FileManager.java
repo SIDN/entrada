@@ -32,7 +32,7 @@ public interface FileManager {
    * @param archive if true then the upload is to archive the data
    * @return true if the data has been uploaded successfully
    */
-  boolean upload(String location, String outputLocation, boolean archive);
+  boolean upload(String src, String dst, boolean archive);
 
   /**
    * Delete a file
@@ -50,7 +50,7 @@ public interface FileManager {
    */
   boolean rmdir(String dir);
 
-  boolean move(String src, String dest, boolean archive);
+  boolean move(String src, String dst, boolean archive);
 
   boolean mkdir(String path);
 

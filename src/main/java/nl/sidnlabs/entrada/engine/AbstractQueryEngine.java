@@ -101,13 +101,12 @@ public abstract class AbstractQueryEngine implements QueryEngine {
   }
 
   private boolean move(TablePartition p, String location) {
-
     // get list of compacted files
-    List<String> filesToMove = fileManager.files(FileUtil.appendPath(location, p.getPath()));
+    List<String> filesToMove = fileManager.files(location);
     // move new parquet files to src table now.
     for (String f : filesToMove) {
 
-      // create a new filename and encode the date and nameserver info in the filename
+      // create a new filename and encode the date and server name in the filename
       String newName = FileUtil
           .appendPath(outputLocation, p.getTable(), p.getPath(),
               StringUtils

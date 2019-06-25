@@ -41,6 +41,9 @@ public class FileArchive {
   @Column(name = "file")
   private String file;
 
+  @Column(name = "server")
+  private String server;
+
   @Column(name = "path")
   private String path;
 

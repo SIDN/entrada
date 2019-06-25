@@ -46,18 +46,18 @@ public class ScheduledExecution {
 
     if (StringUtils.isBlank(servers)) {
       // no individual servers configured, assume the pcap data is in the input location root dir
-      runLocation("");
+      runForServer("");
     } else {
       // individual servers configured, process each server directory
-      Arrays.stream(StringUtils.split(servers, ",")).forEach(this::runLocation);
+      Arrays.stream(StringUtils.split(servers, ",")).forEach(this::runForServer);
     }
   }
 
-  private void runLocation(String location) {
-    log.info("Start loading data for location: {}", location);
+  private void runForServer(String server) {
+    log.info("Start loading data for server: {}", server);
     long start = System.currentTimeMillis();
 
-    settings.setServer(location);
+    settings.setServer(server);
 
     try {
       pcapProcessor.execute();
@@ -73,7 +73,7 @@ public class ScheduledExecution {
       metricManager.flush();
     }
 
-    log.info("Done loading data for location: {}", location);
+    log.info("Done loading data for server: {}", server);
   }
 
 }

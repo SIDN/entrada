@@ -5,11 +5,16 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -20,6 +25,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.exception.ApplicationException;
+import nl.sidnlabs.entrada.util.FileUtil;
 
 @Log4j2
 @Component("hdfs")
@@ -49,9 +55,12 @@ public class HDFSFileManagerImpl implements FileManager {
 
   @Override
   public boolean exists(String path) {
-    FileSystem fs = createFS();
+    return exists(createFS(), new Path(path));
+  }
+
+  private boolean exists(FileSystem fs, Path path) {
     try {
-      return fs.exists(new Path(path));
+      return fs.exists(path);
     } catch (Exception e) {
       log.error("Error while checking existence of path: {}", path, e);
     }
@@ -61,7 +70,6 @@ public class HDFSFileManagerImpl implements FileManager {
 
   @Override
   public List<String> files(String dir, String... filter) {
-
     if (!exists(dir)) {
       log.error("Location {} does not exist, cannot continue");
       return Collections.emptyList();
@@ -122,25 +130,60 @@ public class HDFSFileManagerImpl implements FileManager {
     FileSystem fs = createFS();
     Path pathSrc = new Path(src);
     Path pathDst = new Path(dst);
-    if (StringUtils.equals(pathSrc.getName(), pathDst.getName())) {
-      // end of path is the same, use parent of dst path, to avoid creating
-      // duplicate directory
-      pathDst = pathDst.getParent();
+
+    if (!exists(fs, pathDst)) {
+      mkdir(fs, pathDst);
     }
 
-    try {
-      if (!fs.exists(pathDst)) {
-        fs.mkdirs(pathDst);
-      }
-      fs.copyFromLocalFile(false, true, new Path(src), pathDst);
-      if (!archive) {
-        // when uploading non-pcap data files set the correct hdfs permissions
-        return chown(dst, owner, group);
-      }
+    if (f.isDirectory()) {
+      uploadDir(fs, src, pathDst);
+    } else {
+      upload(fs, pathSrc, pathDst);
+    }
+
+    if (!archive) {
+      // when uploading non-pcap data files set the correct hdfs permissions
+      return chown(fs, dst, owner, group);
+    }
+    return true;
+  }
+
+  private boolean uploadDir(FileSystem fs, String src, Path dst) {
+    // uploading a (sub)directory will fail if the dir already exists
+    // at the destination, therefore upload each file individual and make
+    // sure the directories exist.
+    Set<Path> dirs = new HashSet<>();
+    try (Stream<java.nio.file.Path> walk =
+        Files.walk(Paths.get(src)).filter(p -> p.toFile().isFile())) {
+
+      walk.forEach(p -> {
+        Path srcPath = new Path(p.toString());
+        Path dir = new Path(FileUtil
+            .appendPath(dst.toString(),
+                StringUtils.substringAfter(srcPath.getParent().toString(), src)));
+        if (!dirs.contains(dir)) {
+          // new dir, try op create
+          mkdir(fs, dir);
+          dirs.add(dir);
+        }
+        upload(fs, srcPath, new Path(FileUtil.appendPath(dir.toString(), srcPath.getName())));
+      });
       return true;
     } catch (Exception e) {
-      log.error("Error while uploading {} to {}", src, dst);
+      log.error("Error while uploading {} to {}", src, dst, e);
     }
+
+    return false;
+  }
+
+  private boolean upload(FileSystem fs, Path src, Path dst) {
+    try {
+      fs.copyFromLocalFile(false, true, src, dst);
+      return true;
+    } catch (IOException e) {
+      log.error("Error while uploading {} to {}", src, dst, e);
+    }
+
     return false;
   }
 
@@ -266,21 +309,26 @@ public class HDFSFileManagerImpl implements FileManager {
 
   @Override
   public boolean mkdir(String path) {
+    return mkdir(createFS(), new Path(path));
+  }
+
+  private boolean mkdir(FileSystem fs, Path path) {
     log.info("Create directory: {}", path);
 
-    FileSystem fs = createFS();
     try {
-      return fs.mkdirs(new Path(path));
+      return fs.mkdirs(path);
     } catch (Exception e) {
       log.error("Cannot create directory: {}", path, e);
     }
     return false;
   }
 
-
   public boolean chown(String path, String owner, String group) {
+    return chown(createFS(), path, owner, group);
+  }
+
+  private boolean chown(FileSystem fs, String path, String owner, String group) {
     log.info("Chown directory: {} owner: {} group: {}", path, owner, group);
-    FileSystem fs = createFS();
 
     Path p = new Path(path);
     try {
@@ -299,15 +347,6 @@ public class HDFSFileManagerImpl implements FileManager {
 
 
     return true;
-
-    // try {
-    // // fs.setOwner(new Path(path), owner, group);
-    // return true;
-    // } catch (Exception e) {
-    // log.error("Cannot chown directory: {}", path, e);
-    // }
-    //
-    // return true;
   }
 
 }

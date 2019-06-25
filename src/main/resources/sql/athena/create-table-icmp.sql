@@ -65,4 +65,4 @@ WITH SERDEPROPERTIES (
     'serialization.format' = '1' )
 LOCATION
    '${TABLE_LOC}'
-TBLPROPERTIES ('has_encrypted_data'='false')
+TBLPROPERTIES ('has_encrypted_data'='${ENCRYPTED}')

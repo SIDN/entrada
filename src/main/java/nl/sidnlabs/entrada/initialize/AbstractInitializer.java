@@ -29,6 +29,10 @@ public abstract class AbstractInitializer implements Initializer {
   @Value("${entrada.icmp.enable}")
   protected boolean icmpEnabled;
 
+  @Value("${aws.encryption}")
+  protected boolean encrypt;
+
+
   private QueryEngine queryEngine;
   private String scriptPrefix;
 
@@ -93,6 +97,7 @@ public abstract class AbstractInitializer implements Initializer {
     parameters.put("DATABASE_NAME", database);
     parameters.put("TABLE_NAME", tableDns);
     parameters.put("TABLE_LOC", FileUtil.appendPath(outputLocation, tableDns));
+    parameters.put("ENCRYPTED", encrypt);
     return parameters;
   }
 
@@ -102,17 +107,8 @@ public abstract class AbstractInitializer implements Initializer {
     parameters.put("DATABASE_NAME", database);
     parameters.put("TABLE_NAME", tableIcmp);
     parameters.put("TABLE_LOC", FileUtil.appendPath(outputLocation, tableIcmp));
+    parameters.put("ENCRYPTED", encrypt);
     return parameters;
   }
 
-  // protected void executeSQL(String sql) {
-  // try {
-  // if (queryEngine.execute(sql).get(5, TimeUnit.MINUTES).equals(Boolean.FALSE)) {
-  // // failed to execute sql
-  // throw new ApplicationException("Query failed");
-  // }
-  // } catch (Exception e) {
-  // throw new ApplicationException("Query failed");
-  // }
-  // }
 }

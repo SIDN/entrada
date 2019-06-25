@@ -138,17 +138,17 @@ public class PacketProcessor {
   private FileManagerFactory fileManagerFactory;
   private QueryEngine queryEngine;
   private PartitionService partitionService;
-  private ServerContext settings;
+  private ServerContext serverCtx;
 
   private Future<Map<String, Set<Partition>>> outputFuture;
   private LinkedBlockingQueue<PacketCombination> packetQueue;
 
-  public PacketProcessor(ServerContext settings, MetricManager metricManager,
+  public PacketProcessor(ServerContext serverCtx, MetricManager metricManager,
       PersistenceManager persistenceManager, OutputWriter outputWriter,
       FileArchiveService fileArchiveService, FileManagerFactory fileManagerFactory,
       QueryEngine queryEngine, PartitionService partitionService) {
 
-    this.settings = settings;
+    this.serverCtx = serverCtx;
     this.metricManager = metricManager;
     this.persistenceManager = persistenceManager;
     this.outputWriter = outputWriter;
@@ -175,7 +175,7 @@ public class PacketProcessor {
     }
 
     for (String file : inputFiles) {
-      if (fileArchiveService.exists(file)) {
+      if (fileArchiveService.exists(file, serverCtx.getServerInfo().getName())) {
         log.info("file {} already processed!, continue with next file", file);
         continue;
       }
@@ -312,11 +312,11 @@ public class PacketProcessor {
   }
 
   private String locationForDNS() {
-    return FileUtil.appendPath(workLocation, settings.getServerInfo().getNormalizeName(), "dns/");
+    return FileUtil.appendPath(workLocation, serverCtx.getServerInfo().getNormalizeName(), "dns/");
   }
 
   private String locationForICMP() {
-    return FileUtil.appendPath(workLocation, settings.getServerInfo().getNormalizeName(), "icmp/");
+    return FileUtil.appendPath(workLocation, serverCtx.getServerInfo().getNormalizeName(), "icmp/");
   }
 
   /**
@@ -374,7 +374,7 @@ public class PacketProcessor {
           }
 
           // handle icmp
-          pushPacket(new PacketCombination(currentPacket, null, settings.getServerInfo(), null,
+          pushPacket(new PacketCombination(currentPacket, null, serverCtx.getServerInfo(), null,
               null, false, fileName));
 
         } else {
@@ -452,7 +452,7 @@ public class PacketProcessor {
               if (request != null && request.getPacket() != null && request.getMessage() != null) {
 
                 pushPacket(new PacketCombination(request.getPacket(), request.getMessage(),
-                    settings.getServerInfo(), dnsPacket, msg, false, fileName));
+                    serverCtx.getServerInfo(), dnsPacket, msg, false, fileName));
 
               } else {
                 // no request found, this could happen if the query was in previous pcap
@@ -461,7 +461,7 @@ public class PacketProcessor {
                 log.debug("Found no request for response");
                 noQueryFoundCounter++;
 
-                pushPacket(new PacketCombination(null, null, settings.getServerInfo(), dnsPacket,
+                pushPacket(new PacketCombination(null, null, serverCtx.getServerInfo(), dnsPacket,
                     msg, false, fileName));
               }
             }
@@ -598,7 +598,7 @@ public class PacketProcessor {
         if (mw.getMessage() != null && mw.getMessage().getHeader().getQr() == MessageType.QUERY) {
 
           pushPacket(new PacketCombination(mw.getPacket(), mw.getMessage(),
-              settings.getServerInfo(), null, null, true, mw.getFilename()));
+              serverCtx.getServerInfo(), null, null, true, mw.getFilename()));
 
           purgeCounter++;
 
@@ -643,8 +643,8 @@ public class PacketProcessor {
   private List<String> scan() {
     // if server name is provided then search that location for input files.
     // otherwise search inputDir
-    String inputDir = settings.getServerInfo().getFullname().length() > 0
-        ? FileUtil.appendPath(inputLocation, settings.getServerInfo().getFullname())
+    String inputDir = serverCtx.getServerInfo().getFullname().length() > 0
+        ? FileUtil.appendPath(inputLocation, serverCtx.getServerInfo().getFullname())
         : inputLocation;
 
     FileManager fm = fileManagerFactory.getFor(inputDir);

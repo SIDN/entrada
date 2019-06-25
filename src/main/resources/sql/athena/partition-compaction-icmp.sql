@@ -27,7 +27,7 @@ AS SELECT unixtime,icmp_type,
           orig_dns_qtype,orig_dns_opcode,
           orig_dns_qclass,orig_dns_edns_udp,
           orig_dns_edns_version,orig_dns_edns_do,
-          orig_dns_labels,svr,time_micro, server_location,cast(unixtime as timestamp),
+          orig_dns_labels,svr,time_micro, server_location,from_unixtime(unixtime) query_ts,
           pcap_file,year,month,day,server
 FROM ${DATABASE_NAME}.${TABLE_NAME}
 WHERE year=${YEAR} AND month=${MONTH} AND day=${DAY} AND server='${SERVER}';

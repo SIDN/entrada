@@ -17,21 +17,18 @@ public class AthenaDatabaseConfig {
   private static final String AWS_CREDENTIALS_PROVIDER_CLASS =
       "com.simba.athena.amazonaws.auth.DefaultAWSCredentialsProviderChain";
 
-
   @Bean(name = "athenaDS")
   @ConditionalOnProperty(name = "entrada.engine", havingValue = "aws")
   public DataSource athenaDataSource(Environment env) {
     log.info("Create Athena datasource");
 
-    // try {
-    // Class.forName(env.getProperty("athena.driver.name"));
-    // } catch (ClassNotFoundException e) {
-    // throw new ApplicationException("Failed to load Athena JDBC driver", e);
-    // }
-
     DataSource ds = new com.simba.athena.jdbc.DataSource();
-    ds.setCustomProperty("LogPath", env.getProperty("athena.log.path"));
-    ds.setCustomProperty("LogLevel", env.getProperty("athena.log.level"));
+
+    if (log.isDebugEnabled()) {
+      ds.setCustomProperty("LogPath", env.getProperty("athena.log.path"));
+      ds.setCustomProperty("LogLevel", env.getProperty("athena.log.level"));
+    }
+
     ds.setCustomProperty("S3OutputLocation", env.getProperty("athena.output.location"));
     ds.setCustomProperty("AwsCredentialsProviderClass", AWS_CREDENTIALS_PROVIDER_CLASS);
     ds.setCustomProperty("Workgroup", env.getProperty("athena.workgroup"));

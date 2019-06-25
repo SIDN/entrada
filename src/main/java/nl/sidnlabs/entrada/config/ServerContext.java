@@ -37,10 +37,6 @@ public class ServerContext {
    */
   public void setServer(String name) {
     serverInfo = new ServerInfo();
-    // String cleanName = "default";
-    // if (!StringUtils.isBlank(name)) {
-    // cleanName = StringUtils.trim(name);
-    // }
 
     String cleanName = StringUtils.stripToEmpty(name);
     serverInfo.setName(cleanName);

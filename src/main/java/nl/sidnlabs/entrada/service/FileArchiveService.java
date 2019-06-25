@@ -41,9 +41,9 @@ public class FileArchiveService {
     this.serverContext = serverContext;
   }
 
-  public boolean exists(String file) {
+  public boolean exists(String file, String server) {
     File f = new File(file);
-    return fileArchiveRepository.findByFile(f.getName()) != null;
+    return fileArchiveRepository.findByFileAndServer(f.getName(), server) != null;
   }
 
   /**
@@ -66,6 +66,7 @@ public class FileArchiveService {
         .dateEnd(now)
         .file(f.getName())
         .path(f.getParent())
+        .server(f.getParentFile().getName())
         .dateStart(start)
         .rows(packets)
         .time((int) (now.getTime() - start.getTime()) / 1000)

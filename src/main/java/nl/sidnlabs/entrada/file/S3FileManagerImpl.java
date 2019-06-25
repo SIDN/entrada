@@ -13,6 +13,7 @@ import java.util.Optional;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import com.amazonaws.AmazonServiceException;
 import com.amazonaws.event.ProgressListener;
@@ -30,7 +31,6 @@ import com.amazonaws.services.s3.transfer.MultipleFileUpload;
 import com.amazonaws.services.s3.transfer.ObjectMetadataProvider;
 import com.amazonaws.services.s3.transfer.TransferManager;
 import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
-import lombok.Value;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.util.FileUtil;
 
@@ -41,18 +41,18 @@ public class S3FileManagerImpl implements FileManager {
   private static final String S3_SCHEME = "s3://";
   private AmazonS3 amazonS3;
 
+  @Value("${aws.encryption}")
+  protected boolean encrypt;
 
-  ;
-  @org.springframework.beans.factory.annotation.Value("${cloud.aws.upload.upload.storage-class}")
+  @Value("${aws.upload.upload.storage-class}")
   private String uploadStorageClass;
-  @org.springframework.beans.factory.annotation.Value("${cloud.aws.upload.archive.storage-class}")
+  @Value("${aws.upload.archive.storage-class}")
   private String archiveStorageClass;
 
   private TransferManager transferManager;
 
-  public S3FileManagerImpl(AmazonS3 amazonS3,
-      @org.springframework.beans.factory.annotation.Value("${cloud.aws.upload.parallelism}") int parallelism,
-      @org.springframework.beans.factory.annotation.Value("${cloud.aws.upload.multipart.mb.size}") int multipartSize) {
+  public S3FileManagerImpl(AmazonS3 amazonS3, @Value("${aws.upload.parallelism}") int parallelism,
+      @Value("${aws.upload.multipart.mb.size}") int multipartSize) {
     this.amazonS3 = amazonS3;
 
     this.transferManager = TransferManagerBuilder
@@ -157,8 +157,6 @@ public class S3FileManagerImpl implements FileManager {
     log.info("Upload work location: {} to target location: {}", location, outputLocation);
 
     File src = new File(location);
-
-
     if (!src.exists()) {
       log.error("Location {} does not exist, cannot continue with upload");
       return false;
@@ -192,6 +190,10 @@ public class S3FileManagerImpl implements FileManager {
               StorageClass.fromValue(StringUtils.upperCase(archiveStorageClass)));
     }
 
+    if (encrypt) {
+      meta.setSSEAlgorithm(ObjectMetadata.AES_256_SERVER_SIDE_ENCRYPTION);
+    }
+
     request.setMetadata(meta);
     try {
       amazonS3.putObject(request);
@@ -212,6 +214,10 @@ public class S3FileManagerImpl implements FileManager {
             .setHeader(Headers.STORAGE_CLASS,
                 StorageClass.fromValue(StringUtils.upperCase(archiveStorageClass)));
       }
+
+      if (encrypt) {
+        meta.setSSEAlgorithm(ObjectMetadata.AES_256_SERVER_SIDE_ENCRYPTION);
+      }
     };
 
     MultipleFileUpload upload = transferManager
@@ -229,7 +235,7 @@ public class S3FileManagerImpl implements FileManager {
       upload.waitForCompletion();
       return true;
     } catch (Exception e) {
-      log.error("Error while uploading: {}");
+      log.error("Error while uploading: {}", location, e);
     }
 
     return false;
@@ -329,7 +335,7 @@ public class S3FileManagerImpl implements FileManager {
   }
 
 
-  @Value
+  @lombok.Value
   public static class S3Details {
     private String bucket;
     private String key;

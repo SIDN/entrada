@@ -3,6 +3,7 @@ package nl.sidnlabs.entrada;
 import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.time.DateUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
@@ -31,7 +32,11 @@ public class ScheduledCompaction {
   }
 
 
-  @Scheduled(fixedDelayString = "#{${entrada.parquet.compaction.interval:1}*60*1000}")
+  /**
+   * Execute compaction every x minutes but wait 1 minute before enabling the schedule
+   */
+  @Scheduled(fixedDelayString = "#{${entrada.parquet.compaction.interval:1}*60*1000}",
+      initialDelay = 60 * 1000)
   public void run() {
     log.info("Start partition compaction");
 
@@ -52,10 +57,15 @@ public class ScheduledCompaction {
   private boolean compact(TablePartition p) {
     log.info("Compact table: {} partition: {}", p.getTable(), p.toPath());
 
+    Date start = new Date();
     try {
       if (queryEngine.compact(p)) {
+        Date end = new Date();
         // mark partition as compacted in db
-        p.setCompaction(new Date());
+        p.setCompaction(end);
+        long diffInMillies = Math.abs(end.getTime() - start.getTime());
+        int seconds = (int) TimeUnit.SECONDS.convert(diffInMillies, TimeUnit.MILLISECONDS);
+        p.setCompactionTime(seconds);
         partitionService.save(p);
         return true;
 

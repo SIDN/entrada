@@ -15,7 +15,7 @@ AS SELECT
   edns_client_subnet_asn,
   edns_client_subnet_country,
   labels,res_len,time_micro,resp_frag,proc_time,is_google,is_opendns,
-  dns_res_len,server_location,cast(unixtime as timestamp),
+  dns_res_len,server_location,from_unixtime(unixtime) query_ts,
   edns_padding,pcap_file,edns_keytag_count,edns_keytag_list,q_tc,q_ra,q_ad,q_rcode,
   year,month,day,server	   
 FROM ${DATABASE_NAME}.${TABLE_NAME}

@@ -55,9 +55,9 @@ public class AthenaQueryEngine extends AbstractQueryEngine {
   }
 
   @Override
-  public boolean postCompact(String table, TablePartition p) {
+  public boolean postCompact(TablePartition p) {
     // update meta data
-    return execute(SQL_REPAIR_TABLE + database + "." + table);
+    return execute(SQL_REPAIR_TABLE + database + "." + p.getTable());
   }
 
 }

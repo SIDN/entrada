@@ -28,6 +28,9 @@ public class TablePartition {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private int id;
 
+  @Column(name = "engine")
+  private String engine;
+
   @Column(name = "table_name")
   private String table;
 

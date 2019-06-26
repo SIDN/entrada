@@ -1,10 +1,8 @@
 create external table if not exists ${DATABASE_NAME}.${TABLE_NAME} (
  id INT,
- unixtime BIGINT,
  time BIGINT,
  qname STRING,
  domainname STRING,
- len INT,
  frag INT,
  ttl INT,
  ipv INT,
@@ -13,8 +11,6 @@ create external table if not exists ${DATABASE_NAME}.${TABLE_NAME} (
  srcp INT,
  dst STRING,
  dstp INT,
- udp_sum INT,
- dns_len INT,
  aa BOOLEAN,
  tc BOOLEAN,
  rd BOOLEAN,
@@ -45,16 +41,9 @@ create external table if not exists ${DATABASE_NAME}.${TABLE_NAME} (
  edns_client_subnet_asn STRING,
  edns_client_subnet_country STRING,
  labels INT,
- res_len INT,
- svr string,
- time_micro bigint,
  resp_frag INT,
  proc_time INT,
- is_google boolean,
- is_opendns boolean,
- dns_res_len INT,
  server_location STRING,
- query_ts TIMESTAMP,
  edns_padding INT,
  pcap_file STRING,
  edns_keytag_count INT,
@@ -62,9 +51,10 @@ create external table if not exists ${DATABASE_NAME}.${TABLE_NAME} (
  q_tc BOOLEAN,
  q_ra BOOLEAN,
  q_ad BOOLEAN,
- q_rcode INT,
- pub_resolver STRING) 
- partitioned by (year INT, month INT, day INT, server string)
+ pub_resolver STRING,
+ req_len int,
+ res_len int
+) partitioned by (year INT, month INT, day INT, server string)
   STORED AS PARQUETFILE
   LOCATION '${TABLE_LOC}';
   

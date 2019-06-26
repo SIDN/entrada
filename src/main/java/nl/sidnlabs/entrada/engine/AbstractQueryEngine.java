@@ -81,8 +81,8 @@ public abstract class AbstractQueryEngine implements QueryEngine {
       return false;
     }
 
-    // cleanup
-    return cleanup(location, dropTableSql);
+    // perform post-compact actions and do cleanup
+    return postCompact(p) && cleanup(location, dropTableSql);
   }
 
   private ClassPathResource getCompactionScript(String table) {

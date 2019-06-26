@@ -4,8 +4,8 @@ CREATE EXTERNAL TABLE ${DATABASE_NAME}.tmp_compaction
   COMMENT 'ENTRADA Compaction temp table'
   STORED AS PARQUET
   LOCATION '${TABLE_LOC}'
-AS SELECT id, unixtime, time, qname, domainname, len, frag, ttl, ipv,
-  prot, src, srcp, dst, dstp, udp_sum, dns_len, aa,
+AS SELECT id, time, qname, domainname, frag, ttl, ipv,
+  prot, src, srcp, dst, dstp, aa,
   tc, rd, ra, z, ad, cd, ancount, arcount, nscount, qdcount,
   opcode, rcode, qtype, qclass,
   country, asn, edns_udp, edns_version,
@@ -14,9 +14,9 @@ AS SELECT id, unixtime, time, qname, domainname, len, frag, ttl, ipv,
   edns_client_subnet, edns_other,
   edns_client_subnet_asn,
   edns_client_subnet_country,
-  labels,res_len,time_micro,resp_frag,proc_time,is_google,is_opendns,
-  dns_res_len,server_location,cast(unixtime as timestamp),
-  edns_padding,pcap_file,edns_keytag_count,edns_keytag_list,q_tc,q_ra,q_ad,q_rcode,
-  year,month,day,server	   
+  labels,resp_frag,proc_time,
+  server_location,
+  edns_padding,pcap_file,edns_keytag_count,edns_keytag_list,q_tc,q_ra,q_ad,
+  pub_resolver,req_len,res_len,year,month,day,server	   
 FROM ${DATABASE_NAME}.${TABLE_NAME}
 WHERE year=${YEAR} AND month=${MONTH} AND day=${DAY} AND server='${SERVER}';

@@ -1,10 +1,9 @@
 {
   "type": "record",
   "name": "icmpdata",
-  "namespace": "nl.sidn.idnp.data.icmp",
+  "namespace": "nl.sidnlabs.idnp.data.icmp",
   "doc": "ICMP packets",
   "fields": [
-    { "name": "unixtime", "type": "long" },
     { "name": "time", "type": "long" },
     { "name": "icmp_type", "type": "int" },
     { "name": "icmp_code", "type": "int" },
@@ -26,7 +25,6 @@
     { "name": "orig_l4_prot", "type": ["null","int"], "default": null},
     { "name": "orig_l4_srcp", "type": ["null","int"], "default": null},
     { "name": "orig_l4_dstp", "type": ["null","int"], "default": null},
-    { "name": "orig_udp_sum", "type": ["null","int"], "default": null},
     { "name": "orig_ip_len", "type": ["null","int"], "default": null},
     { "name": "orig_icmp_type", "type": ["null","int"], "default": null},
     { "name": "orig_icmp_code", "type": ["null","int"], "default": null},
@@ -54,8 +52,6 @@
     { "name": "orig_dns_edns_version", "type": ["null","int"], "default": null},
     { "name": "orig_dns_edns_do", "type": ["null","boolean"], "default": null},
     { "name": "orig_dns_labels", "type": ["null","int"], "default": null},
-    { "name": "svr", "type": "string" },
-    { "name": "time_micro", "type": "long" },
     { "name": "server_location", "type": ["null","string"], "default": null },
     { "name": "pcap_file", "type": ["null","string"], "default": null},
     { "name": "ip_pub_resolver", "type": ["null","string"], "default": null}

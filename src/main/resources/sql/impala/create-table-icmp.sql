@@ -1,5 +1,5 @@
 create external table if not exists ${DATABASE_NAME}.${TABLE_NAME} (
-unixtime BIGINT,
+time bigint,
 icmp_type SMALLINT,
 icmp_code SMALLINT,
 icmp_echo_client_type SMALLINT,
@@ -20,8 +20,6 @@ orig_ip_dst STRING,
 orig_l4_prot INT,
 orig_l4_srcp INT,
 orig_l4_dstp INT,
-orig_udp_sum INT,
-orig_ip_len INT,
 orig_icmp_type smallint,
 orig_icmp_code smallint,
 orig_icmp_echo_client_type smallint,
@@ -48,11 +46,9 @@ orig_dns_edns_udp INT,
 orig_dns_edns_version SMALLINT,
 orig_dns_edns_do BOOLEAN,
 orig_dns_labels INT,
-svr string,
-time_micro bigint,
 server_location string,
-query_ts TIMESTAMP,
-pcap_file STRING)
+pcap_file STRING,
+ip_pub_resolver STRING)
  partitioned by (year INT, month INT, day INT, server string)
   STORED AS PARQUETFILE
   LOCATION '${TABLE_LOC}';

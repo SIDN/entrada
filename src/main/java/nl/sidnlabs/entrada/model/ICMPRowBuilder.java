@@ -66,11 +66,9 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
       originalICMPPacket = (ICMPPacket) originalPacket;
     }
 
-    // icmp packet ip+headers
-    // get the time in milliseconds
-    Timestamp ts = new Timestamp((icmpPacket.getTs() * 1000));
 
-    Row row = new Row(ts);
+    // get the time in milliseconds
+    Row row = new Row(new Timestamp(icmpPacket.getTsMilli()));
 
     enrich(icmpPacket.getSrc(), "ip_", row);
 
@@ -93,10 +91,7 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
 
     // values from query now.
     row
-        .addColumn(column("svr", combo.getServer().getName()))
-        .addColumn(column("unixtime", icmpPacket.getTs()))
-        .addColumn(column("time_micro", icmpPacket.getTsmicros()))
-        .addColumn(column("time", ts.getTime()))
+        .addColumn(column("time", icmpPacket.getTsMilli()))
         .addColumn(column("icmp_type", icmpPacket.getType()))
         .addColumn(column("icmp_code", icmpPacket.getCode()))
         .addColumn(column("icmp_echo_client_type", icmpPacket.getClientType()))
@@ -107,12 +102,8 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
         .addColumn(column("l4_prot", (int) icmpPacket.getProtocol()))
         .addColumn(column("l4_srcp", icmpPacket.getSrcPort()))
         .addColumn(column("l4_dstp", icmpPacket.getDstPort()))
-        .addColumn(column("ip_len", icmpPacket.getTotalLength())); // size
-    // of
-    // ip
-    // packet
-    // incl
-    // headers
+        // size of ip packet incl headers
+        .addColumn(column("ip_len", icmpPacket.getTotalLength()));
 
     // add file name
     row.addColumn(column("pcap_file", combo.getPcapFilename()));
@@ -135,9 +126,9 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
           .addColumn(column("orig_l4_prot", (int) originalPacket.getProtocol()))
           .addColumn(column("orig_l4_srcp", originalPacket.getSrcPort()))
           .addColumn(column("orig_l4_dstp", originalPacket.getDstPort()))
-          .addColumn(column("orig_udp_sum", originalPacket.getUdpsum()))
-          .addColumn(column("orig_ip_len", originalPacket.getTotalLength())); // size of ip packet
-                                                                              // incl headers
+          // size of ip packet incl headers
+          .addColumn(column("orig_ip_len", originalPacket.getTotalLength()));
+
 
       if (originalICMPPacket != null) {
         row
@@ -169,10 +160,6 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
             .addColumn(column("orig_dns_qdcount", (int) dnsResponseHdr.getQdCount()))
             .addColumn(column("orig_dns_rcode", dnsResponseHdr.getRawRcode()))
             .addColumn(column("orig_dns_opcode", dnsResponseHdr.getRawOpcode()))
-            // set edns0 defaults
-            // .addColumn(column("orig_dns_edns_udp", -1))
-            // .addColumn(column("orig_dns_edns_version", -1))
-            // .addColumn(column("orig_dns_edns_do", -1))
             .addColumn(column("orig_dns_labels", domaininfo.getLabels()));
 
         if (q != null) {

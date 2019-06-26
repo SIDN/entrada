@@ -20,12 +20,13 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_entrada_file_archive_file_server ON entrad
 CREATE TABLE IF NOT EXISTS entrada_partition
 (
   id serial NOT NULL,
-  table_name character varying(255) NOT NULL,
+  engine character varying(20) NOT NULL,
+  table_name character varying(100) NOT NULL,
   created timestamp NOT NULL,
   year int NOT NULL,
   month int NOT NULL,
   day int NOT NULL,
-  server character varying(255) NOT NULL,
+  server character varying(100) NOT NULL,
   path character varying(255) NOT NULL,
   compaction_ts timestamp,
   compaction_time int,

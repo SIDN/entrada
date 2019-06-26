@@ -4,6 +4,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Set;
 import javax.transaction.Transactional;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.model.Partition;
@@ -13,6 +14,9 @@ import nl.sidnlabs.entrada.model.jpa.TablePartitionRepository;
 @Log4j2
 @Component
 public class PartitionService {
+
+  @Value("${entrada.engine}")
+  private String engine;
 
   private TablePartitionRepository tablePartitionRepository;
 
@@ -35,6 +39,7 @@ public class PartitionService {
 
       TablePartition newPartition = TablePartition
           .builder()
+          .engine(engine)
           .table(table)
           .year(p.getYear())
           .month(p.getMonth())
@@ -55,7 +60,7 @@ public class PartitionService {
   }
 
   public List<TablePartition> uncompactedPartitions() {
-    return tablePartitionRepository.findUnCompacted();
+    return tablePartitionRepository.findUnCompactedForEngine(engine);
   }
 
   @Transactional

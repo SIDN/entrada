@@ -17,5 +17,5 @@ public interface QueryEngine {
 
   String tableLocation(TablePartition p);
 
-  boolean postCompact(String table, TablePartition p);
+  boolean postCompact(TablePartition p);
 }

@@ -31,6 +31,10 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
   private static final String SQL_REFRESH_TABLE =
       "REFRESH ${DATABASE_NAME}.${TABLE_NAME} PARTITION " + SQL_PARTITION_TEMPLATE;
 
+  private static final String SQL_COMPUTE_STATS =
+      "COMPUTE INCREMENTAL STATS ${DATABASE_NAME}.${TABLE_NAME} PARTITION "
+          + SQL_PARTITION_TEMPLATE;
+
 
   @Value("${entrada.database.name}")
   private String database;
@@ -92,17 +96,21 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
   }
 
   @Override
-  public boolean postCompact(String table, TablePartition p) {
-    // update meta data
+  public boolean postCompact(TablePartition p) {
+    log.info("Execute refresh and compute stats for table: {}", p.getTable());
+    // update meta data and compute stats for partition
     Map<String, Object> values = new HashMap<>();
     values.put("DATABASE_NAME", database);
-    values.put("TABLE_NAME", table);
+    values.put("TABLE_NAME", p.getTable());
     values.put("YEAR", Integer.valueOf(p.getYear()));
     values.put("MONTH", Integer.valueOf(p.getMonth()));
     values.put("DAY", Integer.valueOf(p.getDay()));
     values.put("SERVER", p.getServer());
+    values.put("PARTITION", TemplateUtil.template(SQL_PARTITION_TEMPLATE, values));
 
-    return execute(TemplateUtil.template(SQL_REFRESH_TABLE, values));
+    return execute(TemplateUtil.template(SQL_REFRESH_TABLE, values))
+        && execute(TemplateUtil.template(SQL_COMPUTE_STATS, values));
   }
+
 
 }

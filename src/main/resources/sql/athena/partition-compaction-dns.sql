@@ -14,10 +14,10 @@ AS SELECT
   edns_client_subnet, edns_other,
   edns_client_subnet_asn,
   edns_client_subnet_country,
-  labels,res_len,resp_frag,proc_time,
+  labels,resp_frag,proc_time,
   server_location,
   date_add('millisecond', mod(time,1000), from_unixtime(time/1000)) query_ts,
   edns_padding,pcap_file,edns_keytag_count,edns_keytag_list,q_tc,q_ra,q_ad,
-  pub_resolver,req_len,res_len,year,month,day,server	   
+  pub_resolver,req_len,res_len,tcp_rtt,year,month,day,server	   
 FROM ${DATABASE_NAME}.${TABLE_NAME}
 WHERE year=${YEAR} AND month=${MONTH} AND day=${DAY} AND server='${SERVER}';

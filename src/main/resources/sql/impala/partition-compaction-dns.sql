@@ -17,6 +17,6 @@ AS SELECT id, time, qname, domainname, frag, ttl, ipv,
   labels,resp_frag,proc_time,
   server_location,
   edns_padding,pcap_file,edns_keytag_count,edns_keytag_list,q_tc,q_ra,q_ad,
-  pub_resolver,req_len,res_len,year,month,day,server	   
+  pub_resolver,req_len,res_len,tcp_rtt,year,month,day,server	   
 FROM ${DATABASE_NAME}.${TABLE_NAME}
 WHERE year=${YEAR} AND month=${MONTH} AND day=${DAY} AND server='${SERVER}';

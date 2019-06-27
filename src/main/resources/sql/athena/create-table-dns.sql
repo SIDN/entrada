@@ -55,7 +55,8 @@ CREATE EXTERNAL TABLE IF NOT EXISTS ${DATABASE_NAME}.${TABLE_NAME}(
   q_ad boolean,
   pub_resolver string,
   req_len int,
-  res_len int
+  res_len int,
+  tcp_rtt int
 ) PARTITIONED BY (
   year int,
   month int,

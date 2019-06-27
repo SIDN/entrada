@@ -56,26 +56,27 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
     values.put("DATABASE_NAME", database);
     values.put("TABLE_NAME", table);
 
-    StringBuilder pSql = new StringBuilder();
     for (Partition p : partitions) {
       values.put("YEAR", Integer.valueOf(p.getYear()));
       values.put("MONTH", Integer.valueOf(p.getMonth()));
       values.put("DAY", Integer.valueOf(p.getDay()));
       values.put("SERVER", p.getServer());
+      values.put("PARTITION", TemplateUtil.template(SQL_PARTITION_TEMPLATE, values));
 
-      pSql.append(TemplateUtil.template(SQL_PARTITION_TEMPLATE, values));
+      String sql = TemplateUtil
+          .template(new ClassPathResource("/sql/impala/create-partition.sql", getClass()), values);
+
+      log.info("Create partition, sql: {}", sql);
+
+      if (!execute(sql)) {
+        return new AsyncResult<>(Boolean.FALSE);
+      }
     }
-
-    values.put("PARTITION", pSql);
-    String sql = TemplateUtil
-        .template(new ClassPathResource("/sql/impala/create-partition.sql", getClass()), values);
-
-    log.info("Create partition, sql: {}", sql);
 
     // do a refresh after the partition has been added to update the table metadata
     String sqlRefresh = TemplateUtil.template(SQL_REFRESH_TABLE, values);
 
-    if (execute(sql) && execute(sqlRefresh)) {
+    if (execute(sqlRefresh)) {
       return new AsyncResult<>(Boolean.TRUE);
     }
     return new AsyncResult<>(Boolean.FALSE);

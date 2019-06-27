@@ -360,118 +360,8 @@ public class PacketProcessor {
     String fileName = FileUtil.filename(file);
 
     packetCounter = 0;
-    for (Packet currentPacket : pcapReader) {
-      packetCounter++;
-      if (packetCounter % 100000 == 0) {
-        log.info("Processed " + packetCounter + " packets");
-      }
-      if (currentPacket != null && currentPacket.getIpVersion() != 0) {
+    pcapReader.stream().forEach(p -> process(p, fileName));
 
-
-        if (currentPacket.getProtocol() == ICMPDecoder.PROTOCOL_ICMP_V4
-            || (currentPacket.getProtocol() == ICMPDecoder.PROTOCOL_ICMP_V6)) {
-
-          if (!icmpEnabled) {
-            // do not process ICMP packets
-            continue;
-          }
-
-          // handle icmp
-          pushPacket(new PacketCombination(currentPacket, null, serverCtx.getServerInfo(), null,
-              null, false, fileName));
-
-        } else {
-          DNSPacket dnsPacket = (DNSPacket) currentPacket;
-          if (dnsPacket.getMessage() == null) {
-            // skip malformed packets
-            log.debug("Drop packet with no dns message");
-            continue;
-          }
-
-          if (dnsPacket.getMessageCount() > 1) {
-            multiCounter = multiCounter + dnsPacket.getMessageCount();
-          }
-
-          for (Message msg : dnsPacket.getMessages()) {
-            // get qname from request which is part of the cache lookup key
-            String qname = null;
-            if (msg != null && msg.getQuestions() != null && !msg.getQuestions().isEmpty()) {
-              qname = msg.getQuestions().get(0).getQName();
-            }
-
-            // put request into map until we find matching response, with a key based on: query id,
-            // qname, ip src, tcp/udp port
-            // add time for possible timeout eviction
-            if (msg.getHeader().getQr() == MessageType.QUERY) {
-              queryCounter++;
-
-              // check for ixfr/axfr request
-              if (!msg.getQuestions().isEmpty()
-                  && (msg.getQuestions().get(0).getQType() == ResourceRecordType.AXFR
-                      || msg.getQuestions().get(0).getQType() == ResourceRecordType.IXFR)) {
-
-                if (log.isDebugEnabled()) {
-                  log.debug("Detected zonetransfer for: " + dnsPacket.getFlow());
-                }
-                // keep track of ongoing zone transfer, we do not want to store all the response
-                // packets for an ixfr/axfr.
-                activeZoneTransfers
-                    .put(new RequestKey(msg.getHeader().getId(), null, dnsPacket.getSrc(),
-                        dnsPacket.getSrcPort()), 0);
-              }
-
-              RequestKey key = new RequestKey(msg.getHeader().getId(), qname, dnsPacket.getSrc(),
-                  dnsPacket.getSrcPort(), System.currentTimeMillis());
-              requestCache.put(key, new MessageWrapper(msg, dnsPacket, fileName));
-            } else {
-              // try to find the request
-              responseCounter++;
-
-              // check for ixfr/axfr response, the query might be missing from the response
-              // so we cannot use the qname for matching.
-              RequestKey key = new RequestKey(msg.getHeader().getId(), null, dnsPacket.getDst(),
-                  dnsPacket.getDstPort());
-              if (activeZoneTransfers.containsKey(key)) {
-                // this response is part of an active zonetransfer.
-                // only let the first response continue, reuse the "time" field of the RequestKey to
-                // keep track of this.
-                Integer ztResponseCounter = activeZoneTransfers.get(key);
-                if (ztResponseCounter.intValue() > 0) {
-                  // do not save this msg, drop it here, continue with next msg.
-                  continue;
-                } else {
-                  // 1st response msg let it continue, add 1 to the map the indicate 1st resp msg
-                  // has been processed
-                  activeZoneTransfers.put(key, 1);
-                }
-              }
-
-              key = new RequestKey(msg.getHeader().getId(), qname, dnsPacket.getDst(),
-                  dnsPacket.getDstPort());
-              MessageWrapper request = requestCache.remove(key);
-              // check to see if the request msg exists, at the start of the pcap there may be
-              // missing queries
-
-              if (request != null && request.getPacket() != null && request.getMessage() != null) {
-
-                pushPacket(new PacketCombination(request.getPacket(), request.getMessage(),
-                    serverCtx.getServerInfo(), dnsPacket, msg, false, fileName));
-
-              } else {
-                // no request found, this could happen if the query was in previous pcap
-                // and was not correctly decoded, or the request timed out before server
-                // could send a response.
-                log.debug("Found no request for response");
-                noQueryFoundCounter++;
-
-                pushPacket(new PacketCombination(null, null, serverCtx.getServerInfo(), dnsPacket,
-                    msg, false, fileName));
-              }
-            }
-          }
-        } // end of dns packet
-      }
-    }
     log.info("Processing time: " + (System.currentTimeMillis() - readStart) + "ms");
     if (log.isDebugEnabled()) {
       log.debug("Done with decoding, start cleanup");
@@ -479,6 +369,119 @@ public class PacketProcessor {
     // clear expired cache entries
     pcapReader.clearCache(cacheTimeoutTCPConfig * 60 * 1000, cacheTimeoutIPFragConfig * 60 * 1000);
     pcapReader.close();
+  }
+
+  private void process(Packet currentPacket, String fileName) {
+    packetCounter++;
+    if (packetCounter % 100000 == 0) {
+      log.info("Processed " + packetCounter + " packets");
+    }
+    if (currentPacket != null && currentPacket.getIpVersion() != 0) {
+
+
+      if (currentPacket.getProtocol() == ICMPDecoder.PROTOCOL_ICMP_V4
+          || (currentPacket.getProtocol() == ICMPDecoder.PROTOCOL_ICMP_V6)) {
+
+        if (!icmpEnabled) {
+          // do not process ICMP packets
+          return;
+        }
+
+        // handle icmp
+        pushPacket(new PacketCombination(currentPacket, null, serverCtx.getServerInfo(), null, null,
+            false, fileName));
+
+      } else {
+        DNSPacket dnsPacket = (DNSPacket) currentPacket;
+        if (dnsPacket.getMessage() == null) {
+          // skip malformed packets
+          log.debug("Drop packet with no dns message");
+          return;
+        }
+
+        if (dnsPacket.getMessageCount() > 1) {
+          multiCounter = multiCounter + dnsPacket.getMessageCount();
+        }
+
+        for (Message msg : dnsPacket.getMessages()) {
+          // get qname from request which is part of the cache lookup key
+          String qname = null;
+          if (msg != null && msg.getQuestions() != null && !msg.getQuestions().isEmpty()) {
+            qname = msg.getQuestions().get(0).getQName();
+          }
+
+          // put request into map until we find matching response, with a key based on: query id,
+          // qname, ip src, tcp/udp port
+          // add time for possible timeout eviction
+          if (msg.getHeader().getQr() == MessageType.QUERY) {
+            queryCounter++;
+
+            // check for ixfr/axfr request
+            if (!msg.getQuestions().isEmpty()
+                && (msg.getQuestions().get(0).getQType() == ResourceRecordType.AXFR
+                    || msg.getQuestions().get(0).getQType() == ResourceRecordType.IXFR)) {
+
+              if (log.isDebugEnabled()) {
+                log.debug("Detected zonetransfer for: " + dnsPacket.getFlow());
+              }
+              // keep track of ongoing zone transfer, we do not want to store all the response
+              // packets for an ixfr/axfr.
+              activeZoneTransfers
+                  .put(new RequestKey(msg.getHeader().getId(), null, dnsPacket.getSrc(),
+                      dnsPacket.getSrcPort()), 0);
+            }
+
+            RequestKey key = new RequestKey(msg.getHeader().getId(), qname, dnsPacket.getSrc(),
+                dnsPacket.getSrcPort(), System.currentTimeMillis());
+            requestCache.put(key, new MessageWrapper(msg, dnsPacket, fileName));
+          } else {
+            // try to find the request
+            responseCounter++;
+
+            // check for ixfr/axfr response, the query might be missing from the response
+            // so we cannot use the qname for matching.
+            RequestKey key = new RequestKey(msg.getHeader().getId(), null, dnsPacket.getDst(),
+                dnsPacket.getDstPort());
+            if (activeZoneTransfers.containsKey(key)) {
+              // this response is part of an active zonetransfer.
+              // only let the first response continue, reuse the "time" field of the RequestKey to
+              // keep track of this.
+              Integer ztResponseCounter = activeZoneTransfers.get(key);
+              if (ztResponseCounter.intValue() > 0) {
+                // do not save this msg, drop it here, continue with next msg.
+                continue;
+              } else {
+                // 1st response msg let it continue, add 1 to the map the indicate 1st resp msg
+                // has been processed
+                activeZoneTransfers.put(key, 1);
+              }
+            }
+
+            key = new RequestKey(msg.getHeader().getId(), qname, dnsPacket.getDst(),
+                dnsPacket.getDstPort());
+            MessageWrapper request = requestCache.remove(key);
+            // check to see if the request msg exists, at the start of the pcap there may be
+            // missing queries
+
+            if (request != null && request.getPacket() != null && request.getMessage() != null) {
+
+              pushPacket(new PacketCombination(request.getPacket(), request.getMessage(),
+                  serverCtx.getServerInfo(), dnsPacket, msg, false, fileName));
+
+            } else {
+              // no request found, this could happen if the query was in previous pcap
+              // and was not correctly decoded, or the request timed out before server
+              // could send a response.
+              log.debug("Found no request for response");
+              noQueryFoundCounter++;
+
+              pushPacket(new PacketCombination(null, null, serverCtx.getServerInfo(), dnsPacket,
+                  msg, false, fileName));
+            }
+          }
+        }
+      } // end of dns packet
+    }
   }
 
   private void pushPacket(PacketCombination pc) {

@@ -112,6 +112,11 @@ public class DNSRowBuilder extends AbstractRowBuilder {
 
     enrich(addressToCheck, "", row);
 
+    if (reqTransport != null && reqTransport.getTcpHandshake() != null) {
+      // found tcp handshake info
+      row.addColumn(column("tcp_rtt", reqTransport.getTcpHandshake().rtt()));
+    }
+
     // these are the values that are retrieved from the response
     if (respTransport != null && respMessage != null && responseHeader != null) {
       // use rcode from response

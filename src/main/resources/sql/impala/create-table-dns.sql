@@ -53,7 +53,8 @@ create external table if not exists ${DATABASE_NAME}.${TABLE_NAME} (
  q_ad BOOLEAN,
  pub_resolver STRING,
  req_len int,
- res_len int
+ res_len int,
+ tcp_rtt int
 ) partitioned by (year INT, month INT, day INT, server string)
   STORED AS PARQUETFILE
   LOCATION '${TABLE_LOC}';

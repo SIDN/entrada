@@ -23,22 +23,24 @@ import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import java.io.File;
 import java.io.IOException;
+import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import javax.annotation.PostConstruct;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateUtils;
+import org.jboss.netty.handler.ipfilter.IpSubnet;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.security.web.util.matcher.IpAddressMatcher;
 import lombok.extern.log4j.Log4j2;
 
 @Log4j2
 public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
-  private List<IpAddressMatcher> matchers4 = new ArrayList<>();
-  private List<IpAddressMatcher> matchers6 = new ArrayList<>();
+  private List<IpSubnet> matchers4 = new ArrayList<>();
+  private List<IpSubnet> matchers6 = new ArrayList<>();
 
   private List<String> subnets = new ArrayList<>();
 
@@ -65,16 +67,30 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
       subnets
           .stream()
           .filter(s -> s.contains("."))
-          .forEach(s -> matchers4.add(new IpAddressMatcher(s)));
+          .map(this::subnetFor)
+          .filter(Objects::nonNull)
+          .forEach(s -> matchers4.add(s));
 
       subnets
           .stream()
           .filter(s -> s.contains(":"))
-          .forEach(s -> matchers6.add(new IpAddressMatcher(s)));
+          .map(this::subnetFor)
+          .filter(Objects::nonNull)
+          .forEach(s -> matchers6.add(s));
 
       // write subnets to file so we do not need to get them from source every time the app starts
       writeToFile(file);
     }
+  }
+
+  private IpSubnet subnetFor(String address) {
+    try {
+      return new IpSubnet(address);
+    } catch (UnknownHostException e) {
+      log.error("Cannot create subnet for: {}", address, e);
+    }
+
+    return null;
   }
 
   protected abstract List<String> fetch();
@@ -107,12 +123,16 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     lines
         .stream()
         .filter(s -> s.contains("."))
-        .forEach(s -> matchers4.add(new IpAddressMatcher(s)));
+        .map(this::subnetFor)
+        .filter(Objects::nonNull)
+        .forEach(s -> matchers4.add(s));
 
     lines
         .stream()
         .filter(s -> s.contains(":"))
-        .forEach(s -> matchers6.add(new IpAddressMatcher(s)));
+        .map(this::subnetFor)
+        .filter(Objects::nonNull)
+        .forEach(s -> matchers6.add(s));
 
     log.info("Loaded {} resolver addresses from file: {}", getSize(), file);
 
@@ -136,17 +156,30 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     // to check
 
     if (StringUtils.contains(address, ".")) {
-      for (IpAddressMatcher m : matchers4) {
-        if (m.matches(address)) {
+      for (IpSubnet sn : matchers4) {
+        if (subnetContains(sn, address)) {
           return true;
         }
       }
       return false;
     }
 
-    for (IpAddressMatcher m : matchers6) {
-      if (m.matches(address)) {
+    for (IpSubnet sn : matchers6) {
+      if (subnetContains(sn, address)) {
         return true;
+      }
+    }
+
+    return false;
+  }
+
+  private boolean subnetContains(IpSubnet subnet, String address) {
+    try {
+      return subnet.contains(address);
+    } catch (UnknownHostException e) {
+      // ignore
+      if (log.isDebugEnabled()) {
+        log.debug("Subnet {} contains check for {} failed", subnet, address);
       }
     }
 

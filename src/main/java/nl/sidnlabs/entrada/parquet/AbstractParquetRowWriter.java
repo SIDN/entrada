@@ -35,7 +35,7 @@ public abstract class AbstractParquetRowWriter implements RowWriter {
 
   protected static final int STATUS_COUNT = 100000;
 
-  protected int packetCounter;
+  protected int rowCounter;
   protected ParquetPartitionWriter writer;
   protected Schema avroSchema;
   private int maxRows;
@@ -94,7 +94,7 @@ public abstract class AbstractParquetRowWriter implements RowWriter {
   }
 
   protected void showStatus() {
-    log.info(packetCounter + " rows written to file.");
+    log.info(rowCounter + " rows written to file.");
   }
 
 }

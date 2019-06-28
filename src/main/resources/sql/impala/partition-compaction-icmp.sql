@@ -3,7 +3,9 @@ CREATE EXTERNAL TABLE ${DATABASE_NAME}.tmp_compaction
   COMMENT 'ENTRADA Compaction temp table'
   STORED AS PARQUET
   LOCATION '${TABLE_LOC}'
-AS SELECT time, icmp_type,
+AS SELECT 
+	time,
+	icmp_type,
 	icmp_code,
 	icmp_echo_client_type,
 	ip_ttl,

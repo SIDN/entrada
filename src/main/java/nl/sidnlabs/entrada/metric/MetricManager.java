@@ -54,7 +54,6 @@ public class MetricManager {
   public static final String METRIC_IMPORT_DNS_NO_RESPONSE_COUNT = ".dns.noreresponse.count";
 
   // layer 4 stats
-  public static final String METRIC_IMPORT_DNS_TCPSTREAM_COUNT = ".dns.tcp.session.count";
   public static final String METRIC_IMPORT_TCP_COUNT = ".tcp.packet.count";
   public static final String METRIC_IMPORT_UDP_COUNT = ".udp.packet.count";
 

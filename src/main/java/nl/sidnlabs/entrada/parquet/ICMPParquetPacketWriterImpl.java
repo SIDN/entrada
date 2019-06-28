@@ -38,6 +38,8 @@ public class ICMPParquetPacketWriterImpl extends AbstractParquetRowWriter {
 
   @Override
   public Partition write(Row row, String server) {
+    rowCounter++;
+
     Calendar cal = Calendar.getInstance();
     cal.setTimeInMillis(row.getTs().getTime());
 

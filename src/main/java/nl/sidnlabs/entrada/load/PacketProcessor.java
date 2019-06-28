@@ -117,8 +117,6 @@ public class PacketProcessor {
   private OutputWriter outputWriter;
   private FileArchiveService fileArchiveService;
 
-  private int multiCounter;
-
   // metrics
   private int packetCounter;
   private int queryCounter;
@@ -142,6 +140,10 @@ public class PacketProcessor {
   private Future<Map<String, Set<Partition>>> outputFuture;
   private LinkedBlockingQueue<PacketCombination> packetQueue;
 
+  // aps with state, loaded at start and persisted at end
+  private Multimap<TCPFlow, SequencePayload> flows;
+  private Multimap<Datagram, DatagramPayload> datagrams;
+
   public PacketProcessor(ServerContext serverCtx, MetricManager metricManager,
       PersistenceManager persistenceManager, OutputWriter outputWriter,
       FileArchiveService fileArchiveService, FileManagerFactory fileManagerFactory,
@@ -161,7 +163,28 @@ public class PacketProcessor {
   }
 
 
+  /**
+   * 
+   * Remove old work dir.
+   * 
+   * @return True if work location for name server is deleted or if it did not exist yet
+   */
+  private boolean clean() {
+    String path = FileUtil.appendPath(workLocation, serverCtx.getServerInfo().getNormalizeName());
+    FileManager fm = fileManagerFactory.getFor(path);
+    if (fm.exists(path)) {
+      return fm.rmdir(path);
+    }
+
+    return true;
+  }
+
   public void execute() {
+    if (!clean()) {
+      // cannot remove old data
+      log.error("Cleanup error, stop.");
+      return;
+    }
     // reset all counters and reused data structures
     reset();
 
@@ -172,6 +195,9 @@ public class PacketProcessor {
       log.info("No files found, stop.");
       return;
     }
+
+    // get the state from the previous run
+    loadState();
 
     for (String file : inputFiles) {
       Date start = new Date();
@@ -203,7 +229,9 @@ public class PacketProcessor {
       // mark all data procssed
       pushPacket(PacketCombination.NULL);
       // wait until writer is done
+      log.info("Wait until output writer(s) have finished");
       Map<String, Set<Partition>> partitions = waitForWriter(outputFuture);
+      log.info("Output writer(s) have finished, continue uploading results");
       // upload newly created data to fs
       upload(partitions);
       register(partitions);
@@ -218,6 +246,7 @@ public class PacketProcessor {
 
   private Map<String, Set<Partition>> waitForWriter(
       Future<Map<String, Set<Partition>>> outputFuture) {
+
     try {
       return outputFuture.get();
     } catch (Exception e) {
@@ -229,7 +258,6 @@ public class PacketProcessor {
   }
 
   private void reset() {
-    multiCounter = 0;
     packetCounter = 0;
     queryCounter = 0;
     responseCounter = 0;
@@ -242,12 +270,11 @@ public class PacketProcessor {
     packetQueue = new LinkedBlockingQueue<>(MAX_QUEUE_SIZE);
   }
 
-  public void logStats() {
+  private void logStats() {
     log.info("--------- Done processing data-----------");
     log.info("{} packets", queryCounter + responseCounter);
     log.info("{} query packets", queryCounter);
     log.info("{} response packets", responseCounter);
-    log.info("{} messages from TCP streams with > 1 msg", multiCounter);
     log.info("{} response packets without request", noQueryFoundCounter);
     log.info("-----------------------------------------");
   }
@@ -327,7 +354,6 @@ public class PacketProcessor {
 
     metricManager.send(MetricManager.METRIC_IMPORT_FILES_COUNT, fileCount);
     metricManager.send(MetricManager.METRIC_IMPORT_DNS_NO_REQUEST_COUNT, noQueryFoundCounter);
-    metricManager.send(MetricManager.METRIC_IMPORT_DNS_TCPSTREAM_COUNT, multiCounter);
     metricManager
         .send(MetricManager.METRIC_IMPORT_STATE_PERSIST_UDP_FLOW_COUNT,
             pcapReader.getDatagrams().size());
@@ -339,15 +365,12 @@ public class PacketProcessor {
         .send(MetricManager.METRIC_IMPORT_TCP_PREFIX_ERROR_COUNT, pcapReader.getTcpPrefixError());
   }
 
-  public void read(String file) {
+  private void read(String file) {
     // try to open file, if file is not good pcap handle exception and fail fast.
     if (!createReader(file)) {
       log.error("Skip bad input file: " + file);
       return;
     }
-
-    // get the state from the previous run
-    loadState();
 
     long readStart = System.currentTimeMillis();
     log.info("Start reading packet queue");
@@ -357,15 +380,27 @@ public class PacketProcessor {
     String fileName = FileUtil.filename(file);
 
     packetCounter = 0;
-    pcapReader.stream().forEach(p -> process(p, fileName));
+    // process each packet from the pcap file
+    try {
+      pcapReader.stream().forEach(p -> process(p, fileName));
 
-    log.info("Processing time: " + (System.currentTimeMillis() - readStart) + "ms");
-    if (log.isDebugEnabled()) {
-      log.debug("Done with decoding, start cleanup");
+      log.info("Processing time: " + (System.currentTimeMillis() - readStart) + "ms");
+      if (log.isDebugEnabled()) {
+        log.debug("Done with decoding, start cleanup");
+      }
+    } finally {
+      // clear expired cache entries
+      pcapReader
+          .clearCache(cacheTimeoutTCPConfig * 60 * 1000, cacheTimeoutIPFragConfig * 60 * 1000);
+      // make sure the pcap reader is always closed to avoid leaks
+      pcapReader.close();
     }
-    // clear expired cache entries
-    pcapReader.clearCache(cacheTimeoutTCPConfig * 60 * 1000, cacheTimeoutIPFragConfig * 60 * 1000);
-    pcapReader.close();
+
+  }
+
+  private boolean isICMP(Packet p) {
+    return p.getProtocol() == PacketFactory.PROTOCOL_ICMP_V4
+        || p.getProtocol() == PacketFactory.PROTOCOL_ICMP_V6;
   }
 
   private void process(Packet currentPacket, String fileName) {
@@ -374,9 +409,7 @@ public class PacketProcessor {
       log.info("Processed " + packetCounter + " packets");
     }
 
-    if (currentPacket.getProtocol() == PacketFactory.PROTOCOL_ICMP_V4
-        || (currentPacket.getProtocol() == PacketFactory.PROTOCOL_ICMP_V6)) {
-
+    if (isICMP(currentPacket)) {
       if (!icmpEnabled) {
         // do not process ICMP packets
         return;
@@ -389,34 +422,38 @@ public class PacketProcessor {
       DNSPacket dnsPacket = (DNSPacket) currentPacket;
       if (dnsPacket.getMessages().isEmpty()) {
         // skip malformed packets
-        log.debug("Drop packet with no dns message");
+        log.debug("Packet contains no dns message, skipping...");
         return;
       }
 
-      if (dnsPacket.getMessageCount() > 1) {
-        multiCounter = multiCounter + dnsPacket.getMessageCount();
-      }
-
       for (Message msg : dnsPacket.getMessages()) {
-        // get qname from request which is part of the cache lookup key
-        String qname = null;
-        if (!msg.getQuestions().isEmpty()) {
-          qname = msg.getQuestions().get(0).getQName();
-        }
-
         // put request into map until we find matching response, with a key based on: query id,
-        // qname, ip src, tcp/udp port
-        // add time for possible timeout eviction
+        // qname, ip src, tcp/udp port add time for possible timeout eviction
         if (msg.getHeader().getQr() == MessageType.QUERY) {
-          handDnsQuery(dnsPacket, msg, qname, fileName);
+          handDnsQuery(dnsPacket, msg, fileName);
         } else {
-          handDnsResponse(dnsPacket, msg, qname, fileName);
+          handDnsResponse(dnsPacket, msg, fileName);
         }
       }
     } // end of dns packet
   }
 
-  private void handDnsQuery(DNSPacket dnsPacket, Message msg, String qname, String fileName) {
+  /**
+   * get qname from request which is part of the cache lookup key
+   * 
+   * @param msg the DNS message
+   * @return the qname from the DNS question or null if not found.
+   */
+  private String qname(Message msg) {
+    String qname = null;
+    if (!msg.getQuestions().isEmpty()) {
+      qname = msg.getQuestions().get(0).getQName();
+    }
+
+    return qname;
+  }
+
+  private void handDnsQuery(DNSPacket dnsPacket, Message msg, String fileName) {
     queryCounter++;
 
     // check for ixfr/axfr request
@@ -434,12 +471,14 @@ public class PacketProcessor {
               dnsPacket.getSrcPort()), 0);
     }
 
-    RequestKey key = new RequestKey(msg.getHeader().getId(), qname, dnsPacket.getSrc(),
+    RequestKey key = new RequestKey(msg.getHeader().getId(), qname(msg), dnsPacket.getSrc(),
         dnsPacket.getSrcPort(), System.currentTimeMillis());
+
+    // put the query in the cache until we get a matching response
     requestCache.put(key, new MessageWrapper(msg, dnsPacket, fileName));
   }
 
-  private void handDnsResponse(DNSPacket dnsPacket, Message msg, String qname, String fileName) {
+  private void handDnsResponse(DNSPacket dnsPacket, Message msg, String fileName) {
     // try to find the request
     responseCounter++;
 
@@ -462,8 +501,8 @@ public class PacketProcessor {
       }
     }
 
-    key =
-        new RequestKey(msg.getHeader().getId(), qname, dnsPacket.getDst(), dnsPacket.getDstPort());
+    key = new RequestKey(msg.getHeader().getId(), qname(msg), dnsPacket.getDst(),
+        dnsPacket.getDstPort());
     MessageWrapper request = requestCache.remove(key);
     // check to see if the request msg exists, at the start of the pcap there may be
     // missing queries
@@ -498,53 +537,51 @@ public class PacketProcessor {
    */
   private void persistState() {
     int flowCount = 0;
-    if (pcapReader != null) {
-      Map<TCPFlow, Collection<SequencePayload>> pmap = new HashMap<>();
+    int datagramCount = 0;
+    int cacheCount = 0;
+
+    if (flows != null) {
       // persist tcp state
-      Map<TCPFlow, Collection<SequencePayload>> flows = pcapReader.getFlows().asMap();
-      // convert to std java map and collection
-      Iterator<TCPFlow> iter = flows.keySet().iterator();
-      while (iter.hasNext()) {
-        TCPFlow tcpFlow = iter.next();
+      Map<TCPFlow, Collection<SequencePayload>> pmap = new HashMap<>();
+      for (Map.Entry<TCPFlow, Collection<SequencePayload>> entry : flows.asMap().entrySet()) {
         Collection<SequencePayload> payloads = new ArrayList<>();
-        Collection<SequencePayload> payloads2Persist = flows.get(tcpFlow);
-        for (SequencePayload sequencePayload : payloads2Persist) {
+        for (SequencePayload sequencePayload : entry.getValue()) {
           payloads.add(sequencePayload);
         }
-        pmap.put(tcpFlow, payloads);
+        pmap.put(entry.getKey(), payloads);
         flowCount++;
       }
 
       persistenceManager.write(pmap);
     }
 
-    // persist IP datagrams
-    Map<Datagram, Collection<DatagramPayload>> datagrams = pcapReader.getDatagrams().asMap();
-    // convert to std java map and collection
-    Map<Datagram, Collection<DatagramPayload>> outMap = new HashMap<>();
-
-    Iterator<Datagram> ipIter = datagrams.keySet().iterator();
-    while (ipIter.hasNext()) {
-      Datagram dg = ipIter.next();
-      Collection<DatagramPayload> datagrams2persist = new ArrayList<>();
-      Collection<DatagramPayload> datagramPayloads = datagrams.get(dg);
-      for (DatagramPayload sequencePayload : datagramPayloads) {
-        datagrams2persist.add(sequencePayload);
+    if (datagrams != null) {
+      // persist IP datagrams
+      Map<Datagram, Collection<DatagramPayload>> outMap = new HashMap<>();
+      for (Map.Entry<Datagram, Collection<DatagramPayload>> entry : datagrams.asMap().entrySet()) {
+        Collection<DatagramPayload> datagrams2persist = new ArrayList<>();
+        for (DatagramPayload sequencePayload : entry.getValue()) {
+          datagrams2persist.add(sequencePayload);
+        }
+        outMap.put(entry.getKey(), datagrams2persist);
+        datagramCount++;
       }
-      outMap.put(dg, datagrams2persist);
+
+      persistenceManager.write(outMap);
     }
 
-    persistenceManager.write(outMap);
-
-    // persist request cache
-    persistenceManager.write(requestCache);
+    if (requestCache != null) {
+      // persist request cache
+      persistenceManager.write(requestCache);
+      cacheCount = requestCache.size();
+    }
 
     persistenceManager.close();
 
     log.info("------------- State persistence stats --------------");
     log.info("Persist {} TCP flows", flowCount);
-    log.info("Persist {} Datagrams", pcapReader.getDatagrams().size());
-    log.info("Persist request cache {} DNS requests", requestCache.size());
+    log.info("Persist {} Datagrams", datagramCount);
+    log.info("Persist {} DNS requests from cache", cacheCount);
     log.info("----------------------------------------------------");
   }
 
@@ -564,7 +601,8 @@ public class PacketProcessor {
         flows.put(entry.getKey(), sequencePayload);
       }
     }
-    pcapReader.setFlows(flows);
+
+    this.flows = flows;
 
     // read persisted IP datagrams
     Multimap<Datagram, DatagramPayload> datagrams = TreeMultimap.create();
@@ -574,7 +612,7 @@ public class PacketProcessor {
         datagrams.put(entry.getKey(), dgPayload);
       }
     }
-    pcapReader.setDatagrams(datagrams);
+    this.datagrams = datagrams;
 
     // read in previous request cache
     requestCache = persistenceManager.read(HashMap.class);
@@ -583,8 +621,8 @@ public class PacketProcessor {
 
 
     log.info("------------- Loader state stats ------------------");
-    log.info("Loaded TCP state {} TCP flows", pcapReader.getFlows().size());
-    log.info("Loaded Datagram state {} Datagrams", pcapReader.getDatagrams().size());
+    log.info("Loaded TCP state {} TCP flows", flows.size());
+    log.info("Loaded Datagram state {} Datagrams", datagrams.size());
     log.info("Loaded Request cache {} DNS requests", requestCache.size());
     log.info("----------------------------------------------------");
   }
@@ -623,7 +661,7 @@ public class PacketProcessor {
             + " expired queries from request cache to output file with rcode no response");
   }
 
-  public boolean createReader(String file) {
+  private boolean createReader(String file) {
     log.info("Start loading queue from file:" + file);
     fileCount++;
 
@@ -645,6 +683,10 @@ public class PacketProcessor {
       log.error("Error creating pcap reader for: " + file, e);
       return false;
     }
+
+    // set the state of the reader
+    pcapReader.setFlows(flows);
+    pcapReader.setDatagrams(datagrams);
 
     return true;
   }

@@ -2,9 +2,10 @@ package nl.sidnlabs.entrada.enrich.resolver;
 
 import java.util.List;
 import java.util.Optional;
+import org.springframework.stereotype.Component;
 import nl.sidnlabs.entrada.enrich.AddressEnrichment;
 
-// @Component
+@Component
 public class ResolverEnrichment implements AddressEnrichment {
 
   private List<DnsResolverCheck> resolverChecks;

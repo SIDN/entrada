@@ -132,6 +132,8 @@ public class OutputWriterImpl implements OutputWriter {
   }
 
   private Map<String, Set<Partition>> close() {
+    log.info("Closing writer");
+
     // make sure to close last partial file
     dnsWriter.close();
     icmpWriter.close();
@@ -149,6 +151,8 @@ public class OutputWriterImpl implements OutputWriter {
   }
 
   private void open(boolean dns, boolean icmp) {
+    log.info("Opening writer");
+
     open = true;
     if (dns) {
       dnsWriter.open(workLocation, serverCtx.getServerInfo().getNormalizeName(), "dns");
@@ -232,6 +236,7 @@ public class OutputWriterImpl implements OutputWriter {
       Thread.sleep(100);
     } catch (InterruptedException e) {
       // ignore this error
+      log.error("Thread interrupted during sleep");
     }
   }
 }

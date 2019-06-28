@@ -26,7 +26,7 @@ public class PartitionService {
 
   @Transactional
   public void create(String table, Set<Partition> partitions) {
-    log.info("Save {} partitions", partitions.size());
+    log.info("Save {} partition(s)", partitions.size());
 
     partitions.stream().forEach(p -> createPartion(table, p));
 

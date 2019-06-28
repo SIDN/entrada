@@ -19,6 +19,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS ${DATABASE_NAME}.${TABLE_NAME}(
 	orig_l4_prot INT,
 	orig_l4_srcp INT,
 	orig_l4_dstp INT,
+	orig_ip_len INT,
 	orig_icmp_type smallint,
 	orig_icmp_code smallint,
 	orig_icmp_echo_client_type smallint,
@@ -49,12 +50,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS ${DATABASE_NAME}.${TABLE_NAME}(
 	query_ts TIMESTAMP,
 	pcap_file STRING,
 	ip_pub_resolver STRING
-) PARTITIONED BY (
-  year int,
-  month int,
-  day int,
-  server string
-)
+) PARTITIONED BY (year int, month int, day int, server string)
 ROW FORMAT SERDE
 'org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe'
 WITH SERDEPROPERTIES (

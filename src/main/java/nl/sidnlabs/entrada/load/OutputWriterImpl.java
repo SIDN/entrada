@@ -40,9 +40,8 @@ import nl.sidnlabs.entrada.model.Row;
 import nl.sidnlabs.entrada.model.RowBuilder;
 import nl.sidnlabs.entrada.support.PacketCombination;
 import nl.sidnlabs.entrada.support.RequestKey;
-import nl.sidnlabs.pcap.PcapReader;
-import nl.sidnlabs.pcap.decoder.ICMPDecoder;
 import nl.sidnlabs.pcap.packet.Packet;
+import nl.sidnlabs.pcap.packet.PacketFactory;
 
 /**
  * Output writer that will write output using separate thread. For now this class only supports
@@ -70,17 +69,17 @@ public class OutputWriterImpl implements OutputWriter {
   private MetricManager metricManager;
   private RowBuilder dnsRowBuilder;
   private RowBuilder icmpRowBuilder;
-  private ServerContext settings;
+  private ServerContext serverCtx;
 
   private Set<Partition> dnsPartitions = new HashSet<>();
   private Set<Partition> icmpPartitions = new HashSet<>();
 
-  public OutputWriterImpl(ServerContext settings, @Qualifier("parquet-dns") RowWriter dnsWriter,
+  public OutputWriterImpl(ServerContext serverCtx, @Qualifier("parquet-dns") RowWriter dnsWriter,
       @Qualifier("parquet-icmp") RowWriter icmpWriter, MetricManager metricManager,
       @Qualifier("dnsBuilder") RowBuilder dnsRowBuilder,
       @Qualifier("icmpBuilder") RowBuilder icmpRowBuilder) {
 
-    this.settings = settings;
+    this.serverCtx = serverCtx;
     // when multiple formats are support we need a factory to create the output writers for the
     // correct format
     this.dnsWriter = dnsWriter;
@@ -94,12 +93,13 @@ public class OutputWriterImpl implements OutputWriter {
   private void write(PacketCombination p) {
     if (p != null) {
       int proto = lookupProtocol(p);
-      if (proto == PcapReader.PROTOCOL_TCP) {
-        writeDns(dnsRowBuilder.build(p), p.getServer().getName());
-      } else if (proto == PcapReader.PROTOCOL_UDP) {
-        writeDns(dnsRowBuilder.build(p), p.getServer().getName());
-      } else if (proto == ICMPDecoder.PROTOCOL_ICMP_V4 || proto == ICMPDecoder.PROTOCOL_ICMP_V6) {
-        writeIcmp(icmpRowBuilder.build(p), p.getServer().getName());
+      if (proto == PacketFactory.PROTOCOL_TCP) {
+        writeDns(dnsRowBuilder.build(p), serverCtx.getServerInfo().getName());
+      } else if (proto == PacketFactory.PROTOCOL_UDP) {
+        writeDns(dnsRowBuilder.build(p), serverCtx.getServerInfo().getName());
+      } else if (proto == PacketFactory.PROTOCOL_ICMP_V4
+          || proto == PacketFactory.PROTOCOL_ICMP_V6) {
+        writeIcmp(icmpRowBuilder.build(p), serverCtx.getServerInfo().getName());
       }
     }
   }
@@ -151,11 +151,11 @@ public class OutputWriterImpl implements OutputWriter {
   private void open(boolean dns, boolean icmp) {
     open = true;
     if (dns) {
-      dnsWriter.open(workLocation, settings.getServerInfo().getNormalizeName(), "dns");
+      dnsWriter.open(workLocation, serverCtx.getServerInfo().getNormalizeName(), "dns");
     }
 
     if (icmp) {
-      icmpWriter.open(workLocation, settings.getServerInfo().getNormalizeName(), "icmp");
+      icmpWriter.open(workLocation, serverCtx.getServerInfo().getNormalizeName(), "icmp");
     }
   }
 

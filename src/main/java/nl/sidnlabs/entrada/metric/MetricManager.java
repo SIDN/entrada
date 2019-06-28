@@ -79,7 +79,6 @@ public class MetricManager {
   public static final String METRIC_IMPORT_RUN_ERROR_COUNT = ".run.error.count";
 
   public static final String METRIC_IMPORT_TCP_PREFIX_ERROR_COUNT = ".tcp.prefix.error.count";
-  public static final String METRIC_IMPORT_DNS_DECODE_ERROR_COUNT = ".dns.decode.error.count";
 
   public static final String METRIC_IMPORT_STATE_PERSIST_UDP_FLOW_COUNT =
       ".state.persist.udp.flow.count";

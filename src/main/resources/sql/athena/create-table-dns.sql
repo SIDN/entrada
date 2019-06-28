@@ -57,12 +57,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS ${DATABASE_NAME}.${TABLE_NAME}(
   req_len int,
   res_len int,
   tcp_rtt int
-) PARTITIONED BY (
-  year int,
-  month int,
-  day int,
-  server string
-)
+) PARTITIONED BY (year int, month int, day int,server string)
 ROW FORMAT SERDE
 'org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe'
 WITH SERDEPROPERTIES (

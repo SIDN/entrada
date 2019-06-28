@@ -12,6 +12,7 @@ import nl.sidnlabs.dnslib.message.Question;
 import nl.sidnlabs.dnslib.message.records.edns0.OPTResourceRecord;
 import nl.sidnlabs.dnslib.util.Domaininfo;
 import nl.sidnlabs.dnslib.util.NameUtil;
+import nl.sidnlabs.entrada.config.ServerContext;
 import nl.sidnlabs.entrada.enrich.AddressEnrichment;
 import nl.sidnlabs.entrada.metric.MetricManager;
 import nl.sidnlabs.entrada.support.PacketCombination;
@@ -32,10 +33,13 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
   int icmp = 0;
 
   private MetricManager metricManager;
+  private ServerContext serverCtx;
 
-  public ICMPRowBuilder(List<AddressEnrichment> enrichments, MetricManager metricManager) {
+  public ICMPRowBuilder(List<AddressEnrichment> enrichments, MetricManager metricManager,
+      ServerContext serverCtx) {
     super(enrichments);
     this.metricManager = metricManager;
+    this.serverCtx = serverCtx;
   }
 
   @Override
@@ -112,7 +116,7 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
     // be null
     // only store this column in case of anycast, to save storage space.
     // the server name can be determined with the "svr" column
-    row.addColumn(column("server_location", combo.getServer().getLocation()));
+    row.addColumn(column("server_location", serverCtx.getServerInfo().getLocation()));
 
     // orig packet from payload
 

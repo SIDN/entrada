@@ -63,11 +63,11 @@ import nl.sidnlabs.entrada.util.CompressionUtil;
 import nl.sidnlabs.entrada.util.FileUtil;
 import nl.sidnlabs.pcap.PcapReader;
 import nl.sidnlabs.pcap.SequencePayload;
-import nl.sidnlabs.pcap.decoder.ICMPDecoder;
 import nl.sidnlabs.pcap.packet.DNSPacket;
 import nl.sidnlabs.pcap.packet.Datagram;
 import nl.sidnlabs.pcap.packet.DatagramPayload;
 import nl.sidnlabs.pcap.packet.Packet;
+import nl.sidnlabs.pcap.packet.PacketFactory;
 import nl.sidnlabs.pcap.packet.TCPFlow;
 
 @Log4j2
@@ -76,7 +76,6 @@ public class PacketProcessor {
 
   private static final int MAX_QUEUE_SIZE = 100000;
 
-  // config options from application.properties
   @Value("${entrada.cache.timeout}")
   private int cacheTimeoutConfig;
 
@@ -215,9 +214,7 @@ public class PacketProcessor {
 
   private void register(Map<String, Set<Partition>> partitions) {
     partitions.entrySet().stream().forEach(e -> partitionService.create(e.getKey(), e.getValue()));
-
   }
-
 
   private Map<String, Set<Partition>> waitForWriter(
       Future<Map<String, Set<Partition>>> outputFuture) {
@@ -225,6 +222,7 @@ public class PacketProcessor {
       return outputFuture.get();
     } catch (Exception e) {
       // ignore this error, return empty set
+      log.error("Error while waiting for output writer to finish");
     }
 
     return Collections.emptyMap();
@@ -249,7 +247,7 @@ public class PacketProcessor {
     log.info("{} packets", queryCounter + responseCounter);
     log.info("{} query packets", queryCounter);
     log.info("{} response packets", responseCounter);
-    log.info("{} messages from TCP streams with > 1 mesg", multiCounter);
+    log.info("{} messages from TCP streams with > 1 msg", multiCounter);
     log.info("{} response packets without request", noQueryFoundCounter);
     log.info("-----------------------------------------");
   }
@@ -339,8 +337,6 @@ public class PacketProcessor {
     metricManager.send(MetricManager.METRIC_IMPORT_STATE_PERSIST_DNS_COUNT, requestCache.size());
     metricManager
         .send(MetricManager.METRIC_IMPORT_TCP_PREFIX_ERROR_COUNT, pcapReader.getTcpPrefixError());
-    metricManager
-        .send(MetricManager.METRIC_IMPORT_DNS_DECODE_ERROR_COUNT, pcapReader.getDnsDecodeError());
   }
 
   public void read(String file) {
@@ -356,7 +352,8 @@ public class PacketProcessor {
     long readStart = System.currentTimeMillis();
     log.info("Start reading packet queue");
 
-    // get filename only to map parquet row to pcap file
+    // get filename only to map parquet row to pcap file for possible
+    // later detailed analysis
     String fileName = FileUtil.filename(file);
 
     packetCounter = 0;
@@ -376,111 +373,114 @@ public class PacketProcessor {
     if (packetCounter % 100000 == 0) {
       log.info("Processed " + packetCounter + " packets");
     }
-    if (currentPacket != null && currentPacket.getIpVersion() != 0) {
 
+    if (currentPacket.getProtocol() == PacketFactory.PROTOCOL_ICMP_V4
+        || (currentPacket.getProtocol() == PacketFactory.PROTOCOL_ICMP_V6)) {
 
-      if (currentPacket.getProtocol() == ICMPDecoder.PROTOCOL_ICMP_V4
-          || (currentPacket.getProtocol() == ICMPDecoder.PROTOCOL_ICMP_V6)) {
+      if (!icmpEnabled) {
+        // do not process ICMP packets
+        return;
+      }
+      // handle icmp
+      pushPacket(new PacketCombination(currentPacket, null, null, null, false, fileName));
 
-        if (!icmpEnabled) {
-          // do not process ICMP packets
-          return;
+    } else {
+      // must be dnspacket
+      DNSPacket dnsPacket = (DNSPacket) currentPacket;
+      if (dnsPacket.getMessages().isEmpty()) {
+        // skip malformed packets
+        log.debug("Drop packet with no dns message");
+        return;
+      }
+
+      if (dnsPacket.getMessageCount() > 1) {
+        multiCounter = multiCounter + dnsPacket.getMessageCount();
+      }
+
+      for (Message msg : dnsPacket.getMessages()) {
+        // get qname from request which is part of the cache lookup key
+        String qname = null;
+        if (!msg.getQuestions().isEmpty()) {
+          qname = msg.getQuestions().get(0).getQName();
         }
 
-        // handle icmp
-        pushPacket(new PacketCombination(currentPacket, null, serverCtx.getServerInfo(), null, null,
-            false, fileName));
+        // put request into map until we find matching response, with a key based on: query id,
+        // qname, ip src, tcp/udp port
+        // add time for possible timeout eviction
+        if (msg.getHeader().getQr() == MessageType.QUERY) {
+          handDnsQuery(dnsPacket, msg, qname, fileName);
+        } else {
+          handDnsResponse(dnsPacket, msg, qname, fileName);
+        }
+      }
+    } // end of dns packet
+  }
 
+  private void handDnsQuery(DNSPacket dnsPacket, Message msg, String qname, String fileName) {
+    queryCounter++;
+
+    // check for ixfr/axfr request
+    if (!msg.getQuestions().isEmpty()
+        && (msg.getQuestions().get(0).getQType() == ResourceRecordType.AXFR
+            || msg.getQuestions().get(0).getQType() == ResourceRecordType.IXFR)) {
+
+      if (log.isDebugEnabled()) {
+        log.debug("Detected zonetransfer for: " + dnsPacket.getFlow());
+      }
+      // keep track of ongoing zone transfer, we do not want to store all the response
+      // packets for an ixfr/axfr.
+      activeZoneTransfers
+          .put(new RequestKey(msg.getHeader().getId(), null, dnsPacket.getSrc(),
+              dnsPacket.getSrcPort()), 0);
+    }
+
+    RequestKey key = new RequestKey(msg.getHeader().getId(), qname, dnsPacket.getSrc(),
+        dnsPacket.getSrcPort(), System.currentTimeMillis());
+    requestCache.put(key, new MessageWrapper(msg, dnsPacket, fileName));
+  }
+
+  private void handDnsResponse(DNSPacket dnsPacket, Message msg, String qname, String fileName) {
+    // try to find the request
+    responseCounter++;
+
+    // check for ixfr/axfr response, the query might be missing from the response
+    // so we cannot use the qname for matching.
+    RequestKey key =
+        new RequestKey(msg.getHeader().getId(), null, dnsPacket.getDst(), dnsPacket.getDstPort());
+    if (activeZoneTransfers.containsKey(key)) {
+      // this response is part of an active zonetransfer.
+      // only let the first response continue, reuse the "time" field of the RequestKey to
+      // keep track of this.
+      Integer ztResponseCounter = activeZoneTransfers.get(key);
+      if (ztResponseCounter.intValue() > 0) {
+        // do not save this msg, drop it here, continue with next msg.
+        return;
       } else {
-        DNSPacket dnsPacket = (DNSPacket) currentPacket;
-        if (dnsPacket.getMessage() == null) {
-          // skip malformed packets
-          log.debug("Drop packet with no dns message");
-          return;
-        }
+        // 1st response msg let it continue, add 1 to the map the indicate 1st resp msg
+        // has been processed
+        activeZoneTransfers.put(key, 1);
+      }
+    }
 
-        if (dnsPacket.getMessageCount() > 1) {
-          multiCounter = multiCounter + dnsPacket.getMessageCount();
-        }
+    key =
+        new RequestKey(msg.getHeader().getId(), qname, dnsPacket.getDst(), dnsPacket.getDstPort());
+    MessageWrapper request = requestCache.remove(key);
+    // check to see if the request msg exists, at the start of the pcap there may be
+    // missing queries
 
-        for (Message msg : dnsPacket.getMessages()) {
-          // get qname from request which is part of the cache lookup key
-          String qname = null;
-          if (msg != null && msg.getQuestions() != null && !msg.getQuestions().isEmpty()) {
-            qname = msg.getQuestions().get(0).getQName();
-          }
+    if (request != null && request.getPacket() != null && request.getMessage() != null) {
 
-          // put request into map until we find matching response, with a key based on: query id,
-          // qname, ip src, tcp/udp port
-          // add time for possible timeout eviction
-          if (msg.getHeader().getQr() == MessageType.QUERY) {
-            queryCounter++;
+      pushPacket(new PacketCombination(request.getPacket(), request.getMessage(), dnsPacket, msg,
+          false, fileName));
 
-            // check for ixfr/axfr request
-            if (!msg.getQuestions().isEmpty()
-                && (msg.getQuestions().get(0).getQType() == ResourceRecordType.AXFR
-                    || msg.getQuestions().get(0).getQType() == ResourceRecordType.IXFR)) {
+    } else {
+      // no request found, this could happen if the query was in previous pcap
+      // and was not correctly decoded, or the request timed out before server
+      // could send a response.
+      log.debug("Found no request for response");
+      noQueryFoundCounter++;
 
-              if (log.isDebugEnabled()) {
-                log.debug("Detected zonetransfer for: " + dnsPacket.getFlow());
-              }
-              // keep track of ongoing zone transfer, we do not want to store all the response
-              // packets for an ixfr/axfr.
-              activeZoneTransfers
-                  .put(new RequestKey(msg.getHeader().getId(), null, dnsPacket.getSrc(),
-                      dnsPacket.getSrcPort()), 0);
-            }
-
-            RequestKey key = new RequestKey(msg.getHeader().getId(), qname, dnsPacket.getSrc(),
-                dnsPacket.getSrcPort(), System.currentTimeMillis());
-            requestCache.put(key, new MessageWrapper(msg, dnsPacket, fileName));
-          } else {
-            // try to find the request
-            responseCounter++;
-
-            // check for ixfr/axfr response, the query might be missing from the response
-            // so we cannot use the qname for matching.
-            RequestKey key = new RequestKey(msg.getHeader().getId(), null, dnsPacket.getDst(),
-                dnsPacket.getDstPort());
-            if (activeZoneTransfers.containsKey(key)) {
-              // this response is part of an active zonetransfer.
-              // only let the first response continue, reuse the "time" field of the RequestKey to
-              // keep track of this.
-              Integer ztResponseCounter = activeZoneTransfers.get(key);
-              if (ztResponseCounter.intValue() > 0) {
-                // do not save this msg, drop it here, continue with next msg.
-                continue;
-              } else {
-                // 1st response msg let it continue, add 1 to the map the indicate 1st resp msg
-                // has been processed
-                activeZoneTransfers.put(key, 1);
-              }
-            }
-
-            key = new RequestKey(msg.getHeader().getId(), qname, dnsPacket.getDst(),
-                dnsPacket.getDstPort());
-            MessageWrapper request = requestCache.remove(key);
-            // check to see if the request msg exists, at the start of the pcap there may be
-            // missing queries
-
-            if (request != null && request.getPacket() != null && request.getMessage() != null) {
-
-              pushPacket(new PacketCombination(request.getPacket(), request.getMessage(),
-                  serverCtx.getServerInfo(), dnsPacket, msg, false, fileName));
-
-            } else {
-              // no request found, this could happen if the query was in previous pcap
-              // and was not correctly decoded, or the request timed out before server
-              // could send a response.
-              log.debug("Found no request for response");
-              noQueryFoundCounter++;
-
-              pushPacket(new PacketCombination(null, null, serverCtx.getServerInfo(), dnsPacket,
-                  msg, false, fileName));
-            }
-          }
-        }
-      } // end of dns packet
+      pushPacket(new PacketCombination(null, null, dnsPacket, msg, false, fileName));
     }
   }
 
@@ -497,23 +497,26 @@ public class PacketProcessor {
    * Save the loader state with incomplete datagrams, tcp streams and unmatched dns queries to disk.
    */
   private void persistState() {
-
-    Map<TCPFlow, Collection<SequencePayload>> pmap = new HashMap<>();
-    // persist tcp state
-    Map<TCPFlow, Collection<SequencePayload>> flows = pcapReader.getFlows().asMap();
-    // convert to std java map and collection
-    Iterator<TCPFlow> iter = flows.keySet().iterator();
-    while (iter.hasNext()) {
-      TCPFlow tcpFlow = iter.next();
-      Collection<SequencePayload> payloads = new ArrayList<>();
-      Collection<SequencePayload> payloads2Persist = flows.get(tcpFlow);
-      for (SequencePayload sequencePayload : payloads2Persist) {
-        payloads.add(sequencePayload);
+    int flowCount = 0;
+    if (pcapReader != null) {
+      Map<TCPFlow, Collection<SequencePayload>> pmap = new HashMap<>();
+      // persist tcp state
+      Map<TCPFlow, Collection<SequencePayload>> flows = pcapReader.getFlows().asMap();
+      // convert to std java map and collection
+      Iterator<TCPFlow> iter = flows.keySet().iterator();
+      while (iter.hasNext()) {
+        TCPFlow tcpFlow = iter.next();
+        Collection<SequencePayload> payloads = new ArrayList<>();
+        Collection<SequencePayload> payloads2Persist = flows.get(tcpFlow);
+        for (SequencePayload sequencePayload : payloads2Persist) {
+          payloads.add(sequencePayload);
+        }
+        pmap.put(tcpFlow, payloads);
+        flowCount++;
       }
-      pmap.put(tcpFlow, payloads);
-    }
 
-    persistenceManager.write(pmap);
+      persistenceManager.write(pmap);
+    }
 
     // persist IP datagrams
     Map<Datagram, Collection<DatagramPayload>> datagrams = pcapReader.getDatagrams().asMap();
@@ -521,7 +524,7 @@ public class PacketProcessor {
     Map<Datagram, Collection<DatagramPayload>> outMap = new HashMap<>();
 
     Iterator<Datagram> ipIter = datagrams.keySet().iterator();
-    while (iter.hasNext()) {
+    while (ipIter.hasNext()) {
       Datagram dg = ipIter.next();
       Collection<DatagramPayload> datagrams2persist = new ArrayList<>();
       Collection<DatagramPayload> datagramPayloads = datagrams.get(dg);
@@ -539,7 +542,7 @@ public class PacketProcessor {
     persistenceManager.close();
 
     log.info("------------- State persistence stats --------------");
-    log.info("Persist {} TCP flows", pmap.size());
+    log.info("Persist {} TCP flows", flowCount);
     log.info("Persist {} Datagrams", pcapReader.getDatagrams().size());
     log.info("Persist request cache {} DNS requests", requestCache.size());
     log.info("----------------------------------------------------");
@@ -603,8 +606,8 @@ public class PacketProcessor {
 
         if (mw.getMessage() != null && mw.getMessage().getHeader().getQr() == MessageType.QUERY) {
 
-          pushPacket(new PacketCombination(mw.getPacket(), mw.getMessage(),
-              serverCtx.getServerInfo(), null, null, true, mw.getFilename()));
+          pushPacket(new PacketCombination(mw.getPacket(), mw.getMessage(), null, null, true,
+              mw.getFilename()));
 
           purgeCounter++;
 
@@ -639,7 +642,7 @@ public class PacketProcessor {
       this.pcapReader = new PcapReader(
           new DataInputStream(new BufferedInputStream(decompressor, bufferSizeConfig * 1024)));
     } catch (IOException e) {
-      log.error("Error creating pcap reader for: " + file);
+      log.error("Error creating pcap reader for: " + file, e);
       return false;
     }
 

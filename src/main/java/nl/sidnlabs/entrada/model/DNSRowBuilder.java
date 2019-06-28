@@ -24,11 +24,12 @@ import nl.sidnlabs.dnslib.types.RcodeType;
 import nl.sidnlabs.dnslib.types.ResourceRecordType;
 import nl.sidnlabs.dnslib.util.Domaininfo;
 import nl.sidnlabs.dnslib.util.NameUtil;
+import nl.sidnlabs.entrada.config.ServerContext;
 import nl.sidnlabs.entrada.enrich.AddressEnrichment;
 import nl.sidnlabs.entrada.metric.MetricManager;
 import nl.sidnlabs.entrada.support.PacketCombination;
-import nl.sidnlabs.pcap.PcapReader;
 import nl.sidnlabs.pcap.packet.Packet;
+import nl.sidnlabs.pcap.packet.PacketFactory;
 
 /**
  * Create output format independent row model
@@ -55,10 +56,13 @@ public class DNSRowBuilder extends AbstractRowBuilder {
   int tcp = 0;
 
   private MetricManager metricManager;
+  private ServerContext serverCtx;
 
-  public DNSRowBuilder(List<AddressEnrichment> enrichments, MetricManager metricManager) {
+  public DNSRowBuilder(List<AddressEnrichment> enrichments, MetricManager metricManager,
+      ServerContext serverCtx) {
     super(enrichments);
     this.metricManager = metricManager;
+    this.serverCtx = serverCtx;
   }
 
   @Override
@@ -70,26 +74,31 @@ public class DNSRowBuilder extends AbstractRowBuilder {
     }
 
     Packet reqTransport = combo.getRequest();
-    Message requestMessage = combo.getRequestMessage();
-    Packet respTransport = combo.getResponse();
-    Message respMessage = combo.getResponseMessage();
+    Message reqMessage = combo.getRequestMessage();
+    Packet rspTransport = combo.getResponse();
+    Message rspMessage = combo.getResponseMessage();
+
+    // get the time in milliseconds
+    long time = packetTime(reqTransport, rspTransport);
+    Row row = new Row(new Timestamp(time));
 
     // get the question
-    Question question = lookupQuestion(requestMessage, respMessage);
+    Question question = lookupQuestion(reqMessage, rspMessage);
 
     // get the headers from the messages.
     Header requestHeader = null;
     Header responseHeader = null;
-    if (requestMessage != null) {
-      requestHeader = requestMessage.getHeader();
-    }
-    if (respMessage != null) {
-      responseHeader = respMessage.getHeader();
-    }
 
-    // get the time in milliseconds
-    long time = packetTime(reqTransport);
-    Row row = new Row(new Timestamp(time));
+    if (reqMessage != null) {
+      requestHeader = reqMessage.getHeader();
+
+      row.addColumn(column("req_len", reqMessage.getBytes()));
+    }
+    if (rspMessage != null) {
+      responseHeader = rspMessage.getHeader();
+
+      row.addColumn(column("res_len", rspMessage.getBytes()));
+    }
 
     // get the qname domain name details
     String normalizedQname = question == null ? "" : filter(question.getQName());
@@ -101,15 +110,14 @@ public class DNSRowBuilder extends AbstractRowBuilder {
     int rcode = RCODE_QUERY_WITHOUT_RESPONSE; // default no reply, use non standard rcode value -1
 
     // if no anycast location is encoded in the name then the anycast location will be null
-    row.addColumn(column("server_location", combo.getServer().getLocation()));
+    row.addColumn(column("server_location", serverCtx.getServerInfo().getLocation()));
 
     // add file name, makes it easier to find the original input pcap
     // in case of of debugging.
     row.addColumn(column("pcap_file", combo.getPcapFilename()));
 
     // add meta data for the client IP
-    String addressToCheck = reqTransport != null ? reqTransport.getSrc() : respTransport.getDst();
-
+    String addressToCheck = reqTransport != null ? reqTransport.getSrc() : rspTransport.getDst();
     enrich(addressToCheck, "", row);
 
     if (reqTransport != null && reqTransport.getTcpHandshake() != null) {
@@ -118,7 +126,7 @@ public class DNSRowBuilder extends AbstractRowBuilder {
     }
 
     // these are the values that are retrieved from the response
-    if (respTransport != null && respMessage != null && responseHeader != null) {
+    if (rspTransport != null && rspMessage != null && responseHeader != null) {
       // use rcode from response
       rcode = responseHeader.getRawRcode();
 
@@ -135,22 +143,22 @@ public class DNSRowBuilder extends AbstractRowBuilder {
           .addColumn(column("qdcount", (int) responseHeader.getQdCount()));
 
       // ip fragments in the response
-      if (respTransport.isFragmented()) {
-        int frags = respTransport.getReassembledFragments();
+      if (rspTransport.isFragmented()) {
+        int frags = rspTransport.getReassembledFragments();
         row.addColumn(column("resp_frag", frags));
 
-        if ((respTransport.getProtocol() == PcapReader.PROTOCOL_UDP) && frags > 1) {
+        if ((rspTransport.getProtocol() == PacketFactory.PROTOCOL_UDP) && frags > 1) {
           responseUDPFragmentedCount++;
-        } else if ((respTransport.getProtocol() == PcapReader.PROTOCOL_TCP) && frags > 1) {
+        } else if ((rspTransport.getProtocol() == PacketFactory.PROTOCOL_TCP) && frags > 1) {
           responseTCPFragmentedCount++;
         }
       }
 
       // EDNS0 for response
-      writeResponseOptions(respMessage, row);
+      writeResponseOptions(rspMessage, row);
 
       // update metric
-      responseBytes = responseBytes + respTransport.getUdpLength();
+      responseBytes = responseBytes + rspTransport.getUdpLength();
       if (!combo.isExpired()) {
         // do not send expired queries, this will cause duplicate timestamps with low values
         // this looks like dips in the grafana graph
@@ -166,36 +174,29 @@ public class DNSRowBuilder extends AbstractRowBuilder {
         .addColumn(column("qname", normalizedQname))
         .addColumn(column("domainname", domaininfo.getName()))
         .addColumn(column("labels", domaininfo.getLabels()))
-        .addColumn(column("src", srcIpAdress(reqTransport, respTransport)))
-        .addColumn(column("ipv", ipVersion(reqTransport, respTransport)))
-        .addColumn(column("prot", protocol(reqTransport, respTransport)))
-        .addColumn(column("dst", dstIpAdress(reqTransport, respTransport)))
-        .addColumn(column("dstp", port(reqTransport, respTransport)));
+        .addColumn(column("src", srcIpAdress(reqTransport, rspTransport)))
+        .addColumn(column("ipv", ipVersion(reqTransport, rspTransport)))
 
-    if (reqTransport != null) {
+        .addColumn(column("dst", dstIpAdress(reqTransport, rspTransport)))
+        .addColumn(column("dstp", dstPort(reqTransport, rspTransport)))
+        .addColumn(column("srcp", srcPort(reqTransport, rspTransport)));
 
-      // metrics
-      if (reqTransport.getProtocol() == PcapReader.PROTOCOL_UDP) {
-        udp++;
-      } else {
-        tcp++;
-      }
 
-      row.addColumn(column("srcp", reqTransport.getSrcPort()));
-      row.addColumn(column("ttl", reqTransport.getTtl()));
-    }
-    if (requestMessage != null) {
-      row.addColumn(column("req_len", requestMessage.getBytes()));
-    }
+    int prot = protocol(reqTransport, rspTransport);
+    row.addColumn(column("prot", prot));
 
-    if (respMessage != null) {
-      row.addColumn(column("res_len", respMessage.getBytes()));
+    // protocol metrics
+    if (prot == PacketFactory.PROTOCOL_UDP) {
+      udp++;
+    } else {
+      tcp++;
     }
 
     // get values from the request only.
     // may overwrite values from the response
     if (reqTransport != null && requestHeader != null) {
       row
+          .addColumn(column("ttl", reqTransport.getTtl()))
           .addColumn(column("id", requestHeader.getId()))
           .addColumn(column("opcode", requestHeader.getRawOpcode()))
           .addColumn(column("rd", requestHeader.isRd()))
@@ -212,9 +213,9 @@ public class DNSRowBuilder extends AbstractRowBuilder {
         int requestFrags = reqTransport.getReassembledFragments();
         row.addColumn(column("frag", requestFrags));
 
-        if ((reqTransport.getProtocol() == PcapReader.PROTOCOL_UDP) && requestFrags > 1) {
+        if ((reqTransport.getProtocol() == PacketFactory.PROTOCOL_UDP) && requestFrags > 1) {
           requestUDPFragmentedCount++;
-        } else if ((reqTransport.getProtocol() == PcapReader.PROTOCOL_TCP) && requestFrags > 1) {
+        } else if ((reqTransport.getProtocol() == PacketFactory.PROTOCOL_TCP) && requestFrags > 1) {
           requestTCPFragmentedCount++;
         }
       } // end request only section
@@ -237,19 +238,20 @@ public class DNSRowBuilder extends AbstractRowBuilder {
     writeQuestion(question, row);
 
     // EDNS0 for request
-    writeRequestOptions(requestMessage, row);
+    writeRequestOptions(reqMessage, row);
 
     // calculate the processing time
-    if (reqTransport != null && respTransport != null) {
-      row.addColumn(column("proc_time", respTransport.getTsMilli() - reqTransport.getTsMilli()));
+    if (reqTransport != null && rspTransport != null) {
+      row.addColumn(column("proc_time", rspTransport.getTsMilli() - reqTransport.getTsMilli()));
     }
 
     // create metrics
     updateMetricMap(rcodes, rcode);
     updateMetricMap(opcodes,
         requestHeader != null ? requestHeader.getRawOpcode() : responseHeader.getRawOpcode());
+
     // ip version stats
-    updateIpVersionMetrics(reqTransport, respTransport);
+    updateIpVersionMetrics(reqTransport, rspTransport);
 
     // if packet was expired and dropped from cache then increase stats for this
     if (combo.isExpired()) {
@@ -258,18 +260,21 @@ public class DNSRowBuilder extends AbstractRowBuilder {
               false);
     }
 
-
     return row;
   }
 
-  private int port(Packet reqTransport, Packet respTransport) {
+  private int srcPort(Packet reqTransport, Packet respTransport) {
+    return reqTransport != null ? reqTransport.getSrcPort() : respTransport.getDstPort();
+  }
+
+  private int dstPort(Packet reqTransport, Packet respTransport) {
     return reqTransport != null ? reqTransport.getDstPort() : respTransport.getSrcPort();
   }
 
 
   private int protocol(Packet reqTransport, Packet respTransport) {
-    return reqTransport != null ? (int) reqTransport.getIpVersion()
-        : (int) respTransport.getIpVersion();
+    return reqTransport != null ? (int) reqTransport.getProtocol()
+        : (int) respTransport.getProtocol();
   }
 
   private int ipVersion(Packet reqTransport, Packet respTransport) {
@@ -303,8 +308,8 @@ public class DNSRowBuilder extends AbstractRowBuilder {
     return null;
   }
 
-  private long packetTime(Packet reqPacket) {
-    return (reqPacket != null) ? reqPacket.getTsMilli() : -1;
+  private long packetTime(Packet reqPacket, Packet respTransport) {
+    return (reqPacket != null) ? reqPacket.getTsMilli() : respTransport.getTsMilli();
   }
 
 

@@ -98,6 +98,8 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
 
   @Override
   public boolean postCompact(TablePartition p) {
+    log.info("Perform post-compaction actions");
+
     log.info("Execute refresh and compute stats for table: {}", p.getTable());
     // update meta data and compute stats for partition
     Map<String, Object> values = new HashMap<>();

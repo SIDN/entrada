@@ -74,10 +74,10 @@ public abstract class AbstractQueryEngine implements QueryEngine {
     String sql = TemplateUtil.template(getCompactionScript(p.getTable()), values);
 
     // create tmp table with compacted parquet files AND delete old parquet files from src table
-    if (!execute(sql)
-        || !deleteSrcParquetData(fileManager,
+    if (!(execute(sql)
+        && deleteSrcParquetData(fileManager,
             FileUtil.appendPath(outputLocation, p.getTable(), p.getPath()))
-        || !move(p, FileUtil.appendPath(location, p.getPath()))) {
+        && move(p, FileUtil.appendPath(location, p.getPath())))) {
       return false;
     }
 
@@ -93,7 +93,7 @@ public abstract class AbstractQueryEngine implements QueryEngine {
   private boolean deleteSrcParquetData(FileManager fileManager, String location) {
     List<String> files = fileManager.files(location);
     for (String f : files) {
-      if (!fileManager.delete(f)) {
+      if (StringUtils.endsWith(f, ".parquet") && !fileManager.delete(f)) {
         return false;
       }
     }

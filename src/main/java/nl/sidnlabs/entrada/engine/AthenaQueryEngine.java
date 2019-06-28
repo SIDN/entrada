@@ -9,11 +9,13 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.stereotype.Component;
+import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.file.FileManager;
 import nl.sidnlabs.entrada.model.Partition;
 import nl.sidnlabs.entrada.model.jpa.TablePartition;
 import nl.sidnlabs.entrada.util.FileUtil;
 
+@Log4j2
 @Component("athena")
 @ConditionalOnProperty(name = "entrada.engine", havingValue = "aws")
 public class AthenaQueryEngine extends AbstractQueryEngine {
@@ -56,6 +58,7 @@ public class AthenaQueryEngine extends AbstractQueryEngine {
 
   @Override
   public boolean postCompact(TablePartition p) {
+    log.info("Perform post-compaction actions");
     // update meta data
     return execute(SQL_REPAIR_TABLE + database + "." + p.getTable());
   }

@@ -141,8 +141,8 @@ public class PacketProcessor {
   private LinkedBlockingQueue<PacketCombination> packetQueue;
 
   // aps with state, loaded at start and persisted at end
-  private Multimap<TCPFlow, SequencePayload> flows;
-  private Multimap<Datagram, DatagramPayload> datagrams;
+  private Multimap<TCPFlow, SequencePayload> flows = TreeMultimap.create();
+  private Multimap<Datagram, DatagramPayload> datagrams = TreeMultimap.create();
 
   public PacketProcessor(ServerContext serverCtx, MetricManager metricManager,
       PersistenceManager persistenceManager, OutputWriter outputWriter,
@@ -594,25 +594,19 @@ public class PacketProcessor {
     }
 
     // read persisted TCP sessions
-    Multimap<TCPFlow, SequencePayload> flows = TreeMultimap.create();
     Map<TCPFlow, Collection<SequencePayload>> map = persistenceManager.read(HashMap.class);
     for (Map.Entry<TCPFlow, Collection<SequencePayload>> entry : map.entrySet()) {
       for (SequencePayload sequencePayload : entry.getValue()) {
         flows.put(entry.getKey(), sequencePayload);
       }
     }
-
-    this.flows = flows;
-
     // read persisted IP datagrams
-    Multimap<Datagram, DatagramPayload> datagrams = TreeMultimap.create();
     HashMap<Datagram, Collection<DatagramPayload>> inMap = persistenceManager.read(HashMap.class);
     for (Map.Entry<Datagram, Collection<DatagramPayload>> entry : inMap.entrySet()) {
       for (DatagramPayload dgPayload : entry.getValue()) {
         datagrams.put(entry.getKey(), dgPayload);
       }
     }
-    this.datagrams = datagrams;
 
     // read in previous request cache
     requestCache = persistenceManager.read(HashMap.class);

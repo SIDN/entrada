@@ -47,6 +47,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS ${DATABASE_NAME}.${TABLE_NAME}(
 	orig_dns_edns_do BOOLEAN,
 	orig_dns_labels INT,
 	server_location string,
+	time bigint,
 	query_ts TIMESTAMP,
 	pcap_file STRING,
 	ip_pub_resolver STRING

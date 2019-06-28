@@ -33,9 +33,10 @@ public class PartitionService {
   }
 
   private void createPartion(String table, Partition p) {
-    // only create partion if it is now yet in the db
+    // only create partition if it is now yet in the db
     TablePartition tp = tablePartitionRepository.findByTableAndPath(table, p.toPath());
     if (tp == null) {
+      log.info("Update table {} add {}", table, p);
 
       TablePartition newPartition = TablePartition
           .builder()

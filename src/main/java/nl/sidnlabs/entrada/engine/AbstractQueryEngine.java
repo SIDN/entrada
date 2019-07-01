@@ -17,6 +17,9 @@ import nl.sidnlabs.entrada.util.TemplateUtil;
 @Log4j2
 public abstract class AbstractQueryEngine implements QueryEngine {
 
+  private static final String SQL_DROP_TMP_TABLE =
+      "DROP TABLE IF EXISTS ${DATABASE_NAME}.tmp_compaction;";
+
   @Value("${entrada.location.output}")
   protected String outputLocation;
 
@@ -64,8 +67,7 @@ public abstract class AbstractQueryEngine implements QueryEngine {
     values.put("DAY", p.getDay());
     values.put("SERVER", p.getServer());
 
-    String dropTableSql =
-        TemplateUtil.template("DROP TABLE IF EXISTS ${DATABASE_NAME}.tmp_compaction;", values);
+    String dropTableSql = TemplateUtil.template(SQL_DROP_TMP_TABLE, values);
 
     if (!cleanup(location, dropTableSql)) {
       return false;

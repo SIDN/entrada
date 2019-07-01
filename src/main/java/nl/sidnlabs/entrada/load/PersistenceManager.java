@@ -10,7 +10,7 @@ import com.esotericsoftware.kryo.Kryo;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import lombok.extern.log4j.Log4j2;
-import nl.sidnlabs.entrada.config.ServerContext;
+import nl.sidnlabs.entrada.ServerContext;
 import nl.sidnlabs.entrada.exception.ApplicationException;
 
 @Log4j2

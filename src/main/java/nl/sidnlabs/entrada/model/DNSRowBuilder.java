@@ -2,9 +2,7 @@ package nl.sidnlabs.entrada.model;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
@@ -19,15 +17,12 @@ import nl.sidnlabs.dnslib.message.records.edns0.NSidOption;
 import nl.sidnlabs.dnslib.message.records.edns0.OPTResourceRecord;
 import nl.sidnlabs.dnslib.message.records.edns0.PaddingOption;
 import nl.sidnlabs.dnslib.message.records.edns0.PingOption;
-import nl.sidnlabs.dnslib.types.OpcodeType;
-import nl.sidnlabs.dnslib.types.RcodeType;
-import nl.sidnlabs.dnslib.types.ResourceRecordType;
 import nl.sidnlabs.dnslib.util.Domaininfo;
 import nl.sidnlabs.dnslib.util.NameUtil;
-import nl.sidnlabs.entrada.config.ServerContext;
+import nl.sidnlabs.entrada.ServerContext;
 import nl.sidnlabs.entrada.enrich.AddressEnrichment;
-import nl.sidnlabs.entrada.metric.MetricManager;
-import nl.sidnlabs.entrada.support.PacketCombination;
+import nl.sidnlabs.entrada.metric.HistoricalMetricManager;
+import nl.sidnlabs.entrada.support.RowData;
 import nl.sidnlabs.pcap.packet.Packet;
 import nl.sidnlabs.pcap.packet.PacketFactory;
 
@@ -40,33 +35,18 @@ public class DNSRowBuilder extends AbstractRowBuilder {
 
   private static final int RCODE_QUERY_WITHOUT_RESPONSE = -1;
 
-  private long responseBytes = 0;
-  private long requestBytes = 0;
-  private Map<Integer, Integer> qtypes = new HashMap<>();
-  private Map<Integer, Integer> rcodes = new HashMap<>();
-  private Map<Integer, Integer> opcodes = new HashMap<>();
-  private int requestUDPFragmentedCount = 0;
-  private int requestTCPFragmentedCount = 0;
-  private int responseUDPFragmentedCount = 0;
-  private int responseTCPFragmentedCount = 0;
-  private int ipv4QueryCount = 0;
-  private int ipv6QueryCount = 0;
-
-  int udp = 0;
-  int tcp = 0;
-
-  private MetricManager metricManager;
   private ServerContext serverCtx;
+  private HistoricalMetricManager metricManager;
 
-  public DNSRowBuilder(List<AddressEnrichment> enrichments, MetricManager metricManager,
-      ServerContext serverCtx) {
+  public DNSRowBuilder(List<AddressEnrichment> enrichments, ServerContext serverCtx,
+      HistoricalMetricManager metricManager) {
     super(enrichments);
-    this.metricManager = metricManager;
     this.serverCtx = serverCtx;
+    this.metricManager = metricManager;
   }
 
   @Override
-  public Row build(PacketCombination combo) {
+  public Row build(RowData combo) {
 
     packetCounter++;
     if (packetCounter % STATUS_COUNT == 0) {
@@ -104,10 +84,11 @@ public class DNSRowBuilder extends AbstractRowBuilder {
     String normalizedQname = question == null ? "" : filter(question.getQName());
     normalizedQname = StringUtils.lowerCase(normalizedQname);
     Domaininfo domaininfo = NameUtil.getDomain(normalizedQname);
-    // check to see it a response was found, if not then save -1 value
+
+    // check to see it a response was found, if not then use -1 value for rcode
     // otherwise use the rcode returned by the server in the response.
     // no response might be caused by rate limiting
-    int rcode = RCODE_QUERY_WITHOUT_RESPONSE; // default no reply, use non standard rcode value -1
+    int rcode = RCODE_QUERY_WITHOUT_RESPONSE;
 
     // if no anycast location is encoded in the name then the anycast location will be null
     row.addColumn(column("server_location", serverCtx.getServerInfo().getLocation()));
@@ -146,24 +127,12 @@ public class DNSRowBuilder extends AbstractRowBuilder {
       if (rspTransport.isFragmented()) {
         int frags = rspTransport.getReassembledFragments();
         row.addColumn(column("resp_frag", frags));
-
-        if ((rspTransport.getProtocol() == PacketFactory.PROTOCOL_UDP) && frags > 1) {
-          responseUDPFragmentedCount++;
-        } else if ((rspTransport.getProtocol() == PacketFactory.PROTOCOL_TCP) && frags > 1) {
-          responseTCPFragmentedCount++;
-        }
       }
 
       // EDNS0 for response
       writeResponseOptions(rspMessage, row);
 
-      // update metric
-      responseBytes = responseBytes + rspTransport.getUdpLength();
-      if (!combo.isExpired()) {
-        // do not send expired queries, this will cause duplicate timestamps with low values
-        // this looks like dips in the grafana graph
-        metricManager.sendAggregated(MetricManager.METRIC_IMPORT_DNS_RESPONSE_COUNT, 1, time);
-      }
+      metricManager.send(HistoricalMetricManager.METRIC_IMPORT_DNS_RESPONSE_COUNT, 1, time);
     } // end of response only section
 
     // values from request OR response now
@@ -184,13 +153,7 @@ public class DNSRowBuilder extends AbstractRowBuilder {
 
     int prot = protocol(reqTransport, rspTransport);
     row.addColumn(column("prot", prot));
-
-    // protocol metrics
-    if (prot == PacketFactory.PROTOCOL_UDP) {
-      udp++;
-    } else {
-      tcp++;
-    }
+    int opcode = opCode(requestHeader, responseHeader);
 
     // get values from the request only.
     // may overwrite values from the response
@@ -198,7 +161,7 @@ public class DNSRowBuilder extends AbstractRowBuilder {
       row
           .addColumn(column("ttl", reqTransport.getTtl()))
           .addColumn(column("id", requestHeader.getId()))
-          .addColumn(column("opcode", requestHeader.getRawOpcode()))
+          .addColumn(column("opcode", opcode))
           .addColumn(column("rd", requestHeader.isRd()))
           .addColumn(column("z", requestHeader.isZ()))
           .addColumn(column("cd", requestHeader.isCd()))
@@ -212,30 +175,19 @@ public class DNSRowBuilder extends AbstractRowBuilder {
       if (reqTransport.isFragmented()) {
         int requestFrags = reqTransport.getReassembledFragments();
         row.addColumn(column("frag", requestFrags));
-
-        if ((reqTransport.getProtocol() == PacketFactory.PROTOCOL_UDP) && requestFrags > 1) {
-          requestUDPFragmentedCount++;
-        } else if ((reqTransport.getProtocol() == PacketFactory.PROTOCOL_TCP) && requestFrags > 1) {
-          requestTCPFragmentedCount++;
-        }
       } // end request only section
 
-      // update metrics
-      requestBytes = requestBytes + reqTransport.getUdpLength();
-      if (!combo.isExpired()) {
-        // do not send expired queries, this will cause duplicate timestamps with low values
-        // this looks like dips in the grafana graph
-        metricManager.sendAggregated(MetricManager.METRIC_IMPORT_DNS_QUERY_COUNT, 1, time);
-      }
-    }
-
-    if (rcode == RCODE_QUERY_WITHOUT_RESPONSE) {
-      // no response found for query, update stats
-      metricManager.sendAggregated(MetricManager.METRIC_IMPORT_DNS_NO_RESPONSE_COUNT, 1, time);
+      metricManager.send(HistoricalMetricManager.METRIC_IMPORT_DNS_QUERY_COUNT, 1, time);
     }
 
     // question
-    writeQuestion(question, row);
+    if (question != null) {
+      writeQuestion(question, row);
+
+      metricManager
+          .send(HistoricalMetricManager.METRIC_IMPORT_DNS_QTYPE + "." + question.getQTypeValue(), 1,
+              time);
+    }
 
     // EDNS0 for request
     writeRequestOptions(reqMessage, row);
@@ -246,21 +198,44 @@ public class DNSRowBuilder extends AbstractRowBuilder {
     }
 
     // create metrics
-    updateMetricMap(rcodes, rcode);
-    updateMetricMap(opcodes,
-        requestHeader != null ? requestHeader.getRawOpcode() : responseHeader.getRawOpcode());
+    metricManager.send(HistoricalMetricManager.METRIC_IMPORT_DNS_RCODE + "." + rcode, 1, time);
+    metricManager.send(HistoricalMetricManager.METRIC_IMPORT_DNS_OPCODE + "." + opcode, 1, time);
 
-    // ip version stats
-    updateIpVersionMetrics(reqTransport, rspTransport);
 
-    // if packet was expired and dropped from cache then increase stats for this
-    if (combo.isExpired()) {
-      metricManager
-          .sendAggregated(MetricManager.METRIC_IMPORT_CACHE_EXPPIRED_DNS_QUERY_COUNT, 1, time,
-              false);
+    if (reqTransport != null) {
+      if (reqTransport.getIpVersion() == 4) {
+        metricManager.send(HistoricalMetricManager.METRIC_IMPORT_IP_VERSION_4_COUNT, 1, time);
+      } else {
+        metricManager.send(HistoricalMetricManager.METRIC_IMPORT_IP_VERSION_6_COUNT, 1, time);
+      }
+    } else if (rspTransport != null) {
+      if (rspTransport.getIpVersion() == 4) {
+        metricManager.send(HistoricalMetricManager.METRIC_IMPORT_IP_VERSION_4_COUNT, 1, time);
+      } else {
+        metricManager.send(HistoricalMetricManager.METRIC_IMPORT_IP_VERSION_6_COUNT, 1, time);
+      }
+    }
+
+    if (prot == PacketFactory.PROTOCOL_TCP) {
+      metricManager.send(HistoricalMetricManager.METRIC_IMPORT_TCP_COUNT, 1, time);
+    } else {
+      metricManager.send(HistoricalMetricManager.METRIC_IMPORT_UDP_COUNT, 1, time);
     }
 
     return row;
+  }
+
+  private int opCode(Header req, Header rsp) {
+
+    if (req != null) {
+      return req.getRawOpcode();
+    }
+
+    if (rsp != null) {
+      return rsp.getRawOpcode();
+    }
+
+    return -1;
   }
 
   private int srcPort(Packet reqTransport, Packet respTransport) {
@@ -314,14 +289,10 @@ public class DNSRowBuilder extends AbstractRowBuilder {
 
 
   private void writeQuestion(Question q, Row row) {
-    if (q != null) {
-      // unassigned, private or unknown, get raw value
-      row.addColumn(column("qtype", q.getQTypeValue()));
-      // unassigned, private or unknown, get raw value
-      row.addColumn(column("qclass", q.getQClassValue()));
-      // qtype metrics
-      updateMetricMap(qtypes, q.getQTypeValue());
-    }
+    // unassigned, private or unknown, get raw value
+    row.addColumn(column("qtype", q.getQTypeValue()));
+    // unassigned, private or unknown, get raw value
+    row.addColumn(column("qclass", q.getQClassValue()));
   }
 
   /**
@@ -417,79 +388,6 @@ public class DNSRowBuilder extends AbstractRowBuilder {
                 otherEdnsOptions.stream().map(Object::toString).collect(Collectors.joining(","))));
       }
     }
-  }
-
-  private void updateIpVersionMetrics(Packet req, Packet resp) {
-    if (req != null) {
-      if (req.getIpVersion() == 4) {
-        ipv4QueryCount++;
-      } else {
-        ipv6QueryCount++;
-      }
-    } else {
-      if (resp.getIpVersion() == 4) {
-        ipv4QueryCount++;
-      } else {
-        ipv6QueryCount++;
-      }
-    }
-  }
-
-  @Override
-  public void writeMetrics() {
-
-    for (Map.Entry<Integer, Integer> entry : rcodes.entrySet()) {
-
-      if (entry.getKey().intValue() == -1) {
-        // pseudo rcode -1 means no reponse, not an official rcode
-        metricManager
-            .send(MetricManager.METRIC_IMPORT_DNS_RCODE + ".NO_RESPONSE.count",
-                entry.getValue().intValue());
-      } else {
-        RcodeType type = RcodeType.fromValue(entry.getKey().intValue());
-        metricManager
-            .send(MetricManager.METRIC_IMPORT_DNS_RCODE + StringUtils.upperCase("." + type.name())
-                + ".count", entry.getValue().intValue());
-      }
-    }
-
-    int bytes = responseBytes == 0 ? 0 : (int) (responseBytes / 1024);
-    metricManager.send(MetricManager.METRIC_IMPORT_DNS_RESPONSE_BYTES_SIZE, bytes);
-
-    bytes = requestBytes == 0 ? 0 : (int) (requestBytes / 1024);
-    metricManager.send(MetricManager.METRIC_IMPORT_DNS_QUERY_BYTES_SIZE, bytes);
-
-    qtypes.entrySet().stream().forEach(e -> {
-      ResourceRecordType type = ResourceRecordType.fromValue(e.getKey().intValue());
-      metricManager
-          .send(MetricManager.METRIC_IMPORT_DNS_QTYPE + StringUtils.upperCase("." + type.name())
-              + ".count", e.getValue().intValue());
-    });
-
-    opcodes.entrySet().stream().forEach(e -> {
-      OpcodeType type = OpcodeType.fromValue(e.getKey().intValue());
-      metricManager
-          .send(MetricManager.METRIC_IMPORT_DNS_OPCODE + StringUtils.upperCase("." + type.name())
-              + ".count", e.getValue().intValue());
-    });
-
-    metricManager
-        .send(MetricManager.METRIC_IMPORT_UDP_REQUEST_FRAGMENTED_COUNT, requestUDPFragmentedCount);
-    metricManager
-        .send(MetricManager.METRIC_IMPORT_TCP_REQUEST_FRAGMENTED_COUNT, requestTCPFragmentedCount);
-    metricManager
-        .send(MetricManager.METRIC_IMPORT_UDP_RESPONSE_FRAGMENTED_COUNT,
-            responseUDPFragmentedCount);
-    metricManager
-        .send(MetricManager.METRIC_IMPORT_TCP_RESPONSE_FRAGMENTED_COUNT,
-            responseTCPFragmentedCount);
-
-    metricManager.send(MetricManager.METRIC_IMPORT_IP_VERSION_4_COUNT, ipv4QueryCount);
-    metricManager.send(MetricManager.METRIC_IMPORT_IP_VERSION_6_COUNT, ipv6QueryCount);
-
-    metricManager.send(MetricManager.METRIC_IMPORT_TCP_COUNT, tcp);
-    metricManager.send(MetricManager.METRIC_IMPORT_UDP_COUNT, udp);
-
   }
 
 }

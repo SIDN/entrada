@@ -1,10 +1,9 @@
 package nl.sidnlabs.entrada.model;
 
-import nl.sidnlabs.entrada.support.PacketCombination;
+import nl.sidnlabs.entrada.support.RowData;
 
 public interface RowBuilder {
 
-  Row build(PacketCombination combo);
+  Row build(RowData combo);
 
-  void writeMetrics();
 }

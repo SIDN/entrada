@@ -21,24 +21,15 @@ package nl.sidnlabs.entrada.support;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.NoArgsConstructor;
+import nl.sidnlabs.dnslib.message.Message;
+import nl.sidnlabs.pcap.packet.Packet;
 
 @Data
 @AllArgsConstructor
-@NoArgsConstructor
-public class RequestKey {
+public class RequestCacheValue {
 
-  private int id;
-  private String qname;
-  private String src;
-  private int srcPort;
-  // do not match request/response on time, this will never match
-  @EqualsAndHashCode.Exclude
-  private long time;
-
-  public RequestKey(int id, String qname, String src, int srcPort) {
-    this(id, qname, src, srcPort, 0);
-  }
+  private Message message;
+  private Packet packet;
+  private String filename;
 
 }

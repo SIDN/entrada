@@ -1,9 +1,7 @@
 package nl.sidnlabs.entrada.model;
 
 import java.sql.Timestamp;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 import nl.sidnlabs.dnslib.message.Header;
@@ -12,10 +10,9 @@ import nl.sidnlabs.dnslib.message.Question;
 import nl.sidnlabs.dnslib.message.records.edns0.OPTResourceRecord;
 import nl.sidnlabs.dnslib.util.Domaininfo;
 import nl.sidnlabs.dnslib.util.NameUtil;
-import nl.sidnlabs.entrada.config.ServerContext;
+import nl.sidnlabs.entrada.ServerContext;
 import nl.sidnlabs.entrada.enrich.AddressEnrichment;
-import nl.sidnlabs.entrada.metric.MetricManager;
-import nl.sidnlabs.entrada.support.PacketCombination;
+import nl.sidnlabs.entrada.support.RowData;
 import nl.sidnlabs.pcap.packet.DNSPacket;
 import nl.sidnlabs.pcap.packet.ICMPPacket;
 import nl.sidnlabs.pcap.packet.Packet;
@@ -23,29 +20,15 @@ import nl.sidnlabs.pcap.packet.Packet;
 @Component("icmpBuilder")
 public class ICMPRowBuilder extends AbstractRowBuilder {
 
-  // stats counters
-  private int v4;
-  private int v6;
-  private int typeError;
-  private int typeInfo;
-  private Map<Integer, Integer> typesV4 = new HashMap<>();
-  private Map<Integer, Integer> typesV6 = new HashMap<>();
-  int icmp = 0;
-
-  private MetricManager metricManager;
   private ServerContext serverCtx;
 
-  public ICMPRowBuilder(List<AddressEnrichment> enrichments, MetricManager metricManager,
-      ServerContext serverCtx) {
+  public ICMPRowBuilder(List<AddressEnrichment> enrichments, ServerContext serverCtx) {
     super(enrichments);
-    this.metricManager = metricManager;
     this.serverCtx = serverCtx;
   }
 
   @Override
-  public Row build(PacketCombination combo) {
-
-    icmp++;
+  public Row build(RowData combo) {
 
     ICMPPacket icmpPacket = (ICMPPacket) combo.getRequest();
 
@@ -183,40 +166,7 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
       }
     }
 
-    // write stats
-    if (icmpPacket.isIPv4()) {
-      v4++;
-      updateMetricMap(typesV4, Integer.valueOf((icmpPacket.getType())));
-    } else {
-      v6++;
-      updateMetricMap(typesV6, Integer.valueOf(icmpPacket.getType()));
-    }
-
-    if (icmpPacket.isError()) {
-      typeError++;
-    } else {
-      typeInfo++;
-    }
-
     return row;
-  }
-
-  @Override
-  public void writeMetrics() {
-    metricManager.send(MetricManager.METRIC_ICMP_V4, v4);
-    metricManager.send(MetricManager.METRIC_ICMP_V4, v6);
-    writeMetrics(metricManager, typesV4, MetricManager.METRIC_ICMP_PREFIX_TYPE_V4);
-    writeMetrics(metricManager, typesV6, MetricManager.METRIC_ICMP_PREFIX_TYPE_V6);
-    metricManager.send(MetricManager.METRIC_ICMP_ERROR, typeError);
-    metricManager.send(MetricManager.METRIC_ICMP_INFO, typeInfo);
-  }
-
-  protected void writeMetrics(MetricManager mm, Map<Integer, Integer> map, String prefix) {
-    map
-        .entrySet()
-        .stream()
-        .forEach(entry -> mm
-            .send(prefix + "." + entry.getValue() + ".count", entry.getValue().intValue()));
   }
 
 }

@@ -26,10 +26,17 @@ import nl.sidnlabs.pcap.packet.Packet;
 
 @Data
 @AllArgsConstructor
-public class MessageWrapper {
+public class RowData {
 
-  private Message message;
-  private Packet packet;
-  private String filename;
+  public static final RowData NULL =
+      new RowData(null, null, null, null, false, null);
+
+  private Packet request;
+  private Message requestMessage;
+  private Packet response;
+  private Message responseMessage;
+  // true if this packet has expired from cache
+  private boolean expired;
+  private String pcapFilename;
 
 }

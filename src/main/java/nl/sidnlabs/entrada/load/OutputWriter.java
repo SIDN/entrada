@@ -5,7 +5,7 @@ import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import nl.sidnlabs.entrada.model.Partition;
-import nl.sidnlabs.entrada.support.PacketCombination;
+import nl.sidnlabs.entrada.support.RowData;
 
 /**
  * 
@@ -26,6 +26,6 @@ public interface OutputWriter {
    * @return a Future which the caller must check too find out if the writer has finished
    */
   Future<Map<String, Set<Partition>>> start(boolean dns, boolean icmp,
-      LinkedBlockingQueue<PacketCombination> input);
+      LinkedBlockingQueue<RowData> input);
 
 }

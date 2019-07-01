@@ -21,22 +21,24 @@ package nl.sidnlabs.entrada.support;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import nl.sidnlabs.dnslib.message.Message;
-import nl.sidnlabs.pcap.packet.Packet;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 @Data
 @AllArgsConstructor
-public class PacketCombination {
+@NoArgsConstructor
+public class RequestCacheKey {
 
-  public static final PacketCombination NULL =
-      new PacketCombination(null, null, null, null, false, null);
+  private int id;
+  private String qname;
+  private String src;
+  private int srcPort;
+  // do not match request/response on time, this will never match
+  @EqualsAndHashCode.Exclude
+  private long time;
 
-  private Packet request;
-  private Message requestMessage;
-  private Packet response;
-  private Message responseMessage;
-  // true if this packet has expired from cache
-  private boolean expired;
-  private String pcapFilename;
+  public RequestCacheKey(int id, String qname, String src, int srcPort) {
+    this(id, qname, src, srcPort, 0);
+  }
 
 }

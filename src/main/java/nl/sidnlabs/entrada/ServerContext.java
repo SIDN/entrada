@@ -17,7 +17,7 @@
  * [<http://www.gnu.org/licenses/].
  *
  */
-package nl.sidnlabs.entrada.config;
+package nl.sidnlabs.entrada;
 
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;

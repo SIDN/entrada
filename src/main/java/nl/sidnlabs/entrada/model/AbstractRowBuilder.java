@@ -1,7 +1,6 @@
 package nl.sidnlabs.entrada.model;
 
 import java.util.List;
-import java.util.Map;
 import org.apache.commons.lang3.StringUtils;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.enrich.AddressEnrichment;
@@ -69,14 +68,5 @@ public abstract class AbstractRowBuilder implements RowBuilder {
 
   protected void showStatus() {
     log.info(packetCounter + " packets written to parquet file.");
-  }
-
-  protected void updateMetricMap(Map<Integer, Integer> map, Integer key) {
-    Integer currentVal = map.get(key);
-    if (currentVal != null) {
-      map.put(key, currentVal.intValue() + 1);
-    } else {
-      map.put(key, 1);
-    }
   }
 }

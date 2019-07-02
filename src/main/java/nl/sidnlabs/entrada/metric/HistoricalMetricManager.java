@@ -68,6 +68,10 @@ public class HistoricalMetricManager {
   @Value("${management.metrics.export.graphite.port}")
   private int port;
 
+  @Value("${management.metrics.export.graphite.retention}")
+  private int retention;
+
+
   private ServerContext settings;
 
   public HistoricalMetricManager(ServerContext settings) {
@@ -113,17 +117,15 @@ public class HistoricalMetricManager {
     GraphiteSender graphite = new Graphite(host, port);
     try {
       graphite.connect();
-      if (!graphite.isConnected()) {
-        // sometimes can take some time, give it few secs
-        Thread.sleep(5 * 1000);
-      }
-      // send each metric to graphite
+      // send each metrics to graphite
       metricCache.entrySet().stream().map(Entry::getValue).forEach(m -> send(graphite, m));
     } catch (Exception e) {
       // cannot connect connect to graphite
       log.error("Could not connect to Graphite", e);
       return false;
     } finally {
+      // remove sent metric, avoiding sending them again.
+      metricCache.clear();
       try {
         // close will also do a flush
         graphite.close();
@@ -137,20 +139,17 @@ public class HistoricalMetricManager {
 
   private void send(GraphiteSender graphite, Metric m) {
     try {
-      graphite.send(m.getName(), String.valueOf(m.getValue()), round(m.getTime()));
+      graphite.send(m.getName(), String.valueOf(m.getValue()), m.getTime());
     } catch (IOException e) {
       log.error("Error while sending metric: {}", m, e);
     }
   }
 
-  /**
-   * Round the timestamp to the nearest retention time
-   * 
-   * @param intime
-   * @return
-   */
   private long round(long millis) {
-    return ((millis + 500) / 1000);
+    // return ((millis + 500) / 1000);
+    // get retention from config
+    long secs = (millis / 1000);
+    return secs - (secs % retention);
   }
 
 

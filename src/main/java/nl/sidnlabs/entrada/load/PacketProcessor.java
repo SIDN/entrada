@@ -404,7 +404,7 @@ public class PacketProcessor {
   private void process(Packet currentPacket, String fileName) {
     packetCounter.increment();
     if (packetCounter.count() % 100000 == 0) {
-      log.info("Processed " + packetCounter + " packets");
+      log.info("Processed " + (int) packetCounter.count() + " packets");
     }
 
     if (isICMP(currentPacket)) {

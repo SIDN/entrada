@@ -103,8 +103,14 @@ public class DNSRowBuilder extends AbstractRowBuilder {
 
     if (reqTransport != null && reqTransport.getTcpHandshake() != null) {
       // found tcp handshake info
-      row.addColumn(column("tcp_rtt", reqTransport.getTcpHandshake().rtt()));
+      row.addColumn(column("tcp_hs_rtt", reqTransport.getTcpHandshake().rtt()));
     }
+
+    if (rspTransport != null && rspTransport.hasPacketRtt()) {
+      // found tcp handshake info
+      row.addColumn(column("tcp_pk_rtt", rspTransport.getTcpPacketRtt()));
+    }
+
 
     // these are the values that are retrieved from the response
     if (rspTransport != null && rspMessage != null && responseHeader != null) {

@@ -254,13 +254,6 @@
 			<artifactId>spring-security-web</artifactId>
 		</dependency>
 
-		<!-- Prometheus libs -->
-		<dependency>
-			<groupId>io.prometheus</groupId>
-			<artifactId>simpleclient</artifactId>
-			<version>0.6.0</version>
-		</dependency>
-
 		<dependency>
 			<groupId>io.micrometer</groupId>
 			<artifactId>micrometer-core</artifactId>

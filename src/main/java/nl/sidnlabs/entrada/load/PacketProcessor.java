@@ -37,6 +37,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import org.apache.commons.io.comparator.LastModifiedFileComparator;
 import org.apache.commons.lang3.StringUtils;
@@ -44,8 +45,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.TreeMultimap;
-import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.ImmutableTag;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Tag;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.dnslib.message.Message;
 import nl.sidnlabs.dnslib.types.MessageType;
@@ -118,13 +120,13 @@ public class PacketProcessor {
   private FileArchiveService fileArchiveService;
 
   // metrics
-  private Counter packetCounter;
-  private Counter dnsQueryCounter;
-  private Counter dnsResponseCounter;
-  private Counter fileCounter;
-  private Counter purgeCounter;
+  private AtomicInteger packetCounter;
+  private AtomicInteger dnsQueryCounter;
+  private AtomicInteger dnsResponseCounter;
+  private AtomicInteger fileCounter;
+  private AtomicInteger purgeCounter;
   // counter when no request query can be found for a response
-  private Counter noQueryFoundCounter;
+  private AtomicInteger noQueryFoundCounter;
 
   // max lifetime for cached packets, in milliseconds (configured in minutes)
   private int cacheTimeout;
@@ -212,7 +214,7 @@ public class PacketProcessor {
         continue;
       }
 
-      fileCounter.increment();
+      fileCounter.addAndGet(1);
 
       if (outputFuture == null) {
         // open the output file writer
@@ -222,7 +224,9 @@ public class PacketProcessor {
       // flush expired packets after every file, to avoid a large cache eating up the heap
       purgeCache();
       // move the pcap file to archive location or delete
-      fileArchiveService.archive(file, start, (int) packetCounter.count());
+      fileArchiveService.archive(file, start, (int) packetCounter.get());
+      // reset micrometer gauges
+      resetGauges();
     }
 
     // check if any file have been processed if so, send "end" packet to writer and wait foor writer
@@ -262,24 +266,26 @@ public class PacketProcessor {
     return Collections.emptyMap();
   }
 
+
+  private void resetGauges() {
+    fileCounter.set(0);
+    packetCounter.set(0);
+    dnsQueryCounter.set(0);
+    dnsResponseCounter.set(0);
+    purgeCounter.set(0);
+    noQueryFoundCounter.set(0);
+  }
+
   private void reset() {
-    fileCounter =
-        registry.counter("processor.pcap", "ns", serverCtx.getServerInfo().getNormalizeName());
+    List<Tag> tags = new ArrayList<>();
+    tags.add(new ImmutableTag("ns", serverCtx.getServerInfo().getNormalizeName()));
 
-    packetCounter =
-        registry.counter("processor.packet", "ns", serverCtx.getServerInfo().getNormalizeName());
-
-    dnsQueryCounter =
-        registry.counter("packet.dns.query", "ns", serverCtx.getServerInfo().getNormalizeName());
-
-    dnsResponseCounter =
-        registry.counter("packet.dns.response", "ns", serverCtx.getServerInfo().getNormalizeName());
-
-    purgeCounter =
-        registry.counter("packet.purge", "ns", serverCtx.getServerInfo().getNormalizeName());
-
-    noQueryFoundCounter =
-        registry.counter("packet.noquery", "ns", serverCtx.getServerInfo().getNormalizeName());
+    fileCounter = registry.gauge("processor.pcap", tags, new AtomicInteger(0));
+    packetCounter = registry.gauge("processor.packet", tags, new AtomicInteger(0));
+    dnsQueryCounter = registry.gauge("packet.dns.query", tags, new AtomicInteger(0));
+    dnsResponseCounter = registry.gauge("packet.dns.response", tags, new AtomicInteger(0));
+    purgeCounter = registry.gauge("packet.purge", tags, new AtomicInteger(0));
+    noQueryFoundCounter = registry.gauge("packet.noquery", tags, new AtomicInteger(0));
 
     requestCache = new HashMap<>();
     activeZoneTransfers = new HashMap<>();
@@ -289,10 +295,10 @@ public class PacketProcessor {
 
   private void logStats() {
     log.info("--------- Done processing data-----------");
-    log.info("{} packets", (int) (dnsQueryCounter.count() + dnsResponseCounter.count()));
-    log.info("{} query packets", (int) dnsQueryCounter.count());
-    log.info("{} response packets", (int) dnsResponseCounter.count());
-    log.info("{} response packets without request", (int) noQueryFoundCounter.count());
+    log.info("{} packets", (dnsQueryCounter.get() + dnsResponseCounter.get()));
+    log.info("{} query packets", dnsQueryCounter.get());
+    log.info("{} response packets", dnsResponseCounter.get());
+    log.info("{} response packets without request", noQueryFoundCounter.get());
     log.info("-----------------------------------------");
   }
 
@@ -402,9 +408,9 @@ public class PacketProcessor {
   }
 
   private void process(Packet currentPacket, String fileName) {
-    packetCounter.increment();
-    if (packetCounter.count() % 100000 == 0) {
-      log.info("Processed " + (int) packetCounter.count() + " packets");
+    packetCounter.addAndGet(1);
+    if (packetCounter.get() % 100000 == 0) {
+      log.info("Processed " + packetCounter.get() + " packets");
     }
 
     if (isICMP(currentPacket)) {
@@ -454,7 +460,7 @@ public class PacketProcessor {
   }
 
   private void handDnsQuery(DNSPacket dnsPacket, Message msg, String fileName) {
-    dnsQueryCounter.increment();
+    dnsQueryCounter.addAndGet(1);
 
     // check for ixfr/axfr request
     if (!msg.getQuestions().isEmpty()
@@ -480,7 +486,7 @@ public class PacketProcessor {
 
   private void handDnsResponse(DNSPacket dnsPacket, Message msg, String fileName) {
     // try to find the request
-    dnsResponseCounter.increment();
+    dnsResponseCounter.addAndGet(1);
 
     // check for ixfr/axfr response, the query might be missing from the response
     // so we cannot use the qname for matching.
@@ -517,7 +523,7 @@ public class PacketProcessor {
       // and was not correctly decoded, or the request timed out before server
       // could send a response.
       log.debug("Found no request for response");
-      noQueryFoundCounter.increment();;
+      noQueryFoundCounter.addAndGet(1);
 
       pushPacket(new RowData(null, null, dnsPacket, msg, false, fileName));
     }
@@ -641,11 +647,11 @@ public class PacketProcessor {
           pushPacket(
               new RowData(mw.getPacket(), mw.getMessage(), null, null, true, mw.getFilename()));
 
-          purgeCounter.increment();
+          purgeCounter.addAndGet(1);
 
         } else {
           log.debug("Cached response entry timed out, request might have been missed");
-          noQueryFoundCounter.increment();
+          noQueryFoundCounter.addAndGet(1);
         }
       }
     }

@@ -15,7 +15,7 @@ import nl.sidnlabs.entrada.exception.ApplicationException;
 
 @Log4j2
 @Component
-public class PersistenceManager {
+public class StateManager {
 
   private static final String DECODER_STATE_FILE = "pcap-decoder-state";
   private static final Kryo KRYO = new Kryo();
@@ -28,7 +28,7 @@ public class PersistenceManager {
 
   private ServerContext settings;
 
-  public PersistenceManager(ServerContext settings) {
+  public StateManager(ServerContext settings) {
     this.settings = settings;
   }
 

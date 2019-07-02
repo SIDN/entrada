@@ -115,7 +115,7 @@ public class PacketProcessor {
   private PcapReader pcapReader;
   protected Map<RequestCacheKey, RequestCacheValue> requestCache;
 
-  private PersistenceManager persistenceManager;
+  private StateManager persistenceManager;
   private OutputWriter outputWriter;
   private FileArchiveService fileArchiveService;
 
@@ -148,7 +148,7 @@ public class PacketProcessor {
   private Multimap<TCPFlow, SequencePayload> flows = TreeMultimap.create();
   private Multimap<Datagram, DatagramPayload> datagrams = TreeMultimap.create();
 
-  public PacketProcessor(ServerContext serverCtx, PersistenceManager persistenceManager,
+  public PacketProcessor(ServerContext serverCtx, StateManager persistenceManager,
       OutputWriter outputWriter, FileArchiveService fileArchiveService,
       FileManagerFactory fileManagerFactory, QueryEngine queryEngine,
       PartitionService partitionService, MeterRegistry registry) {

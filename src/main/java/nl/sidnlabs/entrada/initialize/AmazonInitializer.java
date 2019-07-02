@@ -1,11 +1,14 @@
 package nl.sidnlabs.entrada.initialize;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Optional;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.BucketLifecycleConfiguration;
 import com.amazonaws.services.s3.model.GetBucketEncryptionResult;
 import com.amazonaws.services.s3.model.PublicAccessBlockConfiguration;
 import com.amazonaws.services.s3.model.SSEAlgorithm;
@@ -14,10 +17,13 @@ import com.amazonaws.services.s3.model.ServerSideEncryptionConfiguration;
 import com.amazonaws.services.s3.model.ServerSideEncryptionRule;
 import com.amazonaws.services.s3.model.SetBucketEncryptionRequest;
 import com.amazonaws.services.s3.model.SetPublicAccessBlockRequest;
+import com.amazonaws.services.s3.model.lifecycle.LifecycleFilter;
+import com.amazonaws.services.s3.model.lifecycle.LifecyclePrefixPredicate;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.engine.QueryEngine;
 import nl.sidnlabs.entrada.exception.ApplicationException;
 import nl.sidnlabs.entrada.file.FileManager;
+import nl.sidnlabs.entrada.file.S3FileManagerImpl.S3Details;
 
 @Log4j2
 @Component
@@ -26,6 +32,12 @@ public class AmazonInitializer extends AbstractInitializer {
 
   @Value("${aws.bucket}")
   private String bucket;
+  @Value("${athena.output.expiration}")
+  private int expiration;
+  @Value("${athena.output.location}")
+  private String athenaOutputLocation;
+
+
 
   private AmazonS3 amazonS3;
   private FileManager fileManager;
@@ -62,10 +74,8 @@ public class AmazonInitializer extends AbstractInitializer {
                   .withRestrictPublicBuckets(Boolean.TRUE)));
 
       // check to see if we should enable default encryption
-      if (encrypt) {
-        return enableEncryption();
-      }
-
+      // and make sure that Athena results are deleted after automatically
+      return enableEncryption() && enableBucketLifecycle();
     }
 
     /*
@@ -75,7 +85,34 @@ public class AmazonInitializer extends AbstractInitializer {
     return amazonS3.doesBucketExistV2(bucket);
   }
 
+  private boolean enableBucketLifecycle() {
+    Optional<S3Details> s3Loc = S3Details.from(athenaOutputLocation);
+    if (s3Loc.isPresent()) {
+
+      // create lifecycle policy for Athena results
+      BucketLifecycleConfiguration.Rule rule = new BucketLifecycleConfiguration.Rule()
+          .withId("Delete Athena results after " + expiration + " day(s)")
+          .withFilter(new LifecycleFilter(new LifecyclePrefixPredicate(s3Loc.get().getKey())))
+          .withExpirationInDays(expiration)
+          .withStatus(BucketLifecycleConfiguration.ENABLED);
+
+      BucketLifecycleConfiguration configuration =
+          new BucketLifecycleConfiguration().withRules(Arrays.asList(rule));
+
+      // Save the configuration.
+      amazonS3.setBucketLifecycleConfiguration(bucket, configuration);
+
+      return true;
+    }
+
+    return false;
+  }
+
   private boolean enableEncryption() {
+
+    if (!encrypt) {
+      return true;
+    }
 
     ServerSideEncryptionRule serverSideEncryptionRule = new ServerSideEncryptionRule();
 

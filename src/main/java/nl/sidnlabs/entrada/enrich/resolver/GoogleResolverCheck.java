@@ -74,6 +74,7 @@ public final class GoogleResolverCheck extends AbstractResolverCheck {
       log.error("Problem while adding Google resolvers, continue without", e);
     }
 
+    log.error("No Google resolver addresses found");
     return Collections.emptyList();
   }
 
@@ -94,7 +95,7 @@ public final class GoogleResolverCheck extends AbstractResolverCheck {
     }
 
     if (subnets.isEmpty()) {
-      log.error("No Google resolvers found.");
+      log.error("No Google resolver addresses found");
     }
 
     return subnets;

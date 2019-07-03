@@ -9,17 +9,15 @@ import org.springframework.context.annotation.Primary;
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.extern.log4j.Log4j2;
 
+/**
+ * Create primary database as bean so we set it as primary otherwise flyway might connect to the
+ * wrong data source. If we just use the config from application.properties and let Spring config
+ * the datasource then the wrong db is setup as primary db.
+ */
 @Log4j2
 @Configuration
 public class EntradaDatabaseConfig {
 
-  /**
-   * Create primary database as bean so we set it as primary otherwise flyway might connect to the
-   * wrong data source. If we just use the config from application.properties and let Spring config
-   * the datasource then the wrong db is setup as primary db.
-   * 
-   * @return datasource for entrada database.
-   */
   @Primary
   @Bean(name = "dataSource")
   @ConfigurationProperties(prefix = "spring.datasource")

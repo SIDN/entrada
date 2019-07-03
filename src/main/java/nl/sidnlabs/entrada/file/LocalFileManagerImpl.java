@@ -8,6 +8,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -38,8 +39,14 @@ public class LocalFileManagerImpl implements FileManager {
   @Override
   public List<String> files(String dir, String... filter) {
 
+    File fDir = new File(dir);
+    if (!fDir.isDirectory()) {
+      log.error("{} is not a valid directory", dir);
+      return Collections.emptyList();
+    }
+
     return Arrays
-        .stream(new File(dir).listFiles())
+        .stream(fDir.listFiles())
         .filter(File::isFile)
         .map(File::getAbsolutePath)
         .filter(f -> checkFilter(f, Arrays.asList(filter)))

@@ -50,9 +50,9 @@ public class FileArchiveService {
    * Archive (move) data from src to target dst for archival, supported modes of operation are:
    * local2hdfs, local2s3, local2local, s32s3, hdfs2hsfs
    * 
-   * @param file
-   * @param start
-   * @param packets
+   * @param file the file to archive
+   * @param start time the file was processed
+   * @param packets the number of packets found in the file
    */
   @Transactional
   public void archive(String file, Date start, int packets) {
@@ -60,14 +60,14 @@ public class FileArchiveService {
 
     File f = new File(file);
 
-    if (!exists(file, serverContext.getServerInfo().getFullname())) {
+    if (!exists(file, serverContext.getServerInfo().getName())) {
       Date now = new Date();
       FileArchive fa = FileArchive
           .builder()
           .dateEnd(now)
           .file(f.getName())
           .path(f.getParent())
-          .server(serverContext.getServerInfo().getFullname())
+          .server(serverContext.getServerInfo().getName())
           .dateStart(start)
           .rows(packets)
           .time((int) (now.getTime() - start.getTime()) / 1000)
@@ -94,14 +94,14 @@ public class FileArchiveService {
       if (StringUtils.equals(fmSrc.schema(), fmDst.schema())) {
         // move data on local fs OR on the same remote fs
         String dst = FileUtil
-            .appendPath(archiveLocation, serverContext.getServerInfo().getFullname(), f.getName());
+            .appendPath(archiveLocation, serverContext.getServerInfo().getName(), f.getName());
 
         fmSrc.move(file, dst, true);
       } else if (fmSrc.isLocal() && !fmDst.isLocal()) {
         // move data from local to remote fs
         fmDst
             .upload(file,
-                FileUtil.appendPath(archiveLocation, serverContext.getServerInfo().getFullname()),
+                FileUtil.appendPath(archiveLocation, serverContext.getServerInfo().getName()),
                 true);
       }
     }

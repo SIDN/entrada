@@ -23,7 +23,7 @@ public class ScheduledExecution {
   private List<DnsResolverCheck> resolverChecks;
   private HistoricalMetricManager metricManager;
 
-  @Value("${entrada.serverlist}")
+  @Value("${entrada.nameservers}")
   private String servers;
 
   private Counter okCounter;
@@ -31,7 +31,8 @@ public class ScheduledExecution {
   private Timer processTimer;
 
   public ScheduledExecution(ServerContext serverCtx, PacketProcessor pcapProcessor,
-      List<DnsResolverCheck> resolverChecks, MeterRegistry registry, HistoricalMetricManager metricManager) {
+      List<DnsResolverCheck> resolverChecks, MeterRegistry registry,
+      HistoricalMetricManager metricManager) {
 
     this.serverCtx = serverCtx;
     this.pcapProcessor = pcapProcessor;
@@ -81,8 +82,6 @@ public class ScheduledExecution {
         log.error("Not all metrics have been sent to Graphite");
       }
     }
-
-
 
     log.info("Done loading data for server: {}", server);
   }

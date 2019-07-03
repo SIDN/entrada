@@ -19,7 +19,6 @@
  */
 package nl.sidnlabs.entrada.parquet;
 
-import java.io.File;
 import java.io.IOException;
 import org.apache.avro.Schema;
 import org.apache.avro.Schema.Parser;
@@ -27,6 +26,8 @@ import org.apache.avro.generic.GenericRecordBuilder;
 import org.springframework.core.io.ClassPathResource;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.exception.ApplicationException;
+import nl.sidnlabs.entrada.file.FileManager;
+import nl.sidnlabs.entrada.file.FileManagerFactory;
 import nl.sidnlabs.entrada.load.RowWriter;
 import nl.sidnlabs.entrada.util.FileUtil;
 
@@ -51,11 +52,10 @@ public abstract class AbstractParquetRowWriter implements RowWriter {
     }
 
     try {
-      File f = new ClassPathResource(schema, getClass()).getFile();
       Parser parser = new Schema.Parser().setValidate(true);
-      avroSchema = parser.parse(f);
+      avroSchema = parser.parse(new ClassPathResource(schema, getClass()).getInputStream());
     } catch (IOException e) {
-      throw new ApplicationException("Cannot load schema from file: " + schema);
+      throw new ApplicationException("Cannot load schema from file: " + schema, e);
     }
 
     return avroSchema;
@@ -63,12 +63,16 @@ public abstract class AbstractParquetRowWriter implements RowWriter {
 
   public void open(String outputDir, String server, String name) {
     String path = FileUtil.appendPath(outputDir, server, name);
+    log.info("Create new Parquet writer using path: " + path);
 
-    log.info("Create new Parquet writer with path: " + path);
+    // make sure the path exists
+    FileManager fm = FileManagerFactory.local();
+    if (!fm.mkdir(path)) {
+      throw new ApplicationException("Cannot create location: " + path);
+    }
 
     writer = new ParquetPartitionWriter(path, maxRows);
-
-    log.info("Created new Parquet writer");
+    log.info("Created new Parquet writer using path: {}", path);
   }
 
   /**

@@ -146,7 +146,6 @@ public class HistoricalMetricManager {
   }
 
   private long round(long millis) {
-    // return ((millis + 500) / 1000);
     // get retention from config
     long secs = (millis / 1000);
     return secs - (secs % retention);

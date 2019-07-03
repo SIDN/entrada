@@ -27,6 +27,8 @@ import lombok.Data;
 @Component
 public class ServerContext {
 
+  private static final String DEFAULT_SERVER_NAME = "default";
+
   private ServerInfo serverInfo = null;
 
   /**
@@ -39,8 +41,12 @@ public class ServerContext {
     serverInfo = new ServerInfo();
 
     String cleanName = StringUtils.stripToEmpty(name);
+    if (StringUtils.isBlank(cleanName)) {
+      cleanName = DEFAULT_SERVER_NAME;
+      serverInfo.setDefaultServer(true);
+    }
+
     serverInfo.setName(cleanName);
-    serverInfo.setFullname(cleanName);
     serverInfo.setNormalizeName(cleanName.replaceAll("[^A-Za-z0-9 ]", "_"));
 
     if (cleanName.length() > 0 && cleanName.contains("_")) {
@@ -56,7 +62,7 @@ public class ServerContext {
 
   @Data
   public static class ServerInfo {
-    private String fullname;
+    private boolean defaultServer;
     private String normalizeName;
     private String name;
     private String location;

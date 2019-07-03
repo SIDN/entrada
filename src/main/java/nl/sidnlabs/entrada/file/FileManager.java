@@ -27,8 +27,8 @@ public interface FileManager {
   /**
    * Upload a local directory to another location, this can be local, S3 or HDFS
    * 
-   * @param location location of the data to upload
-   * @param outputLocation location where the data should be uploaded to
+   * @param src location of the data to upload
+   * @param dst location where the data should be uploaded to
    * @param archive if true then the upload is to archive the data
    * @return true if the data has been uploaded successfully
    */

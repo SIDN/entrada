@@ -88,7 +88,7 @@ public class PacketProcessor {
   @Value("${entrada.cache.timeout.ip.fragmented}")
   private int cacheTimeoutIPFragConfig;
 
-  @Value("${entrada.inputstream.buffer:32}")
+  @Value("${entrada.inputstream.buffer:64}")
   private int bufferSizeConfig;
 
   @Value("${entrada.icmp.enable}")
@@ -125,8 +125,6 @@ public class PacketProcessor {
   private AtomicInteger dnsResponseCounter;
   private AtomicInteger fileCounter;
   private AtomicInteger purgeCounter;
-  // counter when no request query can be found for a response
-  private AtomicInteger noQueryFoundCounter;
 
   // max lifetime for cached packets, in milliseconds (configured in minutes)
   private int cacheTimeout;
@@ -197,7 +195,6 @@ public class PacketProcessor {
     List<String> inputFiles = scan();
     if (inputFiles.isEmpty()) {
       // no files found to process, stop
-      log.info("No files found, stop.");
       return;
     }
 
@@ -207,7 +204,7 @@ public class PacketProcessor {
     for (String file : inputFiles) {
       Date start = new Date();
 
-      if (fileArchiveService.exists(file, serverCtx.getServerInfo().getFullname())) {
+      if (fileArchiveService.exists(file, serverCtx.getServerInfo().getName())) {
         log.info("file {} already processed!, continue with next file", file);
         // move the pcap file to archive location or delete
         fileArchiveService.archive(file, start, 0);
@@ -225,6 +222,8 @@ public class PacketProcessor {
       purgeCache();
       // move the pcap file to archive location or delete
       fileArchiveService.archive(file, start, (int) packetCounter.get());
+
+      logStats();
       // reset micrometer gauges
       resetGauges();
     }
@@ -244,8 +243,6 @@ public class PacketProcessor {
       // upload newly created data to fs
       upload(partitions);
       register(partitions);
-
-      logStats();
     }
   }
 
@@ -260,7 +257,7 @@ public class PacketProcessor {
       return outputFuture.get();
     } catch (Exception e) {
       // ignore this error, return empty set
-      log.error("Error while waiting for output writer to finish");
+      log.error("Error while waiting for output writer to finish", e);
     }
 
     return Collections.emptyMap();
@@ -273,7 +270,6 @@ public class PacketProcessor {
     dnsQueryCounter.set(0);
     dnsResponseCounter.set(0);
     purgeCounter.set(0);
-    noQueryFoundCounter.set(0);
   }
 
   private void reset() {
@@ -285,7 +281,6 @@ public class PacketProcessor {
     dnsQueryCounter = registry.gauge("packet.dns.query", tags, new AtomicInteger(0));
     dnsResponseCounter = registry.gauge("packet.dns.response", tags, new AtomicInteger(0));
     purgeCounter = registry.gauge("packet.purge", tags, new AtomicInteger(0));
-    noQueryFoundCounter = registry.gauge("packet.noquery", tags, new AtomicInteger(0));
 
     requestCache = new HashMap<>();
     activeZoneTransfers = new HashMap<>();
@@ -298,7 +293,6 @@ public class PacketProcessor {
     log.info("{} packets", (dnsQueryCounter.get() + dnsResponseCounter.get()));
     log.info("{} query packets", dnsQueryCounter.get());
     log.info("{} response packets", dnsResponseCounter.get());
-    log.info("{} response packets without request", noQueryFoundCounter.get());
     log.info("-----------------------------------------");
   }
 
@@ -378,7 +372,7 @@ public class PacketProcessor {
     }
 
     long readStart = System.currentTimeMillis();
-    log.info("Start reading packet queue");
+    log.info("Start reading packets from file {}", file);
 
     // get filename only to map parquet row to pcap file for possible
     // later detailed analysis
@@ -408,7 +402,7 @@ public class PacketProcessor {
   }
 
   private void process(Packet currentPacket, String fileName) {
-    packetCounter.addAndGet(1);
+    packetCounter.getAndIncrement();
     if (packetCounter.get() % 100000 == 0) {
       log.info("Processed " + packetCounter.get() + " packets");
     }
@@ -522,8 +516,9 @@ public class PacketProcessor {
       // no request found, this could happen if the query was in previous pcap
       // and was not correctly decoded, or the request timed out before server
       // could send a response.
-      log.debug("Found no request for response");
-      noQueryFoundCounter.addAndGet(1);
+      if (log.isDebugEnabled()) {
+        log.debug("Found no request for response");
+      }
 
       pushPacket(new RowData(null, null, dnsPacket, msg, false, fileName));
     }
@@ -639,19 +634,16 @@ public class PacketProcessor {
       // current time.
       if ((key.getTime() + cacheTimeout) <= now) {
         // remove expired request
-        RequestCacheValue mw = requestCache.get(key);
+        RequestCacheValue cacheValue = requestCache.get(key);
         iter.remove();
 
-        if (mw.getMessage() != null && mw.getMessage().getHeader().getQr() == MessageType.QUERY) {
+        if (cacheValue.getMessage() != null
+            && cacheValue.getMessage().getHeader().getQr() == MessageType.QUERY) {
 
-          pushPacket(
-              new RowData(mw.getPacket(), mw.getMessage(), null, null, true, mw.getFilename()));
+          pushPacket(new RowData(cacheValue.getPacket(), cacheValue.getMessage(), null, null, true,
+              cacheValue.getFilename()));
 
           purgeCounter.addAndGet(1);
-
-        } else {
-          log.debug("Cached response entry timed out, request might have been missed");
-          noQueryFoundCounter.addAndGet(1);
         }
       }
     }
@@ -692,10 +684,9 @@ public class PacketProcessor {
 
   private List<String> scan() {
     // if server name is provided then search that location for input files.
-    // otherwise search inputDir
-    String inputDir = serverCtx.getServerInfo().getFullname().length() > 0
-        ? FileUtil.appendPath(inputLocation, serverCtx.getServerInfo().getFullname())
-        : inputLocation;
+    // otherwise search root of inputDir
+    String inputDir = serverCtx.getServerInfo().isDefaultServer() ? inputLocation
+        : FileUtil.appendPath(inputLocation, serverCtx.getServerInfo().getName());
 
     FileManager fm = fileManagerFactory.getFor(inputDir);
 

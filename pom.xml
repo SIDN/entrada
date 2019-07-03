@@ -12,7 +12,7 @@
 
 	<groupId>nl.sidnlabs</groupId>
 	<artifactId>entrada</artifactId>
-	<version>0.1.5-SNAPSHOT</version>
+	<version>2.0.0-SNAPSHOT</version>
 	<name>${project.groupId}:${project.artifactId}</name>
 	<description>Convert PCAP files into Parquet files</description>
 	<url>https://github.com/SIDN/dnslib</url>
@@ -40,13 +40,14 @@
 	</scm>
 
 	<properties>
-		<sidn-dnslib>0.1.5-SNAPSHOT</sidn-dnslib>
-		<sidn-pcaplib>0.1.5-SNAPSHOT</sidn-pcaplib>
+		<sidn-dnslib>0.1.6-SNAPSHOT</sidn-dnslib>
+		<sidn-pcaplib>0.1.6-SNAPSHOT</sidn-pcaplib>
 		<hadoop.version>3.1.1</hadoop.version>
 		<!-- need this for eclipse bug https://github.com/spring-projects/spring-boot/issues/16846#issuecomment-492792506 -->
 		<maven-jar-plugin.version>3.1.1</maven-jar-plugin.version>
 		<spring-cloud-version>2.1.1.RELEASE</spring-cloud-version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<dockerfile-maven-version>1.4.10</dockerfile-maven-version>
 	</properties>
 
 	<dependencies>
@@ -266,6 +267,19 @@
 			<version>1.2.0</version>
 		</dependency>
 
+		<dependency>
+			<groupId>io.netty</groupId>
+			<artifactId>netty</artifactId>
+			<version>3.10.6.Final</version>
+		</dependency>
+
+		<!-- need this otherwise generating javadoc fails. https://stackoverflow.com/questions/27808734/jdk8-error-class-file-for-javax-interceptor-interceptorbinding-not-found-whe -->
+		<dependency>
+			<groupId>javax.interceptor</groupId>
+			<artifactId>javax.interceptor-api</artifactId>
+			<version>1.2</version>
+		</dependency>
+
 	</dependencies>
 
 	<!-- for build and publish info see: https://central.sonatype.org/pages/apache-maven.html -->
@@ -288,19 +302,19 @@
 			</plugin>
 
 			<plugin>
-				<artifactId>maven-assembly-plugin</artifactId>
-				<configuration>
-					<descriptorRefs>
-						<descriptorRef>jar-with-dependencies</descriptorRef>
-					</descriptorRefs>
-				</configuration>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
 				<executions>
 					<execution>
-						<id>make-assembly</id>
-						<phase>package</phase>
 						<goals>
-							<goal>single</goal>
+							<goal>repackage</goal>
 						</goals>
+						<configuration>
+							<classifier>spring-boot</classifier>
+							<mainClass>
+								org.baeldung.executable.ExecutableMavenJar
+							</mainClass>
+						</configuration>
 					</execution>
 				</executions>
 			</plugin>
@@ -369,6 +383,27 @@
 					<serverId>ossrh</serverId>
 					<nexusUrl>https://oss.sonatype.org/</nexusUrl>
 					<autoReleaseAfterClose>true</autoReleaseAfterClose>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>com.spotify</groupId>
+				<artifactId>dockerfile-maven-plugin</artifactId>
+				<version>${dockerfile-maven-version}</version>
+				<executions>
+					<execution>
+						<id>default</id>
+						<goals>
+							<goal>build</goal>
+							<goal>push</goal>
+						</goals>
+					</execution>
+				</executions>
+				<configuration>
+					<repository>sidnlabs/entrada</repository>
+					<tag>${project.version}</tag>
+					<buildArgs>
+						<JAR_FILE>${project.build.finalName}.jar</JAR_FILE>
+					</buildArgs>
 				</configuration>
 			</plugin>
 		</plugins>

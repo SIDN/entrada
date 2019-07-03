@@ -34,7 +34,7 @@ public class StateManager {
 
 
   private String createStateFileName() {
-    return workLocation + "/" + DECODER_STATE_FILE + "-" + settings.getServerInfo().getFullname()
+    return workLocation + "/" + DECODER_STATE_FILE + "-" + settings.getServerInfo().getName()
         + ".bin";
   }
 

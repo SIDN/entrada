@@ -25,7 +25,6 @@ public class ImpalaDatabaseConfig {
     return ds;
   }
 
-
   @Autowired
   @Bean(name = "impalaJdbcTemplate")
   @ConditionalOnProperty(name = "entrada.engine", havingValue = "hadoop")

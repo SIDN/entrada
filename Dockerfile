@@ -3,18 +3,23 @@ FROM openjdk:8-jre
 
 LABEL maintainer="entrada@sidn.nl"
 
-RUN mkdir -p /data/entrada/work
-RUN mkdir -p /data/entrada/pcap
-RUN mkdir -p /data/entrada/database
-RUN mkdir -p /data/entrada/archive
+ENV APP_HOME /entrada
+
+RUN mkdir $APP_HOME
+RUN mkdir -p $APP_HOME/bin
+RUN mkdir -p $APP_HOME/data/work
+RUN mkdir -p $APP_HOME/data/input
+RUN mkdir -p $APP_HOME/data/output
+RUN mkdir -p $APP_HOME/data/archive
+RUN mkdir -p $APP_HOME/log
 
 
 # Make port 8080 available to the world outside this container
 EXPOSE 8080
 
 ARG JAR_FILE
-ADD target/${JAR_FILE} /app/entrada.jar
+ADD target/${JAR_FILE} $APP_HOME/bin/entrada.jar
 
 ENV JAVA_OPTS=""
 
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Djava.security.egd=file:/dev/./urandom -jar /app/entrada.jar"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Djava.security.egd=file:/dev/./urandom -jar $APP_HOME/bin/entrada.jar"]

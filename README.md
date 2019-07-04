@@ -1,16 +1,27 @@
 # Entrada
 
-Entrada is an open source big data platform for network data analytics.
+Entrada is an open source big data tool for network data analytics.
 
 For more information see the [Entrada](http://entrada.sidnlabs.nl/) website.
 
-### scripts
 
-Workflow scripts for automating Entrada actions.
+## Installation
 
-### grafana-dashboard
+Pull the docker image from Docker hub.  
 
-Example Grafana dashboards used to monitor ENTRADA activity.
+```
+   docker pull sidnlabs/entrada
+
+```
+
+Use 1 of the example (Docker compose scripts)[https://github.com/SIDN/entrada/tree/master/docker-compose], modify it to fit your requirements and then start the container.  
+For more information about the configuration options see the (ENTRADA website)[https://entrada.sidnlabs.nl]
+
+```
+   docker-compose up -d
+
+```
+
 
 ## License
 

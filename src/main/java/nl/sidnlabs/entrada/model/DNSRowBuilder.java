@@ -396,4 +396,9 @@ public class DNSRowBuilder extends AbstractRowBuilder {
     }
   }
 
+  @Override
+  public void reset() {
+    packetCounter = 0;
+  }
+
 }

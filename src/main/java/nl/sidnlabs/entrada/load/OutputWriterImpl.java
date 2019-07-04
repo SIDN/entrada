@@ -149,11 +149,13 @@ public class OutputWriterImpl implements OutputWriter {
       dnsWriter.close();
       results.put("dns", new HashSet<>(dnsPartitions));
       dnsPartitions.clear();
+      dnsRowBuilder.reset();
     }
     if (icmp) {
       icmpWriter.close();
       results.put("icmp", new HashSet<>(icmpPartitions));
       icmpPartitions.clear();
+      icmpRowBuilder.reset();
     }
 
     open = false;

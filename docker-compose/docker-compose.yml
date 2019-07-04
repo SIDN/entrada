@@ -1,0 +1,49 @@
+version: '3.7'
+services:
+  entrada:
+    image: sidnlabs/entrada:2.0.0-SNAPSHOT
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    ports:
+      - 8080:8080
+    environment:
+      # ENTRADA options
+      - MANAGEMENT_METRICS_EXPORT_GRAPHITE_HOST=entrada-mon.sidnlabs.nl
+      - ENTRADA_ENGINE=local
+      - ENTRADA_NAMESERVERS=
+      - ENTRADA_PCAP_ARCHIVE_MODE=ARCHIVE
+      - ENTRADA_ICMP_ENABLE=true
+      - ENTRADA_INPUT_FILE_SKIPFIRST=false
+      # The following options do NOT need to be changed
+      # change the volume mappings below, in the "volumes:" section
+      - ENTRADA_LOCATION_WORK=/entrada/data/work
+      - ENTRADA_LOCATION_INPUT=/entrada/data/input
+      - ENTRADA_LOCATION_OUTPUT=/entrada/data/output
+      - ENTRADA_LOCATION_ARCHIVE=/entrada/data/archive
+      - LOGGING_PATH=/entrada/log
+      - SPRING_DATASOURCE_URL=jdbc:h2:file:/entrada/data/work/entrada.db;MODE=PostgreSQL
+      - SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.h2.Driver
+      - SPRING_DATASOURCE_USERNAME=entrada
+      - SPRING_DATASOURCE_PASSWORD=
+      - SPRING_JPA_DATABASE-PLATFORM=org.hibernate.dialect.H2Dialect
+      - SPRING_H2_CONSOLE_ENABLED=true
+      - SPRING_H2_CONSOLE_PATH=/h2
+      - JAVA_OPTS=-Xmx4g -Xms4g
+    volumes:
+      # Map internal container paths to host paths
+      - /Users/maartenwullink/sidn/development/tmp/entrada/docker/work:/entrada/data/work
+      - /Users/maartenwullink/sidn/development/tmp/entrada/docker/pcap:/entrada/data/input
+      - /Users/maartenwullink/sidn/development/tmp/entrada/docker/database:/entrada/data/output
+      - /Users/maartenwullink/sidn/development/tmp/entrada/docker/archive:/entrada/data/archive
+      - /Users/maartenwullink/sidn/development/tmp/entrada/docker/log:/entrada/log
+    dns: 
+      - 8.8.8.8
+    #Limit container logging
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"

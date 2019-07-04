@@ -6,4 +6,6 @@ public interface RowBuilder {
 
   Row build(RowData combo);
 
+  void reset();
+
 }

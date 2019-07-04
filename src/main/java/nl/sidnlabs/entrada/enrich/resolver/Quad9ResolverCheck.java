@@ -35,7 +35,7 @@ import lombok.extern.log4j.Log4j2;
 @Component
 public final class Quad9ResolverCheck extends AbstractResolverCheck {
 
-  private static final String RESOLVER_SOURCE_FILENAME = "quad9-resolvers.txt";
+  private static final String RESOLVER_SOURCE_FILENAME = "/resolver/quad9-resolvers.txt";
   private static final String RESOLVER_STATE_FILENAME = "quad9-resolvers";
   private static final String RESOLVER_NAME = "Quad9";
 

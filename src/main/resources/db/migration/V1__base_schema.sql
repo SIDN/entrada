@@ -1,9 +1,10 @@
 -- drop old tables first
 drop table if exists entrada_file_archive;
 
+CREATE SEQUENCE FILE_ID_SEQ START WITH 1 INCREMENT BY 1;
 CREATE TABLE IF NOT EXISTS entrada_file_archive
 (
-  id serial NOT NULL,
+  id int NOT NULL,
   date_start timestamp NOT NULL,
   date_end timestamp NOT NULL,
   time int NOT NULL,
@@ -17,9 +18,10 @@ CREATE TABLE IF NOT EXISTS entrada_file_archive
 CREATE UNIQUE INDEX IF NOT EXISTS idx_entrada_file_archive_file_server ON entrada_file_archive (file,server);
 
 
+CREATE SEQUENCE PARTITION_ID_SEQ START WITH 1 INCREMENT BY 1;
 CREATE TABLE IF NOT EXISTS entrada_partition
 (
-  id serial NOT NULL,
+  id int NOT NULL,
   engine character varying(20) NOT NULL,
   table_name character varying(100) NOT NULL,
   created timestamp NOT NULL,

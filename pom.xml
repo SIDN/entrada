@@ -33,21 +33,16 @@
 		</developer>
 	</developers>
 
-	<scm>
-		<connection>scm:git:git://github.com/SIDN/pcap-lib.git</connection>
-		<developerConnection>scm:git:ssh://github.com/SIDN/pcap-lib.git</developerConnection>
-		<url>https://github.com/SIDN/pcap-lib/tree/master/</url>
-	</scm>
-
 	<properties>
-		<sidn-dnslib>0.1.6-SNAPSHOT</sidn-dnslib>
-		<sidn-pcaplib>0.1.6-SNAPSHOT</sidn-pcaplib>
+		<sidn-dnslib>0.1.7-SNAPSHOT</sidn-dnslib>
+		<sidn-pcaplib>0.1.7-SNAPSHOT</sidn-pcaplib>
 		<hadoop.version>3.1.1</hadoop.version>
 		<!-- need this for eclipse bug https://github.com/spring-projects/spring-boot/issues/16846#issuecomment-492792506 -->
 		<maven-jar-plugin.version>3.1.1</maven-jar-plugin.version>
 		<spring-cloud-version>2.1.1.RELEASE</spring-cloud-version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<dockerfile-maven-version>1.4.10</dockerfile-maven-version>
+		<java.version>1.8</java.version>
 	</properties>
 
 	<dependencies>
@@ -282,14 +277,6 @@
 
 	</dependencies>
 
-	<!-- for build and publish info see: https://central.sonatype.org/pages/apache-maven.html -->
-	<distributionManagement>
-		<snapshotRepository>
-			<id>ossrh</id>
-			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
-		</snapshotRepository>
-	</distributionManagement>
-
 	<build>
 		<plugins>
 			<plugin>
@@ -312,7 +299,7 @@
 						<configuration>
 							<classifier>spring-boot</classifier>
 							<mainClass>
-								org.baeldung.executable.ExecutableMavenJar
+								nl.sidnlabs.entrada.Application
 							</mainClass>
 						</configuration>
 					</execution>
@@ -322,68 +309,6 @@
 				<groupId>org.openclover</groupId>
 				<artifactId>clover-maven-plugin</artifactId>
 				<version>4.2.1</version>
-			</plugin>
-			<plugin>
-				<groupId>org.sonatype.plugins</groupId>
-				<artifactId>nexus-staging-maven-plugin</artifactId>
-				<version>1.6.7</version>
-				<extensions>true</extensions>
-				<configuration>
-					<serverId>ossrh</serverId>
-					<nexusUrl>https://oss.sonatype.org/</nexusUrl>
-					<autoReleaseAfterClose>true</autoReleaseAfterClose>
-				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-source-plugin</artifactId>
-				<version>3.1.0</version>
-				<executions>
-					<execution>
-						<id>attach-sources</id>
-						<goals>
-							<goal>jar-no-fork</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>3.1.0</version>
-				<executions>
-					<execution>
-						<id>attach-javadocs</id>
-						<goals>
-							<goal>jar</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-gpg-plugin</artifactId>
-				<version>1.5</version>
-				<executions>
-					<execution>
-						<id>sign-artifacts</id>
-						<phase>verify</phase>
-						<goals>
-							<goal>sign</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
-				<groupId>org.sonatype.plugins</groupId>
-				<artifactId>nexus-staging-maven-plugin</artifactId>
-				<version>1.6.7</version>
-				<extensions>true</extensions>
-				<configuration>
-					<serverId>ossrh</serverId>
-					<nexusUrl>https://oss.sonatype.org/</nexusUrl>
-					<autoReleaseAfterClose>true</autoReleaseAfterClose>
-				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>com.spotify</groupId>
@@ -399,8 +324,9 @@
 					</execution>
 				</executions>
 				<configuration>
-					<repository>sidnlabs/entrada</repository>
+					<repository>docker.io/sidnlabs/entrada</repository>
 					<tag>${project.version}</tag>
+					<useMavenSettingsForAuth>true</useMavenSettingsForAuth>
 					<buildArgs>
 						<JAR_FILE>${project.build.finalName}.jar</JAR_FILE>
 					</buildArgs>

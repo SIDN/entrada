@@ -12,7 +12,7 @@ services:
       - 8080:8080
     environment:
       # ENTRADA options
-      - MANAGEMENT_METRICS_EXPORT_GRAPHITE_HOST=entrada-mon.sidnlabs.nl
+      - MANAGEMENT_METRICS_EXPORT_GRAPHITE_HOST=graphite.example.com
       - ENTRADA_ENGINE=aws
       - ENTRADA_NAMESERVERS=
       - ENTRADA_PCAP_ARCHIVE_MODE=archive

@@ -12,7 +12,7 @@ For more information see the [ENTRADA](http://entrada.sidnlabs.nl/) website.
 
 ## How to use
 
-Pull the docker image from Docker hub.  
+ENTRADA can be deployed using Docker, pull the docker image from Docker hub.  
 
 ```
    docker pull sidnlabs/entrada:<tag>

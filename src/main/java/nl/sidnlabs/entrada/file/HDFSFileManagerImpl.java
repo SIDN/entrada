@@ -33,11 +33,14 @@ public class HDFSFileManagerImpl implements FileManager {
 
   private static final String HDFS_SCHEME = "hdfs://";
 
+  @Value("${entrada.location.conf}")
+  private String confDir;
+
   @Value("${hdfs.nameservice}")
   private String hdfsNameservice;
 
-  @Value("${kerberos.username}")
-  private String krbUsername;
+  @Value("${hdfs.username}")
+  private String hdfsUsername;
 
   @Value("${kerberos.keytab}")
   private String krbKeyTab;
@@ -258,10 +261,30 @@ public class HDFSFileManagerImpl implements FileManager {
     return false;
   }
 
-  private FileSystem createNonSecureFS() {
+  private Configuration conf() {
     Configuration conf = new Configuration();
     conf.set("fs.defaultFS", hdfsNameservice);
-    System.setProperty("HADOOP_USER_NAME", hdfsUser());
+
+
+    String coreSiteXml = confDir + "/core-site.xml";
+    if (!new File(coreSiteXml).exists()) {
+      throw new ApplicationException("Missing core-site.xml, add this to the conf directory");
+    }
+
+    String hdfsSiteXml = confDir + "/hdfs-site.xml";
+    if (!new File(hdfsSiteXml).exists()) {
+      throw new ApplicationException("Missing hdfs-site.xml, add this to the conf directory");
+    }
+
+    conf.addResource(new Path("file://" + hdfsSiteXml));
+    conf.addResource(new Path("file://" + coreSiteXml));
+
+    return conf;
+  }
+
+  private FileSystem createNonSecureFS() {
+    Configuration conf = conf();
+    System.setProperty("HADOOP_USER_NAME", hdfsUsername);
 
     try {
       return FileSystem.get(conf);
@@ -270,35 +293,25 @@ public class HDFSFileManagerImpl implements FileManager {
     }
   }
 
-  private String hdfsUser() {
-    String[] parts = StringUtils.split(krbUsername, "@");
-    if (parts.length == 2) {
-      return parts[1];
-    }
-    throw new ApplicationException(
-        "Invalid kerberos username format, must be: <use>r@<REALM> found: " + krbUsername);
-  }
-
-
   private FileSystem createSecureFS() {
-    Configuration conf = new Configuration();
-    conf.set("fs.defaultFS", hdfsNameservice);
+    Configuration conf = conf();
     conf.set("hadoop.security.authentication", "kerberos");
+
     UserGroupInformation.setConfiguration(conf);
 
     try {
       if (StringUtils.isNotBlank(krbKeyTab)) {
-        UserGroupInformation.loginUserFromKeytab(krbUsername, krbKeyTab);
+        UserGroupInformation.loginUserFromKeytab(hdfsUsername, krbKeyTab);
       }
 
-      return FileSystem.get(conf);
-    } catch (IOException e) {
+      return FileSystem.get(new URI(hdfsNameservice), conf);
+    } catch (Exception e) {
       throw new ApplicationException("Cannot create secure HDFS filesystem", e);
     }
   }
 
   private FileSystem createFS() {
-    if (StringUtils.isNotBlank(krbUsername)) {
+    if (StringUtils.isNotBlank(krbKeyTab)) {
       // user using krb user/pass
       return createSecureFS();
     } else {

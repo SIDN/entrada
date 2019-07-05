@@ -1,7 +1,7 @@
 version: '3.7'
 services:
   entrada:
-    image: sidnlabs/entrada:2.0.0-SNAPSHOT
+    image: sidnlabs/entrada:2.0.0
     deploy:
       restart_policy:
         condition: on-failure
@@ -12,12 +12,13 @@ services:
       - 8080:8080
     environment:
       # ENTRADA options
-      - MANAGEMENT_METRICS_EXPORT_GRAPHITE_HOST=entrada-mon.sidnlabs.nl
+      - MANAGEMENT_METRICS_EXPORT_GRAPHITE_HOST=graphite.example.com
       - ENTRADA_ENGINE=local
       - ENTRADA_NAMESERVERS=
       - ENTRADA_PCAP_ARCHIVE_MODE=ARCHIVE
       - ENTRADA_ICMP_ENABLE=true
       - ENTRADA_INPUT_FILE_SKIPFIRST=false
+      
       # The following options do NOT need to be changed
       # change the volume mappings below, in the "volumes:" section
       - ENTRADA_LOCATION_WORK=/entrada/data/work
@@ -34,12 +35,13 @@ services:
       - SPRING_H2_CONSOLE_PATH=/h2
       - JAVA_OPTS=-Xmx4g -Xms4g
     volumes:
-      # Map internal container paths to host paths
-      - /Users/maartenwullink/sidn/development/tmp/entrada/docker/work:/entrada/data/work
-      - /Users/maartenwullink/sidn/development/tmp/entrada/docker/pcap:/entrada/data/input
-      - /Users/maartenwullink/sidn/development/tmp/entrada/docker/database:/entrada/data/output
-      - /Users/maartenwullink/sidn/development/tmp/entrada/docker/archive:/entrada/data/archive
-      - /Users/maartenwullink/sidn/development/tmp/entrada/docker/log:/entrada/log
+      # Map internal container path to a path on the host
+      # ENTRADA will write to /entrada/... in the container
+      - /tmp/entrada/work:/entrada/data/work
+      - /tmp/entrada/pcap:/entrada/data/input
+      - /tmp/entrada/database:/entrada/data/output
+      - /tmp/entrada/archive:/entrada/data/archive
+      - /tmp/entrada/log:/entrada/log
     dns: 
       - 8.8.8.8
     #Limit container logging

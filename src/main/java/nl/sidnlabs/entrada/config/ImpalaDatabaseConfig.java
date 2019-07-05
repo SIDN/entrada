@@ -1,5 +1,6 @@
 package nl.sidnlabs.entrada.config;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -21,7 +22,12 @@ public class ImpalaDatabaseConfig {
     log.info("Create Impala datasource");
 
     DataSource ds = new DataSource();
-    ds.setURL(env.getProperty("impala.url"));
+    // check to see if we are connection to a Keberized Impala
+    if (!StringUtils.isBlank(env.getProperty("kerberos.keytab"))) {
+      ds.setURL(env.getProperty("keberos.impala.url"));
+    } else {
+      ds.setURL(env.getProperty("impala.url"));
+    }
     return ds;
   }
 

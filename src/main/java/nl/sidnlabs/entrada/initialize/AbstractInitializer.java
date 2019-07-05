@@ -78,8 +78,7 @@ public abstract class AbstractInitializer implements Initializer {
   }
 
   private ClassPathResource sqlResource(String script) {
-    return new ClassPathResource("/sql/" + scriptPrefix + "/" + script,
-        TemplateUtil.class.getClass());
+    return new ClassPathResource("/sql/" + scriptPrefix + "/" + script, getClass());
   }
 
 

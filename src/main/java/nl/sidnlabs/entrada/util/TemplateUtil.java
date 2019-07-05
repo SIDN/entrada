@@ -1,9 +1,10 @@
 package nl.sidnlabs.entrada.util;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang.text.StrSubstitutor;
 import org.springframework.core.io.ClassPathResource;
 import lombok.extern.log4j.Log4j2;
@@ -37,9 +38,8 @@ public class TemplateUtil {
   }
 
   private static String readTemplate(ClassPathResource template) {
-
-    try {
-      return FileUtils.readFileToString(template.getFile(), StandardCharsets.UTF_8);
+    try (InputStream is = template.getInputStream()) {
+      return IOUtils.toString(template.getInputStream(), StandardCharsets.UTF_8.name());
     } catch (IOException e) {
       throw new ApplicationException("Could not load file " + template, e);
     }

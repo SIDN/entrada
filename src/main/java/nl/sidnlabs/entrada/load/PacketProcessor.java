@@ -698,7 +698,7 @@ public class PacketProcessor {
 
     List<String> files = fm.files(inputDir, ".pcap", ".pcap.gz", ".pcap.xz");
 
-    if (skipFirst && fm.isLocal()) {
+    if (skipFirst) {
       // order by date and skip the youngest file
       // do this onlu for local fs
       List<File> sorted = files

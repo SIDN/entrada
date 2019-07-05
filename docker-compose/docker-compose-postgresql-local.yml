@@ -1,0 +1,52 @@
+version: '3.7'
+services:
+  entrada:
+    image: sidnlabs/entrada:2.0.0
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+    ports:
+      - 8080:8080
+    environment:
+      # ENTRADA options
+      - MANAGEMENT_METRICS_EXPORT_GRAPHITE_HOST=entrada-mon.sidnlabs.nl
+      - ENTRADA_ENGINE=local
+      - ENTRADA_NAMESERVERS=
+      - ENTRADA_PCAP_ARCHIVE_MODE=archive
+      - ENTRADA_ICMP_ENABLE=true
+      - ENTRADA_INPUT_FILE_SKIPFIRST=false
+      
+      # PostgreSQL config options, make sure the the database is created before 
+      # starting the container
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://localhost:5432/entrada
+      - SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver
+      - SPRING_DATASOURCE_USERNAME=
+      - SPRING_DATASOURCE_PASSWORD=
+      - SPRING_JPA_DATABASE-PLATFORM=org.hibernate.dialect.PostgreSQLDialect
+      
+      # The following options do NOT need to be changed
+      # change the volume mappings below, in the "volumes:" section
+      - ENTRADA_LOCATION_WORK=/entrada/data/work
+      - ENTRADA_LOCATION_INPUT=/entrada/data/input
+      - ENTRADA_LOCATION_OUTPUT=/entrada/data/output
+      - ENTRADA_LOCATION_ARCHIVE=/entrada/data/archive
+      - LOGGING_PATH=/entrada/log
+      - JAVA_OPTS=-Xmx4g -Xms4g
+    volumes:
+      # Map internal container path to a path on the host
+      # ENTRADA will write to /entrada/... in the container
+      - /tmp/entrada/work:/entrada/data/work
+      - /tmp/entrada/pcap:/entrada/data/input
+      - /tmp/entrada/database:/entrada/data/output
+      - /tmp/entrada/archive:/entrada/data/archive
+      - /tmp/entrada/log:/entrada/log
+    dns: 
+      - 8.8.8.8
+    #Limit container logging
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"

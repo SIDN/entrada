@@ -90,7 +90,9 @@ public abstract class AbstractParquetRowWriter implements RowWriter {
   }
 
   public void close() {
+    log.info("Close Parquet writer");
     showStatus();
+    reset();
 
     if (writer != null) {
       writer.close();
@@ -99,6 +101,11 @@ public abstract class AbstractParquetRowWriter implements RowWriter {
 
   protected void showStatus() {
     log.info(rowCounter + " rows written to file.");
+  }
+
+
+  public void reset() {
+    rowCounter = 0;
   }
 
 }

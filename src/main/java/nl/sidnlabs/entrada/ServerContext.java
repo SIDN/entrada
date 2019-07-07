@@ -52,8 +52,7 @@ public class ServerContext {
     if (cleanName.length() > 0 && cleanName.contains("_")) {
       String[] parts = StringUtils.split(cleanName, "_");
       if (parts.length == 2) {
-        // found anyvast location in name, split into name and location part
-        serverInfo.setName(parts[0]);
+        // found anycast location in name, split into name and location part
         serverInfo.setLocation(parts[1]);
       }
     }

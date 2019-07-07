@@ -22,6 +22,9 @@ public class ScheduledCompaction {
   @Value("${entrada.parquet.compaction.age}")
   private int age;
 
+  @Value("${entrada.parquet.compaction.enabled}")
+  private boolean enabled;
+
   private PartitionService partitionService;
   private QueryEngine queryEngine;
 
@@ -38,6 +41,14 @@ public class ScheduledCompaction {
   @Scheduled(fixedDelayString = "#{${entrada.parquet.compaction.interval:1}*60*1000}",
       initialDelay = 60 * 1000)
   public void run() {
+
+    if (!enabled) {
+      // compaction not enabled
+      log.info("Compaction not enabled, mark any uncompacted partition as compacted");
+      partitionService.closeUncompactedPartitions();
+      return;
+    }
+
     log.info("Start partition compaction");
 
     List<TablePartition> partitions = partitionService.uncompactedPartitions();

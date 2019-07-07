@@ -1,0 +1,9 @@
+Client {
+  com.sun.security.auth.module.Krb5LoginModule required
+  useTicketCache=false
+  doNotPrompt=true
+  useKeyTab=true
+  keyTab="/entrada/conf/keytab"
+  principal="hdfs@SIDNLABS"
+  debug=false;
+};

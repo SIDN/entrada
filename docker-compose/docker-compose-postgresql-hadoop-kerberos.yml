@@ -1,7 +1,7 @@
 version: '3.7'
 services:
   entrada:
-    image: sidnlabs/entrada:2.0.0-SNAPSHOT
+    image: sidnlabs/entrada:2.0.0
     deploy:
       restart_policy:
         condition: on-failure

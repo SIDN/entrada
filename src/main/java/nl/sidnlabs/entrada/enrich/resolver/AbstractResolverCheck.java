@@ -24,6 +24,7 @@ import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import java.io.File;
 import java.io.IOException;
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Date;
@@ -34,15 +35,27 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.jboss.netty.handler.ipfilter.IpSubnet;
 import org.springframework.beans.factory.annotation.Value;
+import com.google.common.hash.BloomFilter;
+import com.google.common.hash.Funnels;
 import lombok.extern.log4j.Log4j2;
 
 @Log4j2
 public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
+  private static final int BLOOMFILTER_SIZE = 100000;
+
   private List<IpSubnet> matchers4 = new ArrayList<>();
   private List<IpSubnet> matchers6 = new ArrayList<>();
 
-  private List<String> subnets = new ArrayList<>();
+  /*
+   * Two bloomfilters are used to track addresses that have been a match or a non-match. if an
+   * address is not in any of the filters then do the normal lookup.
+   */
+  BloomFilter<String> matchFilter =
+      BloomFilter.create(Funnels.stringFunnel(StandardCharsets.UTF_8), BLOOMFILTER_SIZE, 0.01);
+
+  BloomFilter<String> nonMatchFilter =
+      BloomFilter.create(Funnels.stringFunnel(StandardCharsets.UTF_8), BLOOMFILTER_SIZE, 0.01);
 
   @Value("${entrada.location.work}")
   private String workDir;
@@ -61,7 +74,7 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
   private void update(File file) {
     // load new subnets from source
-    subnets = fetch();
+    List<String> subnets = fetch();
     if (!subnets.isEmpty()) {
       // create internal bitsubnets for camparissions
       subnets
@@ -79,7 +92,7 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
           .forEach(s -> matchers6.add(s));
 
       // write subnets to file so we do not need to get them from source every time the app starts
-      writeToFile(file);
+      writeToFile(subnets, file);
     }
   }
 
@@ -139,7 +152,7 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     return !matchers4.isEmpty() || !matchers6.isEmpty();
   }
 
-  private void writeToFile(File file) {
+  private void writeToFile(List<String> subnets, File file) {
     try {
       Files.write(file.toPath(), subnets, CREATE, TRUNCATE_EXISTING);
     } catch (IOException e) {
@@ -151,27 +164,67 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
   @Override
   public boolean match(String address) {
-    // matchers are split into a v4 and v6 group
-    // to allow us to quickly skip the version we don't need
-    // to check
+    // use 2 bloomfilter to do faster check for addresses that have been seen before
+    if (!matchFilter.mightContain(address) && !nonMatchFilter.mightContain(address)) {
+      // new address is not matched before as a match or a non-match
 
-    if (StringUtils.contains(address, ".")) {
-      for (IpSubnet sn : matchers4) {
+      // matchers are split into a v4 and v6 group
+      // to allow us to quickly skip the version we don't need
+      // to check
+
+      if (StringUtils.contains(address, ".")) {
+        for (IpSubnet sn : matchers4) {
+          if (subnetContains(sn, address)) {
+            matchFilter.put(address);
+            return true;
+          }
+        }
+        nonMatchFilter.put(address);
+        return false;
+      }
+
+      for (IpSubnet sn : matchers6) {
         if (subnetContains(sn, address)) {
+          matchFilter.put(address);
           return true;
         }
       }
+
+      nonMatchFilter.put(address);
       return false;
     }
 
-    for (IpSubnet sn : matchers6) {
-      if (subnetContains(sn, address)) {
-        return true;
-      }
-    }
+    // address has been seen before it must be a match of non-match
+    // check if it is not in nonMatchFilter, then it must be a match and return true
+    return !nonMatchFilter.mightContain(address);
 
-    return false;
   }
+
+  // @Override
+  // public boolean match(String address) {
+  //
+  // if (StringUtils.contains(address, ".")) {
+  // for (IpSubnet sn : matchers4) {
+  // if (subnetContains(sn, address)) {
+  // matchFilter.put(address);
+  // return true;
+  // }
+  // }
+  // nonMatchFilter.put(address);
+  // return false;
+  // }
+  //
+  // for (IpSubnet sn : matchers6) {
+  // if (subnetContains(sn, address)) {
+  // matchFilter.put(address);
+  // return true;
+  // }
+  // }
+  //
+  // return false;
+  //
+  //
+  // }
 
   private boolean subnetContains(IpSubnet subnet, String address) {
     try {

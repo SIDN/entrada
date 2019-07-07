@@ -169,10 +169,4 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
     return row;
   }
 
-  @Override
-  public void reset() {
-    packetCounter = 0;
-  }
-
-
 }

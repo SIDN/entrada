@@ -42,7 +42,7 @@ public class ParquetPartitionWriter {
               partitionStr);
 
       parquetPartition.close();
-      // remove partition from partitions map, for a possible next row fot this partitions
+      // remove partition from partitions map, for a possible next row for this partitions
       // a new partition object and parquet file will be created.
       partitions.remove(partitionStr);
     }

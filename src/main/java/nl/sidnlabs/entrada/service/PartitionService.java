@@ -65,6 +65,16 @@ public class PartitionService {
   }
 
   @Transactional
+  public void closeUncompactedPartitions() {
+    uncompactedPartitions().stream().forEach(this::closePartition);
+  }
+
+  private void closePartition(TablePartition p) {
+    p.setCompaction(new Date());
+    p.setCompactionTime(0);
+  }
+
+  @Transactional
   public void save(TablePartition p) {
     tablePartitionRepository.save(p);
   }

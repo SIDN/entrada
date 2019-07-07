@@ -42,6 +42,8 @@ import java.util.stream.Collectors;
 import org.apache.commons.io.comparator.LastModifiedFileComparator;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.TreeMultimap;
@@ -75,6 +77,9 @@ import nl.sidnlabs.pcap.packet.TCPFlow;
 
 @Log4j2
 @Component
+// use prototype scope, create new bean each time batch of files is processed
+// this to avoid problems with memory/caches when running app for a long period of time
+@Scope(value = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class PacketProcessor {
 
   private static final int MAX_QUEUE_SIZE = 100000;
@@ -163,7 +168,6 @@ public class PacketProcessor {
     this.cacheTimeout = 1000 * 60 * cacheTimeoutConfig;
     this.registry = registry;
   }
-
 
   /**
    * 
@@ -278,9 +282,9 @@ public class PacketProcessor {
 
     fileCounter = registry.gauge("processor.pcap", tags, new AtomicInteger(0));
     packetCounter = registry.gauge("processor.packet", tags, new AtomicInteger(0));
-    dnsQueryCounter = registry.gauge("packet.dns.query", tags, new AtomicInteger(0));
-    dnsResponseCounter = registry.gauge("packet.dns.response", tags, new AtomicInteger(0));
-    purgeCounter = registry.gauge("packet.purge", tags, new AtomicInteger(0));
+    dnsQueryCounter = registry.gauge("processor.dns.query", tags, new AtomicInteger(0));
+    dnsResponseCounter = registry.gauge("processor.dns.response", tags, new AtomicInteger(0));
+    purgeCounter = registry.gauge("processor.packet.purged", tags, new AtomicInteger(0));
 
     requestCache = new HashMap<>();
     activeZoneTransfers = new HashMap<>();

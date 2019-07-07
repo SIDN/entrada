@@ -32,7 +32,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.stereotype.Component;
-import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.ServerContext;
@@ -64,8 +63,8 @@ public class OutputWriterImpl implements OutputWriter {
   private int queueEmptyWait;
 
   // metric counters
-  private Counter dnsCounter;
-  private Counter icmpCounter;
+  private int dnsCounter;
+  private int icmpCounter;
 
   private boolean dns;
   private boolean icmp;
@@ -91,9 +90,6 @@ public class OutputWriterImpl implements OutputWriter {
     this.icmpWriter = icmpWriter;
     this.dnsRowBuilder = dnsRowBuilder;
     this.icmpRowBuilder = icmpRowBuilder;
-
-    dnsCounter = registry.counter("packets.dns");
-    icmpCounter = registry.counter("packets.icmp");
   }
 
 
@@ -130,12 +126,12 @@ public class OutputWriterImpl implements OutputWriter {
 
   private void writeDns(Row row, String server) {
     dnsPartitions.add(dnsWriter.write(row, server));
-    dnsCounter.increment();
+    dnsCounter++;
   }
 
   private void writeIcmp(Row row, String server) {
     icmpPartitions.add(icmpWriter.write(row, server));
-    icmpCounter.increment();
+    icmpCounter++;
   }
 
   private Map<String, Set<Partition>> close() {
@@ -226,8 +222,8 @@ public class OutputWriterImpl implements OutputWriter {
       if (input.drainTo(batch, ROW_BATCH_SIZE) > 0) {
         if (process(batch)) {
           log.info("Received final packet, close output");
-          log.info("processed " + (int) dnsCounter.count() + " DNS packets.");
-          log.info("processed " + (int) icmpCounter.count() + " ICMP packets.");
+          log.info("processed " + dnsCounter + " DNS packets.");
+          log.info("processed " + icmpCounter + " ICMP packets.");
 
           return;
         }

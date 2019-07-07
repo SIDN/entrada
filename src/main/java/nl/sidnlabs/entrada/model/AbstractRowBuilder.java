@@ -69,4 +69,9 @@ public abstract class AbstractRowBuilder implements RowBuilder {
   protected void showStatus() {
     log.info(packetCounter + " packets written to parquet file.");
   }
+
+  @Override
+  public void reset() {
+    packetCounter = 0;
+  }
 }

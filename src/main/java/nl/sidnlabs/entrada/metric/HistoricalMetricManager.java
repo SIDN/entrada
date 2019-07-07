@@ -43,19 +43,19 @@ import nl.sidnlabs.entrada.ServerContext;
 public class HistoricalMetricManager {
 
   // dns stats
-  public static final String METRIC_IMPORT_DNS_QUERY_COUNT = "hist.packetDns.query.count";
-  public static final String METRIC_IMPORT_DNS_RESPONSE_COUNT = "hist.packetDns.response.count";
+  public static final String METRIC_IMPORT_DNS_QUERY_COUNT = "dns.query.count";
+  public static final String METRIC_IMPORT_DNS_RESPONSE_COUNT = "dns.response.count";
 
-  public static final String METRIC_IMPORT_DNS_QTYPE = "hist.packetDns.request.qtype";
-  public static final String METRIC_IMPORT_DNS_RCODE = "hist.packetDns.request.rcode";
-  public static final String METRIC_IMPORT_DNS_OPCODE = "hist.packetDns.request.opcode";
+  public static final String METRIC_IMPORT_DNS_QTYPE = "dns.request.qtype";
+  public static final String METRIC_IMPORT_DNS_RCODE = "dns.request.rcode";
+  public static final String METRIC_IMPORT_DNS_OPCODE = "dns.request.opcode";
 
   // layer 4 stats
-  public static final String METRIC_IMPORT_TCP_COUNT = "hist.tcp.packet.count";
-  public static final String METRIC_IMPORT_UDP_COUNT = "hist.udp.packet.count";
+  public static final String METRIC_IMPORT_TCP_COUNT = "tcp.count";
+  public static final String METRIC_IMPORT_UDP_COUNT = "udp.count";
 
-  public static final String METRIC_IMPORT_IP_VERSION_4_COUNT = "hist.ip.version.4.count";
-  public static final String METRIC_IMPORT_IP_VERSION_6_COUNT = "hist.ip.version.6.count";
+  public static final String METRIC_IMPORT_IP_VERSION_4_COUNT = "ip.4.count";
+  public static final String METRIC_IMPORT_IP_VERSION_6_COUNT = "ip.6.count";
 
   private Map<String, Metric> metricCache = new HashMap<>();
 
@@ -71,6 +71,8 @@ public class HistoricalMetricManager {
   @Value("${management.metrics.export.graphite.retention}")
   private int retention;
 
+  @Value("${management.metrics.export.graphite.threshhold}")
+  private int threshhold;
 
   private ServerContext settings;
 
@@ -105,6 +107,11 @@ public class HistoricalMetricManager {
     }
   }
 
+  /**
+   * Uses a threshhold to determine if the value should be sent to graphite low values may indicate
+   * trailing queries in later pcap files. duplicate timestamps get overwritten by graphite and only
+   * the last timestamp value is used by graphite.
+   */
   public boolean flush() {
     log.info("Flushing metrics to Graphite");
     if (log.isDebugEnabled()) {
@@ -118,7 +125,12 @@ public class HistoricalMetricManager {
     try {
       graphite.connect();
       // send each metrics to graphite
-      metricCache.entrySet().stream().map(Entry::getValue).forEach(m -> send(graphite, m));
+      metricCache
+          .entrySet()
+          .stream()
+          .map(Entry::getValue)
+          .filter(m -> m.getValue() > threshhold)
+          .forEach(m -> send(graphite, m));
     } catch (Exception e) {
       // cannot connect connect to graphite
       log.error("Could not connect to Graphite", e);

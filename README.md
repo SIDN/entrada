@@ -2,14 +2,21 @@
 
 ENTRADA - an open source big data tool for network data analytics.
 
-Converting PCAP files containing DNS data to Apache Parquet files and sending the results to one of the following endpoints:  
-
-ENTRADA converts PCAP files containing DNS data to Apache Parquet files and sends the results to one of the following endpoints:  
+Converting and enriching network data in PCAP format to Apache Parquet format, sending the results to one of the following endpoints: 
 - Hadoop HDFS + Impala
 - AWS S3 + Athena
 - Local disk 
 
-All workflow actions such moving data files around and creating database tables are handled by ENTRADA.  
+Apache Impala, Amazon Athena or Apache Spark can be used to analyse the generated Parquet data.  
+
+ENTRADA handles the required workflow actions such as:  
+- Creating database schema and tables
+- Creating a S3 bucket
+- Configuring S3 security policy and encryption
+- Creating filesystem directories
+- Moving data files around
+- Compacting Parquet files
+
 For more information see the [ENTRADA wiki](https://github.com/SIDN/entrada/wiki).
 
 ## How to use

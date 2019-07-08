@@ -39,7 +39,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
-import org.apache.commons.io.comparator.LastModifiedFileComparator;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
@@ -710,25 +709,16 @@ public class PacketProcessor {
 
     List<String> files = fm.files(inputDir, ".pcap", ".pcap.gz", ".pcap.xz");
 
-    if (skipFirst) {
-      // order by date and skip the youngest file
-      // do this onlu for local fs
-      List<File> sorted = files
-          .stream()
-          .map(File::new)
-          .sorted(LastModifiedFileComparator.LASTMODIFIED_REVERSE)
-          .skip(1)
-          .collect(Collectors.toList());
+    // order and skip the youngest file if skipfirst is true
+    files = files
+        .stream()
+        .map(File::new)
+        .sorted()
+        .skip(skipFirst ? 1 : 0)
+        .map(File::toString)
+        .collect(Collectors.toList());
 
-
-      files = sorted.stream().map(File::toString).collect(Collectors.toList());
-    } else {
-      // sort the files by name, tcp streams and udp fragmentation may overlap multiple files.
-      // so ordering is important.
-      Collections.sort(files);
-    }
-
-    log.info("Found {} file to process:", files.size());
+    log.info("Found {} file to process", files.size());
     files.stream().forEach(file -> log.info("Found file: {}", file));
 
     return files;

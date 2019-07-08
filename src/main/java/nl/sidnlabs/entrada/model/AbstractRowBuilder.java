@@ -4,6 +4,7 @@ import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.enrich.AddressEnrichment;
+import nl.sidnlabs.entrada.metric.HistoricalMetricManager;
 import nl.sidnlabs.entrada.model.Row.Column;
 
 @Log4j2
@@ -13,9 +14,12 @@ public abstract class AbstractRowBuilder implements RowBuilder {
 
   protected int packetCounter;
   private List<AddressEnrichment> enrichments;
+  protected HistoricalMetricManager metricManager;
 
-  public AbstractRowBuilder(List<AddressEnrichment> enrichments) {
+  public AbstractRowBuilder(List<AddressEnrichment> enrichments,
+      HistoricalMetricManager metricManager) {
     this.enrichments = enrichments;
+    this.metricManager = metricManager;
   }
 
   protected Column<String> column(String name, String value) {
@@ -39,10 +43,17 @@ public abstract class AbstractRowBuilder implements RowBuilder {
     String cleanPrefix = StringUtils.trimToEmpty(prefix);
 
     // execute all enrichments and if a match is found add value to row
-    enrichments
-        .stream()
-        .filter(e -> e.match(address))
-        .forEach(e -> row.addColumn(column(cleanPrefix + e.getColumn(), e.getValue())));
+    enrichments.stream().filter(e -> e.match(address)).forEach(e -> addColumn(row, cleanPrefix, e));
+  }
+
+  private void addColumn(Row row, String prefix, AddressEnrichment e) {
+    row.addColumn(column(prefix + e.getColumn(), e.getValue()));
+
+    if (StringUtils.equals(e.getColumn(), "country")) {
+      metricManager
+          .send(HistoricalMetricManager.METRIC_IMPORT_COUNTRY_COUNT + "." + e.getValue(), 1,
+              row.getTs().getTime());
+    }
   }
 
 

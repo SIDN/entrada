@@ -23,12 +23,14 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.TreeMap;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteSender;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.ServerContext;
 
@@ -42,22 +44,30 @@ import nl.sidnlabs.entrada.ServerContext;
 @Component
 public class HistoricalMetricManager {
 
+  // do not send last minute
+  private static final int FLUSH_TIMESTAMP_WAIT = 10;
+
   // dns stats
-  public static final String METRIC_IMPORT_DNS_QUERY_COUNT = "dns.query.count";
-  public static final String METRIC_IMPORT_DNS_RESPONSE_COUNT = "dns.response.count";
+  public static final String METRIC_IMPORT_DNS_QUERY_COUNT = "dns.query";
+  public static final String METRIC_IMPORT_DNS_RESPONSE_COUNT = "dns.response";
 
   public static final String METRIC_IMPORT_DNS_QTYPE = "dns.request.qtype";
   public static final String METRIC_IMPORT_DNS_RCODE = "dns.request.rcode";
   public static final String METRIC_IMPORT_DNS_OPCODE = "dns.request.opcode";
 
   // layer 4 stats
-  public static final String METRIC_IMPORT_TCP_COUNT = "tcp.count";
-  public static final String METRIC_IMPORT_UDP_COUNT = "udp.count";
+  public static final String METRIC_IMPORT_TCP_COUNT = "tcp";
+  public static final String METRIC_IMPORT_UDP_COUNT = "udp";
 
-  public static final String METRIC_IMPORT_IP_VERSION_4_COUNT = "ip.4.count";
-  public static final String METRIC_IMPORT_IP_VERSION_6_COUNT = "ip.6.count";
+  public static final String METRIC_IMPORT_IP_VERSION_4_COUNT = "ip.4";
+  public static final String METRIC_IMPORT_IP_VERSION_6_COUNT = "ip.6";
 
-  private Map<String, Metric> metricCache = new HashMap<>();
+  public static final String METRIC_IMPORT_COUNTRY_COUNT = "geo.country";
+
+  public static final String METRIC_IMPORT_TCP_HANDSHAKE_RTT = "tcp.rtt.handshake";
+  public static final String METRIC_IMPORT_TCP_PACKET_RTT = "tcp.rtt.packet";
+
+  private Map<String, TreeMap<Long, Metric>> metricCache = new HashMap<>();
 
   @Value("${management.metrics.export.graphite.prefix}")
   private String prefix;
@@ -70,9 +80,6 @@ public class HistoricalMetricManager {
 
   @Value("${management.metrics.export.graphite.retention}")
   private int retention;
-
-  @Value("${management.metrics.export.graphite.threshhold}")
-  private int threshhold;
 
   private ServerContext settings;
 
@@ -94,16 +101,21 @@ public class HistoricalMetricManager {
     return settings.getServerInfo().getNormalizeName();
   }
 
-
   public void send(String metric, int value, long timestamp) {
     long metricTime = round(timestamp);
     String metricName = createMetricName(metric);
-    String lookup = metricName + "." + metricTime;
-    Metric m = metricCache.get(lookup);
+    TreeMap<Long, Metric> metricValues = metricCache.get(metricName);
+    if (metricValues == null) {
+      // create new treemap
+      metricValues = new TreeMap<>();
+      metricCache.put(metricName, metricValues);
+    }
+
+    Metric m = metricValues.get(metricTime);
     if (m != null) {
       m.update(value);
     } else {
-      metricCache.put(lookup, new Metric(metricName, value, metricTime));
+      metricValues.put(metricTime, new Metric(metricName, value, metricTime));
     }
   }
 
@@ -125,12 +137,7 @@ public class HistoricalMetricManager {
     try {
       graphite.connect();
       // send each metrics to graphite
-      metricCache
-          .entrySet()
-          .stream()
-          .map(Entry::getValue)
-          .filter(m -> m.getValue() > threshhold)
-          .forEach(m -> send(graphite, m));
+      metricCache.entrySet().stream().map(Entry::getValue).forEach(m -> send(graphite, m));
     } catch (Exception e) {
       // cannot connect connect to graphite
       log.error("Could not connect to Graphite", e);
@@ -149,6 +156,17 @@ public class HistoricalMetricManager {
     return true;
   }
 
+  private void send(GraphiteSender graphite, TreeMap<Long, Metric> metricValues) {
+    // do not send the last FLUSH_TIMESTAMP_WAIT timestamps to prevent duplicate timestamps
+    // being sent to graphite. (only the last will count) and will cause dips in charts
+    int max = metricValues.size() - FLUSH_TIMESTAMP_WAIT;
+    if (max < 1) {
+      // no metrics to send
+      return;
+    }
+    metricValues.entrySet().stream().limit(max).forEach(e -> send(graphite, e.getValue()));
+  }
+
   private void send(GraphiteSender graphite, Metric m) {
     try {
       graphite.send(m.getName(), String.valueOf(m.getValue()), m.getTime());
@@ -157,6 +175,7 @@ public class HistoricalMetricManager {
     }
   }
 
+
   private long round(long millis) {
     // get retention from config
     long secs = (millis / 1000);
@@ -164,20 +183,22 @@ public class HistoricalMetricManager {
   }
 
 
-  protected Map<String, Metric> getMetricCache() {
+  public Map<String, TreeMap<Long, Metric>> getMetricCache() {
     return metricCache;
   }
 
-  protected void setMetricCache(Map<String, Metric> metricCache) {
+  public void setMetricCache(Map<String, TreeMap<Long, Metric>> metricCache) {
     this.metricCache = metricCache;
   }
 
+  @NoArgsConstructor
   @Data
-  public class Metric implements Comparable<Metric> {
+  public static class Metric implements Comparable<Metric> {
 
     private String name;
     private long value;
     private long time;
+
 
     public Metric(String name, long value, long time) {
       this.name = name;

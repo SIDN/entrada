@@ -36,13 +36,11 @@ public class DNSRowBuilder extends AbstractRowBuilder {
   private static final int RCODE_QUERY_WITHOUT_RESPONSE = -1;
 
   private ServerContext serverCtx;
-  private HistoricalMetricManager metricManager;
 
   public DNSRowBuilder(List<AddressEnrichment> enrichments, ServerContext serverCtx,
       HistoricalMetricManager metricManager) {
-    super(enrichments);
+    super(enrichments, metricManager);
     this.serverCtx = serverCtx;
-    this.metricManager = metricManager;
   }
 
   @Override
@@ -104,11 +102,13 @@ public class DNSRowBuilder extends AbstractRowBuilder {
     if (reqTransport != null && reqTransport.getTcpHandshake() != null) {
       // found tcp handshake info
       row.addColumn(column("tcp_hs_rtt", reqTransport.getTcpHandshake().rtt()));
+      metricManager.send(HistoricalMetricManager.METRIC_IMPORT_TCP_HANDSHAKE_RTT, 1, time);
     }
 
     if (rspTransport != null && rspTransport.hasPacketRtt()) {
       // found tcp handshake info
       row.addColumn(column("tcp_pk_rtt", rspTransport.getTcpPacketRtt()));
+      metricManager.send(HistoricalMetricManager.METRIC_IMPORT_TCP_PACKET_RTT, 1, time);
     }
 
 

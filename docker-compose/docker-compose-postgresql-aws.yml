@@ -15,9 +15,6 @@ services:
       - MANAGEMENT_METRICS_EXPORT_GRAPHITE_HOST=graphite.example.com
       - ENTRADA_ENGINE=aws
       - ENTRADA_NAMESERVERS=
-      - ENTRADA_PCAP_ARCHIVE_MODE=archive
-      - ENTRADA_ICMP_ENABLE=true
-      - ENTRADA_INPUT_FILE_SKIPFIRST=false
       
       # PostgreSQL config options, make sure the the database is created before 
       # starting the container
@@ -25,7 +22,7 @@ services:
       - SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver
       - SPRING_DATASOURCE_USERNAME=
       - SPRING_DATASOURCE_PASSWORD=
-      - SPRING_JPA_DATABASE-PLATFORM=org.hibernate.dialect.PostgreSQLDialect
+      - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect
       
       # AWS config options for S3 and Athena
       - AWS_ACCESS_KEY_ID=
@@ -35,10 +32,6 @@ services:
        
       # The following options do NOT need to be changed
       # change the volume mappings below, in the "volumes:" section
-      - ENTRADA_LOCATION_WORK=/entrada/data/work
-      - ENTRADA_LOCATION_INPUT=/entrada/data/input
-      - ENTRADA_LOCATION_ARCHIVE=/entrada/data/archive
-      - LOGGING_PATH=/entrada/log
       - JAVA_OPTS=-Xmx4g -Xms4g
     volumes:
       # Map internal container path to a path on the host
@@ -47,7 +40,7 @@ services:
       - /tmp/entrada/pcap:/entrada/data/input
       - /tmp/entrada/database:/entrada/data/output
       - /tmp/entrada/archive:/entrada/data/archive
-      - /tmp/entrada/log:/entrada/log
+      - /tmp/entrada/log:/entrada/data/log
     dns: 
       - 8.8.8.8
     #Limit container logging

@@ -58,6 +58,7 @@ import nl.sidnlabs.entrada.ServerContext;
 import nl.sidnlabs.entrada.engine.QueryEngine;
 import nl.sidnlabs.entrada.file.FileManager;
 import nl.sidnlabs.entrada.file.FileManagerFactory;
+import nl.sidnlabs.entrada.metric.HistoricalMetricManager;
 import nl.sidnlabs.entrada.model.Partition;
 import nl.sidnlabs.entrada.service.FileArchiveService;
 import nl.sidnlabs.entrada.service.PartitionService;
@@ -146,6 +147,7 @@ public class PacketProcessor {
   private LinkedBlockingQueue<RowData> packetQueue;
 
   private MeterRegistry registry;
+  private HistoricalMetricManager historicalMetricManager;
 
   // aps with state, loaded at start and persisted at end
   private Multimap<TCPFlow, SequencePayload> flows = TreeMultimap.create();
@@ -154,7 +156,8 @@ public class PacketProcessor {
   public PacketProcessor(ServerContext serverCtx, StateManager persistenceManager,
       OutputWriter outputWriter, FileArchiveService fileArchiveService,
       FileManagerFactory fileManagerFactory, QueryEngine queryEngine,
-      PartitionService partitionService, MeterRegistry registry) {
+      PartitionService partitionService, MeterRegistry registry,
+      HistoricalMetricManager historicalMetricManager) {
 
     this.serverCtx = serverCtx;
     this.persistenceManager = persistenceManager;
@@ -167,6 +170,7 @@ public class PacketProcessor {
     // convert minutes to seconds
     this.cacheTimeout = 1000 * 60 * cacheTimeoutConfig;
     this.registry = registry;
+    this.historicalMetricManager = historicalMetricManager;
   }
 
   /**
@@ -581,6 +585,8 @@ public class PacketProcessor {
       cacheCount = requestCache.size();
     }
 
+    persistenceManager.write(historicalMetricManager.getMetricCache());
+
     persistenceManager.close();
 
     log.info("------------- State persistence stats --------------");
@@ -615,6 +621,8 @@ public class PacketProcessor {
 
     // read in previous request cache
     requestCache = persistenceManager.read(HashMap.class);
+
+    historicalMetricManager.setMetricCache(persistenceManager.read(HashMap.class));
 
     persistenceManager.close();
 

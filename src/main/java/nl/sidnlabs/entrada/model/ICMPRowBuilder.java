@@ -12,6 +12,7 @@ import nl.sidnlabs.dnslib.util.Domaininfo;
 import nl.sidnlabs.dnslib.util.NameUtil;
 import nl.sidnlabs.entrada.ServerContext;
 import nl.sidnlabs.entrada.enrich.AddressEnrichment;
+import nl.sidnlabs.entrada.metric.HistoricalMetricManager;
 import nl.sidnlabs.entrada.support.RowData;
 import nl.sidnlabs.pcap.packet.DNSPacket;
 import nl.sidnlabs.pcap.packet.ICMPPacket;
@@ -22,8 +23,9 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
 
   private ServerContext serverCtx;
 
-  public ICMPRowBuilder(List<AddressEnrichment> enrichments, ServerContext serverCtx) {
-    super(enrichments);
+  public ICMPRowBuilder(List<AddressEnrichment> enrichments, ServerContext serverCtx,
+      HistoricalMetricManager metricManager) {
+    super(enrichments, metricManager);
     this.serverCtx = serverCtx;
   }
 

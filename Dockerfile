@@ -11,8 +11,8 @@ RUN mkdir -p $APP_HOME/data/work
 RUN mkdir -p $APP_HOME/data/input
 RUN mkdir -p $APP_HOME/data/output
 RUN mkdir -p $APP_HOME/data/archive
-RUN mkdir -p $APP_HOME/log
-RUN mkdir -p $APP_HOME/conf
+RUN mkdir -p $APP_HOME/data/log
+RUN mkdir -p $APP_HOME/data/conf
 
 
 # Make port 8080 available to the world outside this container

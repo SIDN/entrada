@@ -120,7 +120,7 @@ public class PacketProcessor {
   private PcapReader pcapReader;
   protected Map<RequestCacheKey, RequestCacheValue> requestCache;
 
-  private StateManager persistenceManager;
+  private StateManager stateManager;
   private OutputWriter outputWriter;
   private FileArchiveService fileArchiveService;
 
@@ -159,7 +159,7 @@ public class PacketProcessor {
       HistoricalMetricManager historicalMetricManager) {
 
     this.serverCtx = serverCtx;
-    this.persistenceManager = persistenceManager;
+    this.stateManager = persistenceManager;
     this.outputWriter = outputWriter;
     this.fileArchiveService = fileArchiveService;
     this.fileManagerFactory = fileManagerFactory;
@@ -548,45 +548,55 @@ public class PacketProcessor {
     int datagramCount = 0;
     int cacheCount = 0;
 
-    if (flows != null) {
-      // persist tcp state
-      Map<TCPFlow, Collection<SequencePayload>> pmap = new HashMap<>();
-      for (Map.Entry<TCPFlow, Collection<SequencePayload>> entry : flows.asMap().entrySet()) {
-        Collection<SequencePayload> payloads = new ArrayList<>();
-        for (SequencePayload sequencePayload : entry.getValue()) {
-          payloads.add(sequencePayload);
+    try {
+      if (flows != null) {
+        // persist tcp state
+        Map<TCPFlow, Collection<SequencePayload>> pmap = new HashMap<>();
+        for (Map.Entry<TCPFlow, Collection<SequencePayload>> entry : flows.asMap().entrySet()) {
+          Collection<SequencePayload> payloads = new ArrayList<>();
+          for (SequencePayload sequencePayload : entry.getValue()) {
+            payloads.add(sequencePayload);
+          }
+          pmap.put(entry.getKey(), payloads);
+          flowCount++;
         }
-        pmap.put(entry.getKey(), payloads);
-        flowCount++;
+
+        stateManager.write(pmap);
       }
 
-      persistenceManager.write(pmap);
-    }
-
-    if (datagrams != null) {
-      // persist IP datagrams
-      Map<Datagram, Collection<DatagramPayload>> outMap = new HashMap<>();
-      for (Map.Entry<Datagram, Collection<DatagramPayload>> entry : datagrams.asMap().entrySet()) {
-        Collection<DatagramPayload> datagrams2persist = new ArrayList<>();
-        for (DatagramPayload sequencePayload : entry.getValue()) {
-          datagrams2persist.add(sequencePayload);
+      if (datagrams != null) {
+        // persist IP datagrams
+        Map<Datagram, Collection<DatagramPayload>> outMap = new HashMap<>();
+        for (Map.Entry<Datagram, Collection<DatagramPayload>> entry : datagrams
+            .asMap()
+            .entrySet()) {
+          Collection<DatagramPayload> datagrams2persist = new ArrayList<>();
+          for (DatagramPayload sequencePayload : entry.getValue()) {
+            datagrams2persist.add(sequencePayload);
+          }
+          outMap.put(entry.getKey(), datagrams2persist);
+          datagramCount++;
         }
-        outMap.put(entry.getKey(), datagrams2persist);
-        datagramCount++;
+
+        stateManager.write(outMap);
       }
 
-      persistenceManager.write(outMap);
+      if (requestCache != null) {
+        // persist request cache
+        stateManager.write(requestCache);
+        cacheCount = requestCache.size();
+      }
+
+      stateManager.write(historicalMetricManager.getMetricCache());
+    } catch (Exception e) {
+      log.error("Error writing state file", e);
+      // delete old corrupt state
+      stateManager.delete();
+    } finally {
+      stateManager.close();
     }
 
-    if (requestCache != null) {
-      // persist request cache
-      persistenceManager.write(requestCache);
-      cacheCount = requestCache.size();
-    }
 
-    persistenceManager.write(historicalMetricManager.getMetricCache());
-
-    persistenceManager.close();
 
     log.info("------------- State persistence stats --------------");
     log.info("Persist {} TCP flows", flowCount);
@@ -598,33 +608,39 @@ public class PacketProcessor {
   @SuppressWarnings("unchecked")
   private void loadState() {
 
-    if (!persistenceManager.stateAvailable()) {
-      log.info("No state file found, do not try to load previous state");
-      return;
-    }
-
-    // read persisted TCP sessions
-    Map<TCPFlow, Collection<SequencePayload>> map = persistenceManager.read(HashMap.class);
-    for (Map.Entry<TCPFlow, Collection<SequencePayload>> entry : map.entrySet()) {
-      for (SequencePayload sequencePayload : entry.getValue()) {
-        flows.put(entry.getKey(), sequencePayload);
+    try {
+      if (!stateManager.stateAvailable()) {
+        log.info("No state file found, do not try to load previous state");
+        return;
       }
-    }
-    // read persisted IP datagrams
-    HashMap<Datagram, Collection<DatagramPayload>> inMap = persistenceManager.read(HashMap.class);
-    for (Map.Entry<Datagram, Collection<DatagramPayload>> entry : inMap.entrySet()) {
-      for (DatagramPayload dgPayload : entry.getValue()) {
-        datagrams.put(entry.getKey(), dgPayload);
+
+      // read persisted TCP sessions
+      Map<TCPFlow, Collection<SequencePayload>> map = stateManager.read(HashMap.class);
+      for (Map.Entry<TCPFlow, Collection<SequencePayload>> entry : map.entrySet()) {
+        for (SequencePayload sequencePayload : entry.getValue()) {
+          flows.put(entry.getKey(), sequencePayload);
+        }
       }
+      // read persisted IP datagrams
+      HashMap<Datagram, Collection<DatagramPayload>> inMap = stateManager.read(HashMap.class);
+      for (Map.Entry<Datagram, Collection<DatagramPayload>> entry : inMap.entrySet()) {
+        for (DatagramPayload dgPayload : entry.getValue()) {
+          datagrams.put(entry.getKey(), dgPayload);
+        }
+      }
+
+
+      // read in previous request cache
+      requestCache = stateManager.read(HashMap.class);
+
+      historicalMetricManager.setMetricCache(stateManager.read(HashMap.class));
+    } catch (Exception e) {
+      log.error("Error reading state file", e);
+      // delete old corrupt state
+      stateManager.delete();
+    } finally {
+      stateManager.close();
     }
-
-    // read in previous request cache
-    requestCache = persistenceManager.read(HashMap.class);
-
-    historicalMetricManager.setMetricCache(persistenceManager.read(HashMap.class));
-
-    persistenceManager.close();
-
 
     log.info("------------- Loader state stats ------------------");
     log.info("Loaded TCP state {} TCP flows", flows.size());
@@ -709,7 +725,7 @@ public class PacketProcessor {
 
     List<String> files = fm.files(inputDir, ".pcap", ".pcap.gz", ".pcap.xz");
 
-    // order and skip the youngest file if skipfirst is true
+    // order and skip the newest file if skipfirst is true
     files = files
         .stream()
         .map(File::new)

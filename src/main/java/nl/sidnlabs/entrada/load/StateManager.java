@@ -4,6 +4,9 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import com.esotericsoftware.kryo.Kryo;
@@ -70,6 +73,14 @@ public class StateManager {
     return new File(createStateFileName()).exists();
   }
 
+  public void delete() {
+    try {
+      Files.deleteIfExists(Paths.get(createStateFileName()));
+    } catch (IOException e) {
+      log.error("Error while trying to delete file: {}", createStateFileName(), e);
+    }
+  }
+
   public void close() {
     if (input != null) {
       input.close();
@@ -77,6 +88,7 @@ public class StateManager {
     }
 
     if (output != null) {
+      output.flush();
       output.close();
       output = null;
     }

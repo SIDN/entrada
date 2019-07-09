@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 @Data
 public class MeanMetric implements Metric {
 
+  private static final int MAX_SAMPLE_SIZE = 10000;
   private static final int INITIAL_SIZE = 1000;
 
   private String name;
@@ -23,6 +24,12 @@ public class MeanMetric implements Metric {
   }
 
   public void update(int value) {
+    if (size >= MAX_SAMPLE_SIZE) {
+      // protection against filling up all the memory when lots
+      // of tcp queries are received.
+      return;
+    }
+
     if (count == values.length - 1) {
       values = Arrays.copyOf(values, values.length + INITIAL_SIZE);
     }

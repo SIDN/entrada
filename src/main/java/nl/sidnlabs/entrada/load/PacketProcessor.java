@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -58,6 +59,7 @@ import nl.sidnlabs.entrada.engine.QueryEngine;
 import nl.sidnlabs.entrada.file.FileManager;
 import nl.sidnlabs.entrada.file.FileManagerFactory;
 import nl.sidnlabs.entrada.metric.HistoricalMetricManager;
+import nl.sidnlabs.entrada.metric.Metric;
 import nl.sidnlabs.entrada.model.Partition;
 import nl.sidnlabs.entrada.service.FileArchiveService;
 import nl.sidnlabs.entrada.service.PartitionService;
@@ -616,14 +618,16 @@ public class PacketProcessor {
       }
 
       // read persisted TCP sessions
-      Map<TCPFlow, Collection<SequencePayload>> map = stateManager.read(HashMap.class);
+      Map<TCPFlow, Collection<SequencePayload>> map =
+          (Map<TCPFlow, Collection<SequencePayload>>) stateManager.read();
       for (Map.Entry<TCPFlow, Collection<SequencePayload>> entry : map.entrySet()) {
         for (SequencePayload sequencePayload : entry.getValue()) {
           flows.put(entry.getKey(), sequencePayload);
         }
       }
       // read persisted IP datagrams
-      HashMap<Datagram, Collection<DatagramPayload>> inMap = stateManager.read(HashMap.class);
+      HashMap<Datagram, Collection<DatagramPayload>> inMap =
+          (HashMap<Datagram, Collection<DatagramPayload>>) stateManager.read();
       for (Map.Entry<Datagram, Collection<DatagramPayload>> entry : inMap.entrySet()) {
         for (DatagramPayload dgPayload : entry.getValue()) {
           datagrams.put(entry.getKey(), dgPayload);
@@ -632,9 +636,10 @@ public class PacketProcessor {
 
 
       // read in previous request cache
-      requestCache = stateManager.read(HashMap.class);
+      requestCache = (Map<RequestCacheKey, RequestCacheValue>) stateManager.read();
 
-      historicalMetricManager.setMetricCache(stateManager.read(HashMap.class));
+      historicalMetricManager
+          .setMetricCache((Map<String, TreeMap<Long, Metric>>) stateManager.read());
     } catch (Exception e) {
       log.error("Error reading state file", e);
       // delete old corrupt state

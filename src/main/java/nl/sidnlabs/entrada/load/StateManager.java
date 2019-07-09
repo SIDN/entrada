@@ -51,10 +51,10 @@ public class StateManager {
       }
     }
 
-    KRYO.writeObject(output, data);
+    KRYO.writeClassAndObject(output, data);
   }
 
-  public <T> T read(Class<T> type) {
+  public Object read() {
     if (input == null) {
       String f = createStateFileName();
       try {
@@ -65,7 +65,7 @@ public class StateManager {
       }
     }
 
-    return KRYO.readObject(input, type);
+    return KRYO.readClassAndObject(input);
   }
 
   public boolean stateAvailable() {

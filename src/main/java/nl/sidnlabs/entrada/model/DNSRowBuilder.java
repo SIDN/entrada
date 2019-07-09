@@ -102,13 +102,17 @@ public class DNSRowBuilder extends AbstractRowBuilder {
     if (reqTransport != null && reqTransport.getTcpHandshake() != null) {
       // found tcp handshake info
       row.addColumn(column("tcp_hs_rtt", reqTransport.getTcpHandshake().rtt()));
-      metricManager.send(HistoricalMetricManager.METRIC_IMPORT_TCP_HANDSHAKE_RTT, 1, time);
+      metricManager
+          .record(HistoricalMetricManager.METRIC_IMPORT_TCP_HANDSHAKE_RTT,
+              (int) reqTransport.getTcpHandshake().rtt(), time, false);
     }
 
     if (rspTransport != null && rspTransport.hasPacketRtt()) {
       // found tcp handshake info
       row.addColumn(column("tcp_pk_rtt", rspTransport.getTcpPacketRtt()));
-      metricManager.send(HistoricalMetricManager.METRIC_IMPORT_TCP_PACKET_RTT, 1, time);
+      metricManager
+          .record(HistoricalMetricManager.METRIC_IMPORT_TCP_PACKET_RTT,
+              (int) rspTransport.getTcpPacketRtt(), time, false);
     }
 
 
@@ -138,7 +142,7 @@ public class DNSRowBuilder extends AbstractRowBuilder {
       // EDNS0 for response
       writeResponseOptions(rspMessage, row);
 
-      metricManager.send(HistoricalMetricManager.METRIC_IMPORT_DNS_RESPONSE_COUNT, 1, time);
+      metricManager.record(HistoricalMetricManager.METRIC_IMPORT_DNS_RESPONSE_COUNT, 1, time);
     } // end of response only section
 
     // values from request OR response now
@@ -183,7 +187,7 @@ public class DNSRowBuilder extends AbstractRowBuilder {
         row.addColumn(column("frag", requestFrags));
       } // end request only section
 
-      metricManager.send(HistoricalMetricManager.METRIC_IMPORT_DNS_QUERY_COUNT, 1, time);
+      metricManager.record(HistoricalMetricManager.METRIC_IMPORT_DNS_QUERY_COUNT, 1, time);
     }
 
     // question
@@ -191,8 +195,8 @@ public class DNSRowBuilder extends AbstractRowBuilder {
       writeQuestion(question, row);
 
       metricManager
-          .send(HistoricalMetricManager.METRIC_IMPORT_DNS_QTYPE + "." + question.getQTypeValue(), 1,
-              time);
+          .record(HistoricalMetricManager.METRIC_IMPORT_DNS_QTYPE + "." + question.getQTypeValue(),
+              1, time);
     }
 
     // EDNS0 for request
@@ -204,28 +208,28 @@ public class DNSRowBuilder extends AbstractRowBuilder {
     }
 
     // create metrics
-    metricManager.send(HistoricalMetricManager.METRIC_IMPORT_DNS_RCODE + "." + rcode, 1, time);
-    metricManager.send(HistoricalMetricManager.METRIC_IMPORT_DNS_OPCODE + "." + opcode, 1, time);
+    metricManager.record(HistoricalMetricManager.METRIC_IMPORT_DNS_RCODE + "." + rcode, 1, time);
+    metricManager.record(HistoricalMetricManager.METRIC_IMPORT_DNS_OPCODE + "." + opcode, 1, time);
 
 
     if (reqTransport != null) {
       if (reqTransport.getIpVersion() == 4) {
-        metricManager.send(HistoricalMetricManager.METRIC_IMPORT_IP_VERSION_4_COUNT, 1, time);
+        metricManager.record(HistoricalMetricManager.METRIC_IMPORT_IP_VERSION_4_COUNT, 1, time);
       } else {
-        metricManager.send(HistoricalMetricManager.METRIC_IMPORT_IP_VERSION_6_COUNT, 1, time);
+        metricManager.record(HistoricalMetricManager.METRIC_IMPORT_IP_VERSION_6_COUNT, 1, time);
       }
     } else if (rspTransport != null) {
       if (rspTransport.getIpVersion() == 4) {
-        metricManager.send(HistoricalMetricManager.METRIC_IMPORT_IP_VERSION_4_COUNT, 1, time);
+        metricManager.record(HistoricalMetricManager.METRIC_IMPORT_IP_VERSION_4_COUNT, 1, time);
       } else {
-        metricManager.send(HistoricalMetricManager.METRIC_IMPORT_IP_VERSION_6_COUNT, 1, time);
+        metricManager.record(HistoricalMetricManager.METRIC_IMPORT_IP_VERSION_6_COUNT, 1, time);
       }
     }
 
     if (prot == PacketFactory.PROTOCOL_TCP) {
-      metricManager.send(HistoricalMetricManager.METRIC_IMPORT_TCP_COUNT, 1, time);
+      metricManager.record(HistoricalMetricManager.METRIC_IMPORT_TCP_COUNT, 1, time);
     } else {
-      metricManager.send(HistoricalMetricManager.METRIC_IMPORT_UDP_COUNT, 1, time);
+      metricManager.record(HistoricalMetricManager.METRIC_IMPORT_UDP_COUNT, 1, time);
     }
 
     return row;

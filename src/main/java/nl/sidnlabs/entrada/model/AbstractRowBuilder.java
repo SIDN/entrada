@@ -51,7 +51,7 @@ public abstract class AbstractRowBuilder implements RowBuilder {
 
     if (StringUtils.equals(e.getColumn(), "country")) {
       metricManager
-          .send(HistoricalMetricManager.METRIC_IMPORT_COUNTRY_COUNT + "." + e.getValue(), 1,
+          .record(HistoricalMetricManager.METRIC_IMPORT_COUNTRY_COUNT + "." + e.getValue(), 1,
               row.getTs().getTime());
     }
   }

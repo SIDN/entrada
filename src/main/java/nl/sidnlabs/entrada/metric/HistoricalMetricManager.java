@@ -20,18 +20,15 @@
 package nl.sidnlabs.entrada.metric;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Map.Entry;
+import java.util.TreeMap;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteSender;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.ServerContext;
 
@@ -68,7 +65,7 @@ public class HistoricalMetricManager {
   public static final String METRIC_IMPORT_TCP_HANDSHAKE_RTT = "tcp.rtt.handshake";
   public static final String METRIC_IMPORT_TCP_PACKET_RTT = "tcp.rtt.packet";
 
-  private Map<String, List<Metric>> metricCache = new HashMap<>();
+  private Map<String, TreeMap<Long, Metric>> metricCache = new HashMap<>();
 
   @Value("${management.metrics.export.graphite.prefix}")
   private String prefix;
@@ -102,24 +99,35 @@ public class HistoricalMetricManager {
     return settings.getServerInfo().getNormalizeName();
   }
 
-  public void send(String metric, int value, long timestamp) {
+  public void record(String metric, int value, long timestamp) {
+    record(metric, value, timestamp, true);
+  }
+
+  public void record(String metric, int value, long timestamp, boolean simple) {
     long metricTime = round(timestamp);
     String metricName = createMetricName(metric);
-    List<Metric> metricValues = metricCache.get(metricName);
+    TreeMap<Long, Metric> metricValues = metricCache.get(metricName);
     if (metricValues == null) {
-      // create new list of metrics, these will be ordered by time
-      metricValues = new ArrayList<>();
-      metricValues.add(new Metric(metricName, value, metricTime));
+      // create new treemap
+      metricValues = new TreeMap<>();
+      metricValues.put(metricTime, createMetric(metricName, value, metricTime, simple));
       metricCache.put(metricName, metricValues);
     } else {
-      // list of metric values already exists
-      Optional<Metric> m = metricValues.stream().filter(i -> i.getTime() == metricTime).findFirst();
-      if (m.isPresent()) {
-        m.get().update(value);
+
+      Metric m = metricValues.get(metricTime);
+      if (m != null) {
+        m.update(value);
       } else {
-        metricValues.add(new Metric(metricName, value, metricTime));
+        metricValues.put(metricTime, createMetric(metricName, value, metricTime, simple));
       }
     }
+  }
+
+  private Metric createMetric(String metric, int value, long timestamp, boolean simple) {
+    if (simple) {
+      return new SimpleMetric(metric, value, timestamp);
+    }
+    return new MeanMetric(metric, value, timestamp);
   }
 
   /**
@@ -140,7 +148,7 @@ public class HistoricalMetricManager {
     try {
       graphite.connect();
       // send each metrics to graphite
-      metricCache.values().stream().forEach(m -> send(graphite, m));
+      metricCache.entrySet().stream().map(Entry::getValue).forEach(m -> send(graphite, m));
     } catch (Exception e) {
       // cannot connect connect to graphite
       log.error("Could not connect to Graphite", e);
@@ -159,7 +167,7 @@ public class HistoricalMetricManager {
     return true;
   }
 
-  private void send(GraphiteSender graphite, List<Metric> metricValues) {
+  private void send(GraphiteSender graphite, TreeMap<Long, Metric> metricValues) {
     // do not send the last FLUSH_TIMESTAMP_WAIT timestamps to prevent duplicate timestamps
     // being sent to graphite. (only the last will count) and will cause dips in charts
     int max = metricValues.size() - FLUSH_TIMESTAMP_WAIT;
@@ -167,7 +175,7 @@ public class HistoricalMetricManager {
       // no metrics to send
       return;
     }
-    metricValues.stream().limit(max).forEach(e -> send(graphite, e));
+    metricValues.entrySet().stream().limit(max).forEach(e -> send(graphite, e.getValue()));
   }
 
   private void send(GraphiteSender graphite, Metric m) {
@@ -186,42 +194,11 @@ public class HistoricalMetricManager {
   }
 
 
-  public Map<String, List<Metric>> getMetricCache() {
+  public Map<String, TreeMap<Long, Metric>> getMetricCache() {
     return metricCache;
   }
 
-  public void setMetricCache(Map<String, List<Metric>> metricCache) {
+  public void setMetricCache(Map<String, TreeMap<Long, Metric>> metricCache) {
     this.metricCache = metricCache;
-  }
-
-  @NoArgsConstructor
-  @Data
-  public static class Metric implements Comparable<Metric> {
-
-    private String name;
-    private long value;
-    private long time;
-
-
-    public Metric(String name, long value, long time) {
-      this.name = name;
-      this.value = value;
-      this.time = time;
-    }
-
-    public void update(long value) {
-      this.value += value;
-    }
-
-    @Override
-    public String toString() {
-      return name + " " + value + " " + time;
-    }
-
-    @Override
-    public int compareTo(Metric o) {
-      return Integer.compare((int) this.time, (int) o.getTime());
-    }
-
   }
 }

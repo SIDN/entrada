@@ -38,7 +38,7 @@ Modify the environment variables for hostnames and filesystem paths to fit your 
 ```
 
 
-For more information about the configuration options see the [ENTRADA wiki](https://github.com/SIDN/entrada/wiki/Configuration).  
+For more information about deployment and available onfiguration options see the [ENTRADA wiki](https://github.com/SIDN/entrada/wiki/).  
 
 ## License
 

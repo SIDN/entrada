@@ -2,7 +2,6 @@ package nl.sidnlabs.entrada.load;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -47,7 +46,7 @@ public class StateManager {
       try {
         log.info("Create KRYO output linked to file {}", f);
         output = new Output(new FileOutputStream(f));
-      } catch (FileNotFoundException e) {
+      } catch (Exception e) {
         throw new ApplicationException("Cannot create state file: " + f, e);
       }
     }
@@ -61,7 +60,7 @@ public class StateManager {
       try {
         log.info("Create KRYO input linked to file {}", f);
         input = new Input(new FileInputStream(f));
-      } catch (FileNotFoundException e) {
+      } catch (Exception e) {
         throw new ApplicationException("Cannot read state file: " + f, e);
       }
     }

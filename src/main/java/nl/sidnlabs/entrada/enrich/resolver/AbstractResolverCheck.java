@@ -67,7 +67,7 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     File file = new File(filename);
     // read from local file
     if (!readFromFile(file)) {
-      log.debug("File {} cannot be read, reload from source as backup", file);
+      log.info("File {} cannot be read, reload from source as backup", file);
       update(file);
     }
   }
@@ -129,7 +129,8 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     List<String> lines;
     try {
       lines = Files.readAllLines(file.toPath());
-    } catch (IOException e) {
+    } catch (Exception e) {
+      log.error("Error while reading file: {}", file, e);
       return false;
     }
 

@@ -602,6 +602,7 @@ public class PacketProcessor {
     log.info("Persist {} TCP flows", flowCount);
     log.info("Persist {} Datagrams", datagramCount);
     log.info("Persist {} DNS requests from cache", cacheCount);
+    log.info("Persist {} unsent metrics", historicalMetricManager.getMetricCache().size());
     log.info("----------------------------------------------------");
   }
 

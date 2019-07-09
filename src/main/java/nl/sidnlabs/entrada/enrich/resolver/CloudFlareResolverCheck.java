@@ -71,7 +71,8 @@ public final class CloudFlareResolverCheck extends AbstractResolverCheck {
 
 
   private void process(CloseableHttpClient client, String url, List<String> subnets) {
-    log.info("Fetching CloudFlare resolver addresses from url: " + url);
+    log.info("Fetch CloudFlare resolver addresses from url: " + url);
+
     HttpGet get = new HttpGet(url);
     try (CloseableHttpResponse response = client.execute(get)) {
       String content =

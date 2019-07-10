@@ -26,4 +26,9 @@ public class SimpleMetric implements Metric {
   public String toString() {
     return name + " " + value + " " + time;
   }
+
+  @Override
+  public int getSamples() {
+    return -1;
+  }
 }

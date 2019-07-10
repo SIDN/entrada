@@ -62,5 +62,9 @@ public class MeanMetric implements Metric {
     return (int) median();
   }
 
+  @Override
+  public int getSamples() {
+    return count;
+  }
 
 }

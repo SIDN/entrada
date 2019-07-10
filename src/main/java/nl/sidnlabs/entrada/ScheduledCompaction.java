@@ -3,7 +3,6 @@ package nl.sidnlabs.entrada;
 import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import org.apache.commons.lang3.time.DateUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
@@ -71,13 +70,7 @@ public class ScheduledCompaction {
     Date start = new Date();
     try {
       if (queryEngine.compact(p)) {
-        Date end = new Date();
-        // mark partition as compacted in db
-        p.setCompaction(end);
-        long diffInMillies = Math.abs(end.getTime() - start.getTime());
-        int seconds = (int) TimeUnit.SECONDS.convert(diffInMillies, TimeUnit.MILLISECONDS);
-        p.setCompactionTime(seconds);
-        partitionService.save(p);
+        partitionService.closePartition(p, start, new Date());
         return true;
 
       }

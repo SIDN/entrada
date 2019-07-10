@@ -62,8 +62,10 @@ public class HistoricalMetricManager {
 
   public static final String METRIC_IMPORT_COUNTRY_COUNT = "geo.country";
 
-  public static final String METRIC_IMPORT_TCP_HANDSHAKE_RTT = "tcp.rtt.handshake";
-  public static final String METRIC_IMPORT_TCP_PACKET_RTT = "tcp.rtt.packet";
+  public static final String METRIC_IMPORT_TCP_HANDSHAKE_RTT = "tcp.rtt.handshake.median";
+  public static final String METRIC_IMPORT_TCP_HANDSHAKE_RTT_SAMPLES = "tcp.rtt.handshake.samples";
+  public static final String METRIC_IMPORT_TCP_PACKET_RTT = "tcp.rtt.packet.median";
+  public static final String METRIC_IMPORT_TCP_PACKET_RTT_SAMPLES = "tcp.rtt.packet.samples";
 
   private Map<String, TreeMap<Long, Metric>> metricCache = new HashMap<>();
 
@@ -181,6 +183,11 @@ public class HistoricalMetricManager {
   private void send(GraphiteSender graphite, Metric m) {
     try {
       graphite.send(m.getName(), String.valueOf(m.getValue()), m.getTime());
+      if (m.getSamples() > 0) {
+        graphite
+            .send(StringUtils.replace(m.getName(), ".median", ".samples"),
+                String.valueOf(m.getSamples()), m.getTime());
+      }
     } catch (IOException e) {
       log.error("Error while sending metric: {}", m, e);
     }

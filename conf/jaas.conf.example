@@ -3,7 +3,7 @@ Client {
   useTicketCache=false
   doNotPrompt=true
   useKeyTab=true
-  keyTab="/entrada/conf/keytab"
-  principal="hdfs@SIDNLABS"
+  keyTab="/entrada/data/conf/keytab"
+  principal="hdfs@EXAMPLE_REALM"
   debug=false;
 };

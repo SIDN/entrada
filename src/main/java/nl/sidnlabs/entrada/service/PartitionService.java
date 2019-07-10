@@ -75,6 +75,14 @@ public class PartitionService {
   }
 
   @Transactional
+  public void closePartition(TablePartition p, Date start, Date end) {
+    // mark partition as compacted and save duration of partition process in db
+    p.setCompaction(end);
+    long diffInMillies = Math.abs(end.getTime() - start.getTime());
+    p.setCompactionTime((int) diffInMillies / 1000);
+  }
+
+  @Transactional
   public void save(TablePartition p) {
     tablePartitionRepository.save(p);
   }

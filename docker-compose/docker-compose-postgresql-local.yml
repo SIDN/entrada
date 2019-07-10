@@ -31,7 +31,7 @@ services:
       - /tmp/entrada/output:/entrada/data/output
       - /tmp/entrada/archive:/entrada/data/archive
       - /tmp/entrada/log:/entrada/data/log
-      - /tmp/entrada/data/conf:/entrada/data/conf
+      - /tmp/entrada/conf:/entrada/data/conf
     dns: 
       - 8.8.8.8
     #Limit container logging

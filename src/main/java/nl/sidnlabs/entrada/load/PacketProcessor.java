@@ -174,29 +174,8 @@ public class PacketProcessor {
     this.historicalMetricManager = historicalMetricManager;
   }
 
-  /**
-   * 
-   * Remove old work dir.
-   * 
-   * @return True if work location for name server is deleted or if it did not exist yet
-   */
-  private boolean clean() {
-    String path = FileUtil.appendPath(workLocation, serverCtx.getServerInfo().getNormalizeName());
-    FileManager fm = fileManagerFactory.getFor(path);
-    if (fm.exists(path)) {
-      return fm.rmdir(path);
-    }
-
-    return true;
-  }
-
 
   public void execute() {
-    if (!clean()) {
-      // cannot remove old data
-      log.error("Cleanup error, stop.");
-      return;
-    }
     // reset all counters and reused data structures
     reset();
 
@@ -240,9 +219,6 @@ public class PacketProcessor {
     // check if any file have been processed if so, send "end" packet to writer and wait foor writer
     // to finish
     if (Objects.nonNull(outputFuture)) {
-      // save unmatched packet state to file
-      // the next pcap might have the missing responses
-      persistState();
       // mark all data procssed
       pushPacket(RowData.NULL);
       // wait until writer is done
@@ -251,11 +227,14 @@ public class PacketProcessor {
       log.info("Output writer(s) have finished, continue uploading results");
       // upload newly created data to fs
       upload(partitions);
-      register(partitions);
+      createPartitions(partitions);
+      // save unmatched packet state to file
+      // the next pcap might have the missing responses
+      persistState();
     }
   }
 
-  private void register(Map<String, Set<Partition>> partitions) {
+  private void createPartitions(Map<String, Set<Partition>> partitions) {
     partitions.entrySet().stream().forEach(e -> partitionService.create(e.getKey(), e.getValue()));
   }
 

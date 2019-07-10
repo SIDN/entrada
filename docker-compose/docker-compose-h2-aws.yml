@@ -13,8 +13,8 @@ services:
       
       # AWS config options for S3 and Athena
    	  - AWS_ACCESS_KEY_ID=
-	  - AWS_SECRET_KEY=
-	  - AWS_BUCKET=entrada-data-myorg
+	    - AWS_SECRET_KEY=
+	    - AWS_BUCKET=entrada-data-myorg
       - ENTRADA_LOCATION_OUTPUT=s3://entrada-data-myorg/database/
        
       # The following options do NOT need to be changed

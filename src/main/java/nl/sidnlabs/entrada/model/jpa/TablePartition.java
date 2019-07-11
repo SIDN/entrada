@@ -62,6 +62,9 @@ public class TablePartition {
   @Column(name = "compaction_time")
   private int compactionTime;
 
+  @Column(name = "compaction_ok")
+  private Boolean ok;
+
   @Column(name = "updated_ts")
   @Temporal(TemporalType.TIMESTAMP)
   private Date updated;

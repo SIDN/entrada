@@ -262,7 +262,7 @@ public class PacketProcessor {
 
   private void reset() {
     List<Tag> tags = new ArrayList<>();
-    tags.add(new ImmutableTag("ns", serverCtx.getServerInfo().getNormalizeName()));
+    tags.add(new ImmutableTag("ns", serverCtx.getServerInfo().getNormalizedName()));
 
     fileCounter = registry.gauge("processor.pcap", tags, new AtomicInteger(0));
     packetCounter = registry.gauge("processor.packet", tags, new AtomicInteger(0));
@@ -347,11 +347,12 @@ public class PacketProcessor {
   }
 
   private String locationForDNS() {
-    return FileUtil.appendPath(workLocation, serverCtx.getServerInfo().getNormalizeName(), "dns/");
+    return FileUtil.appendPath(workLocation, serverCtx.getServerInfo().getNormalizedName(), "dns/");
   }
 
   private String locationForICMP() {
-    return FileUtil.appendPath(workLocation, serverCtx.getServerInfo().getNormalizeName(), "icmp/");
+    return FileUtil
+        .appendPath(workLocation, serverCtx.getServerInfo().getNormalizedName(), "icmp/");
   }
 
   private void read(String file) {

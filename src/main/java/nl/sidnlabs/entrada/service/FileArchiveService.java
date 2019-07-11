@@ -2,10 +2,10 @@ package nl.sidnlabs.entrada.service;
 
 import java.io.File;
 import java.util.Date;
-import javax.transaction.Transactional;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.ServerContext;
 import nl.sidnlabs.entrada.file.FileManager;
@@ -60,24 +60,8 @@ public class FileArchiveService {
 
     File f = new File(file);
 
-    if (!exists(file, serverContext.getServerInfo().getName())) {
-      Date now = new Date();
-      FileArchive fa = FileArchive
-          .builder()
-          .dateEnd(now)
-          .file(f.getName())
-          .path(f.getParent())
-          .server(serverContext.getServerInfo().getName())
-          .dateStart(start)
-          .rows(packets)
-          .time((int) (now.getTime() - start.getTime()) / 1000)
-          .build();
-
-      fileArchiveRepository.save(fa);
-    }
-
     FileManager fmSrc = fileManagerFactory.getFor(file);
-    // archive the pcap file
+    // move the pcap file to the archive location
     if (ArchiveOption.ARCHIVE == archiveOption) {
       FileManager fmDst = fileManagerFactory.getFor(archiveLocation);
 
@@ -109,6 +93,23 @@ public class FileArchiveService {
     // delete pcap file when archive or delete option is chosen
     if (ArchiveOption.ARCHIVE == archiveOption || ArchiveOption.DELETE == archiveOption) {
       fmSrc.delete(file);
+    }
+
+    // add the file to the database
+    if (!exists(file, serverContext.getServerInfo().getName())) {
+      Date now = new Date();
+      FileArchive fa = FileArchive
+          .builder()
+          .dateEnd(now)
+          .file(f.getName())
+          .path(f.getParent())
+          .server(serverContext.getServerInfo().getName())
+          .dateStart(start)
+          .rows(packets)
+          .time((int) (now.getTime() - start.getTime()) / 1000)
+          .build();
+
+      fileArchiveRepository.save(fa);
     }
   }
 

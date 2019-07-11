@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS entrada_partition
   path character varying(255) NOT NULL,
   compaction_ts timestamp,
   compaction_time int,
+  compaction_ok boolean,
   updated_ts timestamp,
   CONSTRAINT entrada_partition_pkey PRIMARY KEY (id)
 );

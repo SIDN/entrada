@@ -93,12 +93,12 @@ public class HistoricalMetricManager {
   }
 
   private String servername() {
-    if (StringUtils.isBlank(settings.getServerInfo().getNormalizeName())) {
+    if (StringUtils.isBlank(settings.getServerInfo().getNormalizedName())) {
       // no server used, then use general purpose "all"
       return "all";
     }
 
-    return settings.getServerInfo().getNormalizeName();
+    return settings.getServerInfo().getNormalizedName();
   }
 
   public void record(String metric, int value, long timestamp) {

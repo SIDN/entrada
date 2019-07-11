@@ -3,9 +3,9 @@ package nl.sidnlabs.entrada.service;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
-import javax.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.model.Partition;
 import nl.sidnlabs.entrada.model.jpa.TablePartition;
@@ -29,7 +29,6 @@ public class PartitionService {
     log.info("Save {} partition(s)", partitions.size());
 
     partitions.stream().forEach(p -> createPartion(table, p));
-
   }
 
   private void createPartion(String table, Partition p) {
@@ -38,7 +37,7 @@ public class PartitionService {
     if (tp == null) {
       log.info("Update table {} add {}", table, p);
 
-      TablePartition newPartition = TablePartition
+      tp = TablePartition
           .builder()
           .engine(engine)
           .table(table)
@@ -50,14 +49,12 @@ public class PartitionService {
           .path(p.toPath())
           .updated(new Date())
           .build();
-
-      tablePartitionRepository.save(newPartition);
     } else {
       // update existing partition
       tp.setUpdated(new Date());
-      tablePartitionRepository.save(tp);
     }
 
+    save(tp);
   }
 
   public List<TablePartition> uncompactedPartitions() {
@@ -72,14 +69,18 @@ public class PartitionService {
   private void closePartition(TablePartition p) {
     p.setCompaction(new Date());
     p.setCompactionTime(0);
+    p.setOk(Boolean.TRUE);
+    save(p);
   }
 
   @Transactional
-  public void closePartition(TablePartition p, Date start, Date end) {
+  public void closePartition(TablePartition p, Date start, Date end, boolean ok) {
     // mark partition as compacted and save duration of partition process in db
+    p.setOk(Boolean.valueOf(ok));
     p.setCompaction(end);
     long diffInMillies = Math.abs(end.getTime() - start.getTime());
     p.setCompactionTime((int) diffInMillies / 1000);
+    save(p);
   }
 
   @Transactional

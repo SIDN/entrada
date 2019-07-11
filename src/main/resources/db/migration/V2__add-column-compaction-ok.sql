@@ -1,0 +1,1 @@
+ALTER TABLE entrada_partition add column if not exists compaction_ok boolean;

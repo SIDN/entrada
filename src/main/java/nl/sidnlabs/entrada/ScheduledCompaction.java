@@ -70,13 +70,14 @@ public class ScheduledCompaction {
     Date start = new Date();
     try {
       if (queryEngine.compact(p)) {
-        partitionService.closePartition(p, start, new Date());
+        partitionService.closePartition(p, start, new Date(), true);
         return true;
 
       }
     } catch (Exception e) {
       log.error("Compacting failed for: {}", p);
     }
+    partitionService.closePartition(p, start, new Date(), false);
     return false;
   }
 

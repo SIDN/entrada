@@ -12,7 +12,7 @@ public interface TablePartitionRepository extends CrudRepository<TablePartition,
   TablePartition findByTableAndPath(String table, String path);
 
   @Query(
-      value = "SELECT * FROM entrada_partition WHERE engine = :engine AND compaction_ts IS NULL ORDER BY id ASC",
+      value = "SELECT * FROM entrada_partition WHERE engine = :engine AND compaction_ts IS NULL AND compaction_ok IS NULL ORDER BY id ASC",
       nativeQuery = true)
   List<TablePartition> findUnCompactedForEngine(@Param("engine") String engine);
 

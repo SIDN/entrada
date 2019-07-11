@@ -46,13 +46,17 @@ public class ServerContext {
       serverInfo.setDefaultServer(true);
     }
 
+    // name to use to scan for files
     serverInfo.setName(cleanName);
-    serverInfo.setNormalizeName(cleanName.replaceAll("[^A-Za-z0-9 ]", "_"));
+    // name to use for server
+    serverInfo.setServer(cleanName);
+    serverInfo.setNormalizedName(cleanName.replaceAll("[^A-Za-z0-9 ]", "_"));
 
     if (cleanName.length() > 0 && cleanName.contains("_")) {
       String[] parts = StringUtils.split(cleanName, "_");
       if (parts.length == 2) {
-        // found anycast location in name, split into name and location part
+        // found anycast location in name, split into server and location part
+        serverInfo.setServer(parts[0]);
         serverInfo.setLocation(parts[1]);
       }
     }
@@ -62,8 +66,9 @@ public class ServerContext {
   @Data
   public static class ServerInfo {
     private boolean defaultServer;
-    private String normalizeName;
     private String name;
+    private String normalizedName;
+    private String server;
     private String location;
   }
 }

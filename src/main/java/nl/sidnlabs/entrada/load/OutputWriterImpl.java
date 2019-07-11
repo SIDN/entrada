@@ -97,12 +97,12 @@ public class OutputWriterImpl implements OutputWriter {
     if (p != null) {
       int proto = lookupProtocol(p);
       if (proto == PacketFactory.PROTOCOL_TCP) {
-        writeDns(dnsRowBuilder.build(p), serverCtx.getServerInfo().getName());
+        writeDns(dnsRowBuilder.build(p), serverCtx.getServerInfo().getServer());
       } else if (proto == PacketFactory.PROTOCOL_UDP) {
-        writeDns(dnsRowBuilder.build(p), serverCtx.getServerInfo().getName());
+        writeDns(dnsRowBuilder.build(p), serverCtx.getServerInfo().getServer());
       } else if (proto == PacketFactory.PROTOCOL_ICMP_V4
           || proto == PacketFactory.PROTOCOL_ICMP_V6) {
-        writeIcmp(icmpRowBuilder.build(p), serverCtx.getServerInfo().getName());
+        writeIcmp(icmpRowBuilder.build(p), serverCtx.getServerInfo().getServer());
       }
     }
   }
@@ -163,11 +163,11 @@ public class OutputWriterImpl implements OutputWriter {
 
     open = true;
     if (dns) {
-      dnsWriter.open(workLocation, serverCtx.getServerInfo().getNormalizeName(), "dns");
+      dnsWriter.open(workLocation, serverCtx.getServerInfo().getNormalizedName(), "dns");
     }
 
     if (icmp) {
-      icmpWriter.open(workLocation, serverCtx.getServerInfo().getNormalizeName(), "icmp");
+      icmpWriter.open(workLocation, serverCtx.getServerInfo().getNormalizedName(), "icmp");
     }
   }
 

@@ -306,6 +306,8 @@ public class PacketProcessor {
          */
         queryEngine.addPartition(tableNameDns, partitions.get("dns"));
 
+        // only delete work loc when upload was ok, if upload failed
+        // it will be retried next time
         log.info("Delete work location: {}", location);
         fmInput.rmdir(location);
       }

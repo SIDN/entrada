@@ -27,6 +27,9 @@ public class ScheduledExecution {
   @Value("${entrada.nameservers}")
   private String servers;
 
+  @Value("${management.metrics.export.graphite.enabled}")
+  private boolean metrics;
+
   private Counter okCounter;
   private Counter failCounter;
   private Timer processTimer;
@@ -47,6 +50,7 @@ public class ScheduledExecution {
 
   @Scheduled(fixedDelayString = "#{${entrada.execution.delay}*1000}")
   public void run() {
+    log.info("Start loading data");
     // show resolver info to make sure the resolver data has been loaded
     if (log.isDebugEnabled()) {
       resolverChecks.stream().forEach(r -> {
@@ -66,6 +70,8 @@ public class ScheduledExecution {
       // individual servers configured, process each server directory
       Arrays.stream(StringUtils.split(servers, ",")).forEach(s -> runForServer(s, processor));
     }
+
+    log.info("Finished loading data");
   }
 
   private void runForServer(String server, PacketProcessor processor) {
@@ -82,7 +88,7 @@ public class ScheduledExecution {
       failCounter.increment();
     } finally {
       // always send historical stats to monitoring
-      if (!metricManager.flush()) {
+      if (metrics && !metricManager.flush()) {
         log.error("Not all metrics have been sent to Graphite");
       }
     }

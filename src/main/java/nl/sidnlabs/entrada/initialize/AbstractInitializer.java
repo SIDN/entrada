@@ -56,6 +56,9 @@ public abstract class AbstractInitializer implements Initializer {
 
   @Override
   public boolean initializeDatabase() {
+    if (log.isDebugEnabled()) {
+      log.debug("Initialize database");
+    }
     // create database
     Map<String, Object> parameters = dbParameters();
     String sql = TemplateUtil.template(sqlResource("create-database.sql"), parameters);

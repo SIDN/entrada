@@ -12,15 +12,11 @@ services:
             
       # The following options do NOT need to be changed
       - JAVA_OPTS=-Xmx4g -Xms4g
-    volumes:
       # Map internal container path to a path on the host
       # format <host-path>:<container:path>
-      # ENTRADA will write to /entrada/** in the container
-      - /tmp/entrada/work:/entrada/data/work
-      - /tmp/entrada/input:/entrada/data/input
-      - /tmp/entrada/output:/entrada/data/output
-      - /tmp/entrada/archive:/entrada/data/archive
-      - /tmp/entrada/log:/entrada/data/log
+      # ENTRADA will write to /entrada/... in the container
+    volumes:
+      - /tmp/entrada/:/entrada/data/
     dns: 
       - 8.8.8.8
     #Limit container logging

@@ -52,6 +52,10 @@ public class AmazonInitializer extends AbstractInitializer {
 
   @Override
   public boolean initializeStorage() {
+    if (log.isDebugEnabled()) {
+      log.debug("Initialize storage");
+    }
+
     if (!fileManager.supported(outputLocation)) {
       throw new ApplicationException(
           "Selected mode is AWS but the ENTRADA output location does not use S3, cannot continue");

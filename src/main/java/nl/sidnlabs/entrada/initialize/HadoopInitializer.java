@@ -4,10 +4,12 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
+import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.engine.QueryEngine;
 import nl.sidnlabs.entrada.exception.ApplicationException;
 import nl.sidnlabs.entrada.file.FileManager;
 
+@Log4j2
 @Component
 @ConditionalOnProperty(name = "entrada.engine", havingValue = "hadoop")
 public class HadoopInitializer extends AbstractInitializer {
@@ -35,6 +37,10 @@ public class HadoopInitializer extends AbstractInitializer {
 
   @Override
   public boolean initializeStorage() {
+    if (log.isDebugEnabled()) {
+      log.debug("Initialize storage");
+    }
+
     if (!fileManager.supported(outputLocation)) {
       throw new ApplicationException(
           "Selected mode is Hadoop but the ENTRADA output location does not use HDFS, cannot continue");

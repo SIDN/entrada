@@ -54,6 +54,8 @@ AS SELECT
     orig_dns_labels,
     server_location,
     pcap_file,
+    ip_pub_resolver,
+	cast(time/1000 as timestamp),
     year,
     month,
     day,

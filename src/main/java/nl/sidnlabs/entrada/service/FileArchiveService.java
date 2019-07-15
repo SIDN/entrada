@@ -80,7 +80,9 @@ public class FileArchiveService {
         String dst = FileUtil
             .appendPath(archiveLocation, serverContext.getServerInfo().getName(), f.getName());
 
-        fmSrc.move(file, dst, true);
+        if (!fmSrc.move(file, dst, true)) {
+          log.error("File archiving failed for: {} to archive location: {} ", file, dst);
+        }
       } else if (fmSrc.isLocal() && !fmDst.isLocal()) {
         // move data from local to remote fs
         fmDst

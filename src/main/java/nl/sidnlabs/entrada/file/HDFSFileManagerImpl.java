@@ -74,7 +74,7 @@ public class HDFSFileManagerImpl implements FileManager {
   @Override
   public List<String> files(String dir, String... filter) {
     if (!exists(dir)) {
-      log.error("Location {} does not exist, cannot continue");
+      log.error("Location {} does not exist, cannot continue", dir);
       return Collections.emptyList();
     }
 
@@ -243,11 +243,15 @@ public class HDFSFileManagerImpl implements FileManager {
 
   @Override
   public boolean move(String src, String dst, boolean archive) {
-    log.info("Move HDFS file: {} to: {} " + src, dst);
+    log.info("Move HDFS file: {} to: {} ", src, dst);
 
     FileSystem fs = createFS();
     try {
-      return fs.rename(new Path(src), new Path(dst));
+      Path dstPath = new Path(dst);
+      if (!fs.exists(dstPath.getParent())) {
+        fs.mkdirs(dstPath.getParent());
+      }
+      return fs.rename(new Path(src), dstPath);
     } catch (IllegalArgumentException | IOException e) {
       log.error("Cannot rename {} to {}", src, dst, e);
     }

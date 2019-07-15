@@ -1,7 +1,7 @@
 version: '3.7'
 services:
   entrada:
-    image: sidnlabs/entrada:2.0.0
+    image: sidnlabs/entrada
     restart: always
     ports:
       - 8080:8080

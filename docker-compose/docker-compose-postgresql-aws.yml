@@ -19,10 +19,10 @@ services:
       
       # AWS config options for S3 and Athena
       - AWS_ACCESS_KEY_ID=
-	  - AWS_SECRET_KEY=
-	  # configure bucket name, entrada will create and configure bucket 
-	  - AWS_BUCKET=entrada-data-myorg
-	  # override output location with an s3 location
+      - AWS_SECRET_KEY=
+      # configure bucket name, entrada will create and configure bucket 
+      - AWS_BUCKET=entrada-data-myorg
+      # override output location with an s3 location
       - ENTRADA_LOCATION_OUTPUT=s3://entrada-data-myorg/database/
        
       # The following options do NOT need to be changed

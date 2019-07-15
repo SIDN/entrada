@@ -711,20 +711,18 @@ public class PacketProcessor {
         .appendIfMissing(inputDir, System.getProperty("file.separator"),
             System.getProperty("file.separator"));
 
-    List<String> files = fm.files(inputDir, ".pcap", ".pcap.gz", ".pcap.xz");
-
     // order and skip the newest file if skipfirst is true
-    files = files
+    List<String> files = fm
+        .files(inputDir, ".pcap", ".pcap.gz", ".pcap.xz")
         .stream()
-        .map(File::new)
         .sorted()
         .skip(skipFirst ? 1 : 0)
-        .map(File::toString)
         .collect(Collectors.toList());
 
     log.info("Found {} file to process", files.size());
-    files.stream().forEach(file -> log.info("Found file: {}", file));
-
+    if (log.isDebugEnabled()) {
+      files.stream().forEach(file -> log.debug("Found file: {}", file));
+    }
     return files;
   }
 

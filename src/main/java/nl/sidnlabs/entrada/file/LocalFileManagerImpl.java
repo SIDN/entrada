@@ -24,7 +24,6 @@ public class LocalFileManagerImpl implements FileManager {
 
   private static final String LOCAL_SCHEME = "file://";
 
-
   @Override
   public String schema() {
     return LOCAL_SCHEME;

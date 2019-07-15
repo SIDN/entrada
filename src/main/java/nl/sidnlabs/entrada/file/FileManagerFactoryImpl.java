@@ -25,7 +25,6 @@ public class FileManagerFactoryImpl implements FileManagerFactory {
         .map(Map.Entry::getValue)
         .findFirst()
         .orElse(availableManagers.get("file://"));
-
   }
 
 }

@@ -2,7 +2,7 @@
 
 ENTRADA - A big data tool for network analytics.
 
-Convert and enrich network data in PCAP format to Apache Parquet format and send the results to any of these endpoints: 
+It takes data (PCAP-files) from an input lcoation (local, HDFS or S3) and converts and enriches the PCAP-data to Apache Parquet format and sends the results to any of following endpoints: 
 - HDFS + Impala (hadoop)
 - S3 + Athena (aws)
 - Local disk (local)

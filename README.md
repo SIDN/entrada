@@ -8,7 +8,8 @@ It takes data (PCAP-files) from an input location (local, HDFS or S3) and then c
 - Local disk (local)
 
 The data is enriched by adding the following details to each row.   
-- Geolocation and ASN details for source IP address
+- Geolocation (Country)
+- Autonomous system (ASN) details
 - Detection of public resolvers (Google, OpenDNS, Quad9 and Cloudflare)
 - TCP round-trip time (RTT) 
 

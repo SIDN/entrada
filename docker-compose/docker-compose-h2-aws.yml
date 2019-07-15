@@ -7,24 +7,24 @@ services:
       - 8080:8080
     environment:
       # ENTRADA options
-      - ENTRADA_ENGINE=aws
       - ENTRADA_NAMESERVERS=
-      - MANAGEMENT_METRICS_EXPORT_GRAPHITE_HOST=graphite.example.com
       
       # AWS config options for S3 and Athena
    	  - AWS_ACCESS_KEY_ID=
 	  - AWS_SECRET_KEY=
+	  # configure bucket name, entrada will create and configure bucket 
 	  - AWS_BUCKET=entrada-data-myorg
+	  # override output location with an s3 location
       - ENTRADA_LOCATION_OUTPUT=s3://entrada-data-myorg/database/
        
       # The following options do NOT need to be changed
-      # change the volume mappings below, in the "volumes:" section
+      - ENTRADA_ENGINE=aws
       - JAVA_OPTS=-Xmx4g -Xms4g
       # Map internal container path to a path on the host
       # format <host-path>:<container:path>
       # ENTRADA will write to /entrada/... in the container
     volumes:
-      - /tmp/entrada/:/entrada/data/
+      - ./:/entrada/data/
     dns: 
       - 8.8.8.8
     #Limit container logging

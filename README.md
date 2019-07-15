@@ -24,19 +24,12 @@ For more information see the [ENTRADA wiki](https://github.com/SIDN/entrada/wiki
 
 ## How to use
 
-ENTRADA can be deployed using Docker, pull the docker image from Docker hub.  
-
-```
-   docker pull sidnlabs/entrada:<tag>
-
-```
-
-Download one of the example [Docker Compose scripts](https://github.com/SIDN/entrada/tree/master/docker-compose)  
-Modify the environment variables for hostnames and filesystem paths to fit your requirements and then start the container.  
+ENTRADA is deployed using [Docker Compose](https://docs.docker.com/compose/), download one of the example [Docker Compose scripts](https://github.com/SIDN/entrada/tree/master/docker-compose) and save it as `docker-compose.yml` and then edit the script to configure the environment variables to fit your requirements.  
+Start the container using the `docker-compose` command:  
 
 
 ```
-   docker-compose up -d
+   docker-compose up
 
 ```
 

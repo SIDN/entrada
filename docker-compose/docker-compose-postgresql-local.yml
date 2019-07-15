@@ -7,8 +7,6 @@ services:
       - 8080:8080
     environment:
       # ENTRADA options
-      - MANAGEMENT_METRICS_EXPORT_GRAPHITE_HOST=graphite.example.com
-      - ENTRADA_ENGINE=local
       - ENTRADA_NAMESERVERS=
       
       # PostgreSQL config options, make sure the the database is created before 
@@ -20,13 +18,12 @@ services:
       - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect
       
       # The following options do NOT need to be changed
-      # change the volume mappings below, in the "volumes:" section
       - JAVA_OPTS=-Xmx4g -Xms4g
       # Map internal container path to a path on the host
       # format <host-path>:<container:path>
       # ENTRADA will write to /entrada/... in the container
     volumes:
-      - /tmp/entrada/:/entrada/data/
+      - ./:/entrada/data/
     dns: 
       - 8.8.8.8
     #Limit container logging

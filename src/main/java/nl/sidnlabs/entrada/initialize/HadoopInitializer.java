@@ -8,17 +8,12 @@ import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.engine.QueryEngine;
 import nl.sidnlabs.entrada.exception.ApplicationException;
 import nl.sidnlabs.entrada.file.FileManager;
+import nl.sidnlabs.entrada.file.FileManagerFactory;
 
 @Log4j2
 @Component
 @ConditionalOnProperty(name = "entrada.engine", havingValue = "hadoop")
 public class HadoopInitializer extends AbstractInitializer {
-
-  @Value("${entrada.location.input}")
-  private String inputLocation;
-
-  @Value("${entrada.location.archive}")
-  private String archiveLocation;
 
   @Value("${hdfs.data.owner}")
   private String owner;
@@ -29,36 +24,35 @@ public class HadoopInitializer extends AbstractInitializer {
   private FileManager fileManager;
 
   public HadoopInitializer(@Qualifier("hdfs") FileManager fileManager,
-      @Qualifier("impala") QueryEngine queryEngine) {
+      @Qualifier("impala") QueryEngine queryEngine, FileManagerFactory fileManagerFactory) {
 
-    super(queryEngine, "impala");
+    super(queryEngine, "impala", fileManagerFactory);
     this.fileManager = fileManager;
   }
 
   @Override
   public boolean initializeStorage() {
-    if (log.isDebugEnabled()) {
-      log.debug("Initialize storage");
-    }
+    log.info("Provision Hadoop storage");
 
-    if (!fileManager.supported(outputLocation)) {
+    // create local storage locations
+    super.initializeStorage();
+
+    if (!fileManager.supported(output)) {
       throw new ApplicationException(
           "Selected mode is Hadoop but the ENTRADA output location does not use HDFS, cannot continue");
     }
 
-    if ((fileManager.supported(inputLocation) && !fileManager.exists(inputLocation))
-        && !fileManager.mkdir(inputLocation)) {
+    if ((fileManager.supported(input) && !fileManager.exists(input)) && !fileManager.mkdir(input)) {
       return false;
     }
 
-    if ((fileManager.supported(outputLocation) && !fileManager.exists(outputLocation))
-        && (!fileManager.mkdir(outputLocation)
-            || !fileManager.chown(outputLocation, owner, group))) {
+    if ((fileManager.supported(output) && !fileManager.exists(output))
+        && (!fileManager.mkdir(output) || !fileManager.chown(output, owner, group))) {
       return false;
     }
 
-    if ((fileManager.supported(archiveLocation) && !fileManager.exists(archiveLocation))
-        && !fileManager.mkdir(archiveLocation)) {
+    if ((fileManager.supported(archive) && !fileManager.exists(archive))
+        && !fileManager.mkdir(archive)) {
       return false;
     }
 

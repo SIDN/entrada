@@ -8,7 +8,6 @@ services:
     environment:
       # ENTRADA options
       - ENTRADA_NAMESERVERS=
-      - MANAGEMENT_METRICS_EXPORT_GRAPHITE_HOST=graphite.example.com
             
       # The following options do NOT need to be changed
       - JAVA_OPTS=-Xmx4g -Xms4g
@@ -16,7 +15,7 @@ services:
       # format <host-path>:<container:path>
       # ENTRADA will write to /entrada/... in the container
     volumes:
-      - /tmp/entrada/:/entrada/data/
+      - ./:/entrada/data/
     dns: 
       - 8.8.8.8
     #Limit container logging

@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.internal.BucketNameUtils;
 import com.amazonaws.services.s3.model.BucketLifecycleConfiguration;
 import com.amazonaws.services.s3.model.GetBucketEncryptionResult;
 import com.amazonaws.services.s3.model.PublicAccessBlockConfiguration;
@@ -23,6 +24,7 @@ import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.engine.QueryEngine;
 import nl.sidnlabs.entrada.exception.ApplicationException;
 import nl.sidnlabs.entrada.file.FileManager;
+import nl.sidnlabs.entrada.file.FileManagerFactory;
 import nl.sidnlabs.entrada.file.S3FileManagerImpl.S3Details;
 
 @Log4j2
@@ -37,31 +39,40 @@ public class AmazonInitializer extends AbstractInitializer {
   @Value("${athena.output.location}")
   private String athenaOutputLocation;
 
+  @Value("${aws.bucket.rules.url}")
+  private String bucketRules;
 
 
   private AmazonS3 amazonS3;
   private FileManager fileManager;
 
   public AmazonInitializer(AmazonS3 amazonS3, @Qualifier("s3") FileManager fileManager,
-      @Qualifier("athena") QueryEngine queryEngine) {
+      @Qualifier("athena") QueryEngine queryEngine, FileManagerFactory fileManagerFactory) {
 
-    super(queryEngine, "athena");
+    super(queryEngine, "athena", fileManagerFactory);
     this.amazonS3 = amazonS3;
     this.fileManager = fileManager;
   }
 
   @Override
   public boolean initializeStorage() {
-    if (log.isDebugEnabled()) {
-      log.debug("Initialize storage");
-    }
+    log.info("Provision AWS storage");
 
-    if (!fileManager.supported(outputLocation)) {
+    // create local storage locations
+    super.initializeStorage();
+
+    if (!fileManager.supported(output)) {
       throw new ApplicationException(
           "Selected mode is AWS but the ENTRADA output location does not use S3, cannot continue");
     }
 
     // check if the s3 bucket and required directories exist and if not create these
+    if (!BucketNameUtils.isValidV2BucketName(bucket)) {
+      throw new ApplicationException("\"" + bucket
+          + "\" is not a valid S3 bucket name, for bucket restrictions and limitations, see: "
+          + bucketRules);
+    }
+
     if (!amazonS3.doesBucketExistV2(bucket)) {
       log.info("Create bucket: " + bucket);
 

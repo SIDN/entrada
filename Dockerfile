@@ -6,11 +6,11 @@ LABEL maintainer="entrada@sidn.nl"
 ENV APP_HOME /entrada
 
 RUN mkdir $APP_HOME
+RUN mkdir -p $APP_HOME/data/
+
+VOLUME $APP_HOME/data/
+
 RUN mkdir -p $APP_HOME/bin
-RUN mkdir -p $APP_HOME/data/work
-RUN mkdir -p $APP_HOME/data/input
-RUN mkdir -p $APP_HOME/data/output
-RUN mkdir -p $APP_HOME/data/archive
 RUN mkdir -p $APP_HOME/data/log
 RUN mkdir -p $APP_HOME/data/conf
 

@@ -94,6 +94,7 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
       // write subnets to file so we do not need to get them from source every time the app starts
       writeToFile(subnets, file);
     }
+    log.info("Loaded {} resolver addresses from file: {}", getSize(), file);
   }
 
   private IpSubnet subnetFor(String address) {

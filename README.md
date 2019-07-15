@@ -44,7 +44,7 @@ For more information about deployment and available onfiguration options see the
 
 ## License
 
-This project is distributed under the LGPL, see [LICENSE](LICENSE).
+This project is distributed under the GPLv3, see [LICENSE](LICENSE).
 
 ## Attribution
 

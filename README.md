@@ -7,6 +7,11 @@ It takes data (PCAP-files) from an input location (local, HDFS or S3) and then c
 - S3 + Athena (aws)
 - Local disk (local)
 
+The data is enrichment by adding the following details to each row.   
+- Geolocation and ASN details for source IP address
+- Detection of public resolvers (Google, OpenDNS, Quad9 and Cloudflare)
+- TCP round-trip time (RTT) 
+
 Apache Impala, AWS Athena or Apache Spark can be used to analyse the generated Parquet data.  
 
 ENTRADA handles the required workflow actions such as:  

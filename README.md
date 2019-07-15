@@ -7,7 +7,7 @@ ENTRADA processes data (PCAP-files) from an input location (local, HDFS or S3) a
 - S3 + Athena (aws)
 - Local disk (local)
 
-See [database schema](https://github.com/SIDN/entrada/wiki/Data-model) for more information about all the database columns.  
+See the [database schema](https://github.com/SIDN/entrada/wiki/Data-model) for more information about all the database columns.  
 
 The data is enriched by adding the following details to each row.   
 - Geolocation (Country)
@@ -42,7 +42,7 @@ Start the container using the `docker-compose` command:
 ```
 
 
-For more information about deployment and available onfiguration options see the [ENTRADA wiki](https://github.com/SIDN/entrada/wiki/).  
+For more more details about deployment and available onfiguration options see the [ENTRADA wiki](https://github.com/SIDN/entrada/wiki/).  
 
 ## License
 

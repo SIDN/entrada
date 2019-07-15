@@ -37,6 +37,12 @@ public abstract class AbstractInitializer implements Initializer {
   @Value("${entrada.location.archive}")
   protected String archive;
 
+  @Value("${entrada.location.log}")
+  protected String logLocation;
+
+  @Value("${entrada.location.conf}")
+  protected String confLocationf;
+
   @Value("${entrada.icmp.enable}")
   protected boolean icmpEnabled;
 
@@ -71,26 +77,22 @@ public abstract class AbstractInitializer implements Initializer {
   public boolean initializeStorage() {
     log.info("Provision local storage");
 
-    FileManager fileManager = fileManagerFactory.getFor(work);
-    if (fileManager.isLocal() && fileManager.supported(work) && !fileManager.mkdir(work)) {
-      throw new ApplicationException("Cannot create work location: " + work);
+    if (createLocation("work", work) && createLocation("input", input)
+        && createLocation("output", output) && createLocation("archive", archive)
+        && createLocation("log", logLocation) && createLocation("conf", confLocationf)) {
+
+      return true;
     }
 
-    fileManager = fileManagerFactory.getFor(input);
-    if (fileManager.isLocal() && fileManager.supported(input) && !fileManager.mkdir(input)) {
-      throw new ApplicationException("Cannot create input location: " + input);
-    }
+    throw new ApplicationException("Error while creating location");
+  }
 
-    fileManager = fileManagerFactory.getFor(output);
-    if (fileManager.isLocal() && fileManager.supported(output) && !fileManager.mkdir(output)) {
-      throw new ApplicationException("Cannot create output location: " + output);
+  private boolean createLocation(String name, String location) {
+    FileManager fileManager = fileManagerFactory.getFor(location);
+    if (fileManager.isLocal() && fileManager.supported(location) && !fileManager.mkdir(location)) {
+      log.error("Cannot create " + name + " location: " + location);
+      return false;
     }
-
-    fileManager = fileManagerFactory.getFor(archive);
-    if (fileManager.isLocal() && fileManager.supported(archive) && !fileManager.mkdir(archive)) {
-      throw new ApplicationException("Cannot create output location: " + archive);
-    }
-
 
     return true;
   }

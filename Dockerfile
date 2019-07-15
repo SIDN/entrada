@@ -7,13 +7,7 @@ ENV APP_HOME /entrada
 
 RUN mkdir $APP_HOME
 RUN mkdir -p $APP_HOME/data/
-
-VOLUME $APP_HOME/data/
-
 RUN mkdir -p $APP_HOME/bin
-RUN mkdir -p $APP_HOME/data/log
-RUN mkdir -p $APP_HOME/data/conf
-
 
 # Make port 8080 available to the world outside this container
 EXPOSE 8080

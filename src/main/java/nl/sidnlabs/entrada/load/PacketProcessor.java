@@ -119,6 +119,9 @@ public class PacketProcessor {
   @Value("${entrada.input.file.skipfirst}")
   private boolean skipFirst;
 
+  @Value("${management.metrics.export.graphite.enabled}")
+  private boolean metrics;
+
   private PcapReader pcapReader;
   protected Map<RequestCacheKey, RequestCacheValue> requestCache;
 
@@ -571,7 +574,13 @@ public class PacketProcessor {
         cacheCount = requestCache.size();
       }
 
-      stateManager.write(historicalMetricManager.getMetricCache());
+      // flush metrics to make sure that metrics that can be sent already are sent
+      // always send historical stats to monitoring
+      if (metrics) {
+        historicalMetricManager.flush();
+        stateManager.write(historicalMetricManager.getMetricCache());
+      }
+
     } catch (Exception e) {
       log.error("Error writing state file", e);
       // delete old corrupt state
@@ -620,8 +629,10 @@ public class PacketProcessor {
       // read in previous request cache
       requestCache = (Map<RequestCacheKey, RequestCacheValue>) stateManager.read();
 
-      historicalMetricManager
-          .setMetricCache((Map<String, TreeMap<Long, Metric>>) stateManager.read());
+      if (metrics) {
+        historicalMetricManager
+            .setMetricCache((Map<String, TreeMap<Long, Metric>>) stateManager.read());
+      }
     } catch (Exception e) {
       log.error("Error reading state file", e);
       // delete old corrupt state
@@ -634,6 +645,9 @@ public class PacketProcessor {
     log.info("Loaded TCP state {} TCP flows", flows.size());
     log.info("Loaded Datagram state {} Datagrams", datagrams.size());
     log.info("Loaded Request cache {} DNS requests", requestCache.size());
+    log
+        .info("Loaded metrics state {} unsent metrics",
+            historicalMetricManager.getMetricCache().size());
     log.info("----------------------------------------------------");
   }
 

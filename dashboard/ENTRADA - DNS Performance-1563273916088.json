@@ -58,7 +58,7 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1562748979203,
+  "iteration": 1563273912000,
   "links": [],
   "panels": [
     {
@@ -86,6 +86,7 @@
       ],
       "datasource": "${DS_GRAPHITE}",
       "decimals": 0,
+      "description": "Geographical location based on source IP-address",
       "esMetric": "Count",
       "gridPos": {
         "h": 16,
@@ -134,6 +135,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "${DS_GRAPHITE}",
+      "description": "Median TCP RTT for handshake and stream packets",
       "fill": 1,
       "gridPos": {
         "h": 7,
@@ -225,6 +227,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "${DS_GRAPHITE}",
+      "description": "The number of samples used to  calculate the median TCP RTT.",
       "fill": 1,
       "gridPos": {
         "h": 9,
@@ -308,6 +311,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "${DS_GRAPHITE}",
+      "description": "Transport protocol used",
       "fill": 1,
       "gridPos": {
         "h": 9,
@@ -450,8 +454,8 @@
       "30d"
     ]
   },
-  "timezone": "",
-  "title": "ENTRADA 2.0 DNS Performance",
+  "timezone": "utc",
+  "title": "ENTRADA - DNS Performance",
   "uid": "fGCCBhIWk",
-  "version": 10
+  "version": 17
 }

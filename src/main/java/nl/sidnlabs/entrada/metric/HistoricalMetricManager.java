@@ -21,9 +21,11 @@ package nl.sidnlabs.entrada.metric;
 
 import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -157,7 +159,10 @@ public class HistoricalMetricManager {
       return false;
     } finally {
       // remove sent metric, avoiding sending them again.
-      metricCache.clear();
+      metricCache.values().stream().forEach(this::trunc);
+      // check if any metric has an empty list of time-buckets, if so the list
+      metricCache.entrySet().removeIf(e -> e.getValue().size() == 0);
+
       try {
         // close will also do a flush
         graphite.close();
@@ -167,6 +172,16 @@ public class HistoricalMetricManager {
     }
 
     return true;
+  }
+
+  private void trunc(TreeMap<Long, Metric> metricValues) {
+    int max = metricValues.size() - FLUSH_TIMESTAMP_WAIT;
+    if (max < 1) {
+      // no metrics to send
+      return;
+    }
+    List<Long> toDelete = metricValues.keySet().stream().limit(max).collect(Collectors.toList());
+    toDelete.stream().forEach(metricValues::remove);
   }
 
   private void send(GraphiteSender graphite, TreeMap<Long, Metric> metricValues) {

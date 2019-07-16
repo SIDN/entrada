@@ -13,7 +13,6 @@ import io.micrometer.core.instrument.Timer;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.enrich.resolver.DnsResolverCheck;
 import nl.sidnlabs.entrada.load.PacketProcessor;
-import nl.sidnlabs.entrada.metric.HistoricalMetricManager;
 
 @Log4j2
 @Component
@@ -22,26 +21,20 @@ public class ScheduledExecution {
   private ServerContext serverCtx;
   private ApplicationContext applicationContext;
   private List<DnsResolverCheck> resolverChecks;
-  private HistoricalMetricManager metricManager;
 
   @Value("${entrada.nameservers}")
   private String servers;
-
-  @Value("${management.metrics.export.graphite.enabled}")
-  private boolean metrics;
 
   private Counter okCounter;
   private Counter failCounter;
   private Timer processTimer;
 
   public ScheduledExecution(ServerContext serverCtx, ApplicationContext applicationContext,
-      List<DnsResolverCheck> resolverChecks, MeterRegistry registry,
-      HistoricalMetricManager metricManager) {
+      List<DnsResolverCheck> resolverChecks, MeterRegistry registry) {
 
     this.serverCtx = serverCtx;
     this.applicationContext = applicationContext;
     this.resolverChecks = resolverChecks;
-    this.metricManager = metricManager;
 
     okCounter = registry.counter("processor.file.ok");
     failCounter = registry.counter("processor.file.fail");
@@ -86,11 +79,6 @@ public class ScheduledExecution {
     } catch (Exception e) {
       log.error("Error while processing pcap data for server: {}", server, e);
       failCounter.increment();
-    } finally {
-      // always send historical stats to monitoring
-      if (metrics && !metricManager.flush()) {
-        log.error("Not all metrics have been sent to Graphite");
-      }
     }
 
     log.info("Done loading data for server: {}", server);

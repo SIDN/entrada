@@ -58,7 +58,7 @@
   "gnetId": null,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1562749003970,
+  "iteration": 1563273870010,
   "links": [],
   "panels": [
     {
@@ -82,6 +82,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "${DS_GRAPHITE}",
+      "description": "Queries per 10-second bucket",
       "fill": 1,
       "gridPos": {
         "h": 9,
@@ -164,6 +165,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "${DS_GRAPHITE}",
+      "description": "Top-10 countries based on source IP-address",
       "fill": 1,
       "gridPos": {
         "h": 10,
@@ -249,6 +251,7 @@
       ],
       "datasource": "${DS_GRAPHITE}",
       "decimals": 0,
+      "description": "Geographical location based on source IP-address",
       "esMetric": "Count",
       "gridPos": {
         "h": 10,
@@ -301,6 +304,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "${DS_GRAPHITE}",
+      "description": "The 10 most used qtypes",
       "fill": 1,
       "gridPos": {
         "h": 8,
@@ -322,18 +326,18 @@
       "linewidth": 1,
       "links": [],
       "nullPointMode": "null",
-      "percentage": false,
+      "percentage": true,
       "pointradius": 5,
       "points": false,
       "renderer": "flot",
       "seriesOverrides": [],
       "spaceLength": 10,
-      "stack": false,
+      "stack": true,
       "steppedLine": false,
       "targets": [
         {
           "refId": "A",
-          "target": "aliasByNode(removeBelowValue(entrada.dns.request.qtype.*.ns.$NS, 100), 4)"
+          "target": "aliasByNode(limit(sortByTotal(entrada.dns.request.qtype.*.ns.$NS), 10), 4)"
         }
       ],
       "thresholds": [],
@@ -382,6 +386,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "${DS_GRAPHITE}",
+      "description": "Rcodes per 10-second bucket",
       "fill": 1,
       "gridPos": {
         "h": 9,
@@ -463,6 +468,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "${DS_GRAPHITE}",
+      "description": "Opcodes per 10-second bucket",
       "fill": 1,
       "gridPos": {
         "h": 9,
@@ -544,6 +550,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "${DS_GRAPHITE}",
+      "description": "Median TCP RTT for handshake and stream packets",
       "fill": 1,
       "gridPos": {
         "h": 9,
@@ -563,7 +570,17 @@
       },
       "lines": false,
       "linewidth": 1,
-      "links": [],
+      "links": [
+        {
+          "dashboard": "ENTRADA 2.0 DNS Performance",
+          "includeVars": true,
+          "keepTime": true,
+          "targetBlank": true,
+          "title": "ENTRADA 2.0 DNS Performance",
+          "type": "dashboard",
+          "url": "/d/fGCCBhIWk/entrada-2-0-dns-performance"
+        }
+      ],
       "nullPointMode": "null",
       "percentage": false,
       "pointradius": 0.5,
@@ -613,6 +630,7 @@
         "sort": 0,
         "value_type": "individual"
       },
+      "transparent": false,
       "type": "graph",
       "xaxis": {
         "buckets": null,
@@ -651,6 +669,7 @@
       "dashLength": 10,
       "dashes": false,
       "datasource": "${DS_GRAPHITE}",
+      "description": "Transport protocol used",
       "fill": 1,
       "gridPos": {
         "h": 9,
@@ -684,14 +703,14 @@
         {
           "refCount": 0,
           "refId": "A",
-          "target": "aliasByNode(entrada.tcp.ns.$NS, 1)",
-          "textEditor": true
+          "target": "alias(entrada.tcp.ns.$NS, 'TCP')",
+          "textEditor": false
         },
         {
           "refCount": 0,
           "refId": "B",
-          "target": "aliasByNode(entrada.udp.ns.$NS, 1)",
-          "textEditor": true
+          "target": "alias(entrada.udp.ns.$NS, 'UDP')",
+          "textEditor": false
         }
       ],
       "thresholds": [],
@@ -794,7 +813,7 @@
     ]
   },
   "timezone": "utc",
-  "title": "ENTRADA 2.0  DNS Statistics",
+  "title": "ENTRADA - DNS Statistics",
   "uid": "YU_CG4SZk",
-  "version": 43
+  "version": 55
 }

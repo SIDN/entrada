@@ -7,7 +7,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.log4j.Log4j2;
@@ -25,8 +24,6 @@ public class ScheduledExecution {
   @Value("${entrada.nameservers}")
   private String servers;
 
-  private Counter okCounter;
-  private Counter failCounter;
   private Timer processTimer;
 
   public ScheduledExecution(ServerContext serverCtx, ApplicationContext applicationContext,
@@ -36,8 +33,6 @@ public class ScheduledExecution {
     this.applicationContext = applicationContext;
     this.resolverChecks = resolverChecks;
 
-    okCounter = registry.counter("processor.file.ok");
-    failCounter = registry.counter("processor.file.fail");
     processTimer = registry.timer("processor.execution.time");
   }
 
@@ -74,11 +69,9 @@ public class ScheduledExecution {
 
     try {
       // record time spent while processing all pcap files
-      processTimer.record(() -> processor.execute());
-      okCounter.increment();
+      processTimer.record(processor::execute);
     } catch (Exception e) {
       log.error("Error while processing pcap data for server: {}", server, e);
-      failCounter.increment();
     }
 
     log.info("Done loading data for server: {}", server);

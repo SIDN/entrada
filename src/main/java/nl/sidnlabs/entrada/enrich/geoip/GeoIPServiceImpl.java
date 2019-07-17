@@ -41,6 +41,7 @@ import com.google.common.net.InetAddresses;
 import com.maxmind.db.CHMCache;
 import com.maxmind.geoip2.DatabaseReader;
 import com.maxmind.geoip2.model.AsnResponse;
+import com.maxmind.geoip2.model.IspResponse;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.exception.ApplicationException;
 import nl.sidnlabs.entrada.util.DownloadUtil;
@@ -53,18 +54,32 @@ import nl.sidnlabs.entrada.util.FileUtil;
 @Component
 public class GeoIPServiceImpl implements GeoIPService {
 
-  @Value("${geoip.maxmind.db.name.country}")
-  private String dbCountry;
-  @Value("${geoip.maxmind.db.name.asn}")
-  private String dbASN;
-  @Value("${geoip.maxmind.db.url.country}")
-  private String dbCountryUrl;
-  @Value("${geoip.maxmind.db.url.asn}")
-  private String dbAsnUrl;
+  // free dbs
+  private static final String FILENAME_GEOLITE_COUNTRY = "GeoLite2-Country.mmdb";
+  private static final String FILENAME_GEOLITE_ASN = "GeoLite2-ASN.mmdb";
+  // paid dbs
+  private static final String FILENAME_GEOIP2_COUNTRY = "GeoIP2-Country.mmdb";
+  private static final String FILENAME_GEOIP2_ASN = "GeoIP2-ISP.mmdb";
+
+
   @Value("${geoip.maxmind.location}")
   private String location;
   @Value("${geoip.maxmind.age.max}")
   private int maxAge;
+
+  @Value("${geoip.maxmind.url.country}")
+  private String urlCountryDb;
+  @Value("${geoip.maxmind.url.asn}")
+  private String urlAsnDb;
+  @Value("${geoip.maxmind.url.country.paid}")
+  private String urlCountryDbPaid;
+  @Value("${geoip.maxmind.url.asn.paid}")
+  private String urlAsnDbPaid;
+
+  @Value("${geoip.maxmind.subsciption.key}")
+  private String licenseKey;
+
+  private boolean usePaidVersion;
 
   private DatabaseReader geoReader;
   private DatabaseReader asnReader;
@@ -72,31 +87,55 @@ public class GeoIPServiceImpl implements GeoIPService {
   @PostConstruct
   public void initialize() {
 
+    usePaidVersion = StringUtils.isNotBlank(licenseKey);
+
     File loc = new File(location);
     if (!loc.exists()) {
       loc.mkdirs();
     }
 
-    if (update(dbCountry)) {
+    String countryFile = countryFile();
+    String asnFile = asnFile();
+
+    if (shouldUpdate(countryFile)) {
       log.info("GEOIP country database does not exist or is too old, fetch latest version");
-      download(dbCountry, dbCountryUrl, 30);
+      String url = urlCountryDb;
+      if (usePaidVersion) {
+        log.info("Download paid Maxmind country database");
+        url = urlCountryDbPaid + licenseKey;
+      }
+      download(countryFile, url, 30);
     }
 
-    if (update(dbASN)) {
+
+    if (shouldUpdate(asnFile)) {
       log.info("GEOIP ASN database does not exist or is too old, fetch latest version");
-      download(dbASN, dbAsnUrl, 30);
+      String url = urlAsnDb;
+      if (usePaidVersion) {
+        log.info("Download paid Maxmind ISP database");
+        url = urlAsnDbPaid + licenseKey;
+      }
+      download(asnFile, url, 30);
     }
 
     try {
       // geo
-      File database = new File(FileUtil.appendPath(location, dbCountry));
+      File database = new File(FileUtil.appendPath(location, countryFile));
       geoReader = new DatabaseReader.Builder(database).withCache(new CHMCache()).build();
       // asn
-      database = new File(FileUtil.appendPath(location, dbASN));
+      database = new File(FileUtil.appendPath(location, asnFile));
       asnReader = new DatabaseReader.Builder(database).withCache(new CHMCache()).build();
     } catch (IOException e) {
       throw new ApplicationException("Error initializing Maxmind GEO/ASN database", e);
     }
+  }
+
+  private String countryFile() {
+    return usePaidVersion ? FILENAME_GEOIP2_COUNTRY : FILENAME_GEOLITE_COUNTRY;
+  }
+
+  private String asnFile() {
+    return usePaidVersion ? FILENAME_GEOIP2_ASN : FILENAME_GEOLITE_ASN;
   }
 
   /**
@@ -105,12 +144,12 @@ public class GeoIPServiceImpl implements GeoIPService {
    * @param database named of database
    * @return true if database file does not exist or is too old
    */
-  private boolean update(String database) {
+  private boolean shouldUpdate(String database) {
     File f = new File(FileUtil.appendPath(location, database));
-    return !f.exists() || tooOld(f, maxAge);
+    return !f.exists() || isExpired(f, maxAge);
   }
 
-  private boolean tooOld(File f, int max) {
+  private boolean isExpired(File f, int max) {
     Calendar calendar = Calendar.getInstance();
     calendar.add(Calendar.DATE, -1 * max);
     return FileUtils.isFileOlder(f, calendar.getTime());
@@ -160,8 +199,12 @@ public class GeoIPServiceImpl implements GeoIPService {
   @Override
   public Optional<String> lookupASN(InetAddress ip) {
     try {
-      AsnResponse ar = asnReader.asn(ip);
-      return Optional.ofNullable(String.valueOf(ar.getAutonomousSystemNumber()));
+      if (usePaidVersion) {
+        IspResponse r = asnReader.isp(ip);
+        return Optional.ofNullable(r.getAutonomousSystemNumber().toString());
+      }
+      AsnResponse r = asnReader.asn(ip);
+      return Optional.ofNullable(r.getAutonomousSystemNumber().toString());
     } catch (Exception e) {
       if (log.isDebugEnabled()) {
         log.debug("No asn found for: " + ip);

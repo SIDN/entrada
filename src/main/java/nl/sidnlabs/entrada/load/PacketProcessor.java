@@ -38,7 +38,6 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
@@ -47,9 +46,6 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import com.google.common.collect.Multimap;
 import com.google.common.collect.TreeMultimap;
-import io.micrometer.core.instrument.ImmutableTag;
-import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.Tag;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.dnslib.message.Message;
 import nl.sidnlabs.dnslib.types.MessageType;
@@ -129,15 +125,9 @@ public class PacketProcessor {
   private OutputWriter outputWriter;
   private FileArchiveService fileArchiveService;
 
-  // metrics
-  private AtomicInteger packetCounter;
-  private AtomicInteger dnsQueryCounter;
-  private AtomicInteger dnsResponseCounter;
-  private AtomicInteger fileCounter;
-  private AtomicInteger purgeCounter;
-
   // max lifetime for cached packets, in milliseconds (configured in minutes)
   private int cacheTimeout;
+  private int packetCounter;
 
   // keep list of active zone transfers
   private Map<RequestCacheKey, Integer> activeZoneTransfers;
@@ -150,7 +140,6 @@ public class PacketProcessor {
   private Future<Map<String, Set<Partition>>> outputFuture;
   private LinkedBlockingQueue<RowData> packetQueue;
 
-  private MeterRegistry registry;
   private HistoricalMetricManager historicalMetricManager;
 
   // aps with state, loaded at start and persisted at end
@@ -160,8 +149,7 @@ public class PacketProcessor {
   public PacketProcessor(ServerContext serverCtx, StateManager persistenceManager,
       OutputWriter outputWriter, FileArchiveService fileArchiveService,
       FileManagerFactory fileManagerFactory, QueryEngine queryEngine,
-      PartitionService partitionService, MeterRegistry registry,
-      HistoricalMetricManager historicalMetricManager) {
+      PartitionService partitionService, HistoricalMetricManager historicalMetricManager) {
 
     this.serverCtx = serverCtx;
     this.stateManager = persistenceManager;
@@ -173,7 +161,6 @@ public class PacketProcessor {
 
     // convert minutes to seconds
     this.cacheTimeout = 1000 * 60 * cacheTimeoutConfig;
-    this.registry = registry;
     this.historicalMetricManager = historicalMetricManager;
   }
 
@@ -201,9 +188,6 @@ public class PacketProcessor {
         fileArchiveService.archive(file, start, 0);
         continue;
       }
-
-      fileCounter.addAndGet(1);
-
       if (outputFuture == null) {
         // open the output file writer
         outputFuture = outputWriter.start(true, icmpEnabled, packetQueue);
@@ -212,11 +196,9 @@ public class PacketProcessor {
       // flush expired packets after every file, to avoid a large cache eating up the heap
       purgeCache();
       // move the pcap file to archive location or delete
-      fileArchiveService.archive(file, start, (int) packetCounter.get());
+      fileArchiveService.archive(file, start, (int) packetCounter);
 
       logStats();
-      // reset micrometer gauges
-      resetGauges();
     }
 
     // check if any file have been processed if so, send "end" packet to writer and wait foor writer
@@ -254,25 +236,8 @@ public class PacketProcessor {
     return Collections.emptyMap();
   }
 
-
-  private void resetGauges() {
-    fileCounter.set(0);
-    packetCounter.set(0);
-    dnsQueryCounter.set(0);
-    dnsResponseCounter.set(0);
-    purgeCounter.set(0);
-  }
-
   private void reset() {
-    List<Tag> tags = new ArrayList<>();
-    tags.add(new ImmutableTag("ns", serverCtx.getServerInfo().getNormalizedName()));
-
-    fileCounter = registry.gauge("processor.pcap", tags, new AtomicInteger(0));
-    packetCounter = registry.gauge("processor.packet", tags, new AtomicInteger(0));
-    dnsQueryCounter = registry.gauge("processor.dns.query", tags, new AtomicInteger(0));
-    dnsResponseCounter = registry.gauge("processor.dns.response", tags, new AtomicInteger(0));
-    purgeCounter = registry.gauge("processor.packet.purged", tags, new AtomicInteger(0));
-
+    packetCounter = 0;
     requestCache = new HashMap<>();
     activeZoneTransfers = new HashMap<>();
     outputFuture = null;
@@ -281,9 +246,7 @@ public class PacketProcessor {
 
   private void logStats() {
     log.info("--------- Done processing data-----------");
-    log.info("{} packets", (dnsQueryCounter.get() + dnsResponseCounter.get()));
-    log.info("{} query packets", dnsQueryCounter.get());
-    log.info("{} response packets", dnsResponseCounter.get());
+    log.info("{} packets", packetCounter);
     log.info("-----------------------------------------");
   }
 
@@ -396,9 +359,9 @@ public class PacketProcessor {
   }
 
   private void process(Packet currentPacket, String fileName) {
-    packetCounter.getAndIncrement();
-    if (packetCounter.get() % 100000 == 0) {
-      log.info("Processed " + packetCounter.get() + " packets");
+    packetCounter++;
+    if (packetCounter % 100000 == 0) {
+      log.info("Processed " + packetCounter + " packets");
     }
 
     if (isICMP(currentPacket)) {
@@ -448,8 +411,6 @@ public class PacketProcessor {
   }
 
   private void handDnsQuery(DNSPacket dnsPacket, Message msg, String fileName) {
-    dnsQueryCounter.addAndGet(1);
-
     // check for ixfr/axfr request
     if (!msg.getQuestions().isEmpty()
         && (msg.getQuestions().get(0).getQType() == ResourceRecordType.AXFR
@@ -474,7 +435,6 @@ public class PacketProcessor {
 
   private void handDnsResponse(DNSPacket dnsPacket, Message msg, String fileName) {
     // try to find the request
-    dnsResponseCounter.addAndGet(1);
 
     // check for ixfr/axfr response, the query might be missing from the response
     // so we cannot use the qname for matching.
@@ -656,6 +616,7 @@ public class PacketProcessor {
     // remove expired entries from _requestCache
     Iterator<RequestCacheKey> iter = requestCache.keySet().iterator();
     long now = System.currentTimeMillis();
+    int purgeCounter = 0;
 
     while (iter.hasNext()) {
       RequestCacheKey key = iter.next();
@@ -672,7 +633,7 @@ public class PacketProcessor {
           pushPacket(new RowData(cacheValue.getPacket(), cacheValue.getMessage(), null, null, true,
               cacheValue.getFilename()));
 
-          purgeCounter.addAndGet(1);
+          purgeCounter++;
         }
       }
     }

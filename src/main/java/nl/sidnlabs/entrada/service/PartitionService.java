@@ -28,10 +28,17 @@ public class PartitionService {
   public void create(String table, Set<Partition> partitions) {
     log.info("Save {} partition(s)", partitions.size());
 
-    partitions.stream().forEach(p -> createPartion(table, p));
+    partitions.stream().forEach(p -> upsertPartion(table, p));
   }
 
-  private void createPartion(String table, Partition p) {
+  /**
+   * Create new partition when it does not exist yet or update and existing partition with the last
+   * access date.
+   * 
+   * @param table the table the partition is linked to
+   * @param p partition to check
+   */
+  private void upsertPartion(String table, Partition p) {
     // only create partition if it is now yet in the db
     TablePartition tp = tablePartitionRepository.findByTableAndPath(table, p.toPath());
     if (tp == null) {

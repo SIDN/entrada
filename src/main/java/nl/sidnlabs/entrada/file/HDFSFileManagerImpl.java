@@ -349,20 +349,26 @@ public class HDFSFileManagerImpl implements FileManager {
 
     Path p = new Path(path);
     try {
-      if (owner != null || group != null) {
-        if (fs.isDirectory(p)) {
+      if (owner != null && group != null) {
+        FileStatus fStatus = fs.getFileStatus(p);
+
+        if (fStatus.isDirectory()) {
           for (FileStatus child : fs.listStatus(p)) {
             chown(fs, child.getPath().toString(), owner, group);
           }
         }
-        fs.setOwner(p, owner, group);
+
+        // check to see if the owner/group needs to be corrected
+        if (!StringUtils.equals(owner, fStatus.getOwner())
+            || !StringUtils.equals(group, fStatus.getGroup())) {
+
+          fs.setOwner(p, owner, group);
+        }
       }
     } catch (Exception e) {
-      //
+      log.error("Error while doing chown for {}", path, e);
       return false;
     }
-
-
     return true;
   }
 

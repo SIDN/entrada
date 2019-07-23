@@ -345,8 +345,6 @@ public class HDFSFileManagerImpl implements FileManager {
   }
 
   private boolean chown(FileSystem fs, String path, String owner, String group) {
-    log.info("Chown: {} owner: {} group: {}", path, owner, group);
-
     Path p = new Path(path);
     try {
       if (owner != null && group != null) {
@@ -362,6 +360,7 @@ public class HDFSFileManagerImpl implements FileManager {
         if (!StringUtils.equals(owner, fStatus.getOwner())
             || !StringUtils.equals(group, fStatus.getGroup())) {
 
+          log.info("Chown: {} owner: {} group: {}", path, owner, group);
           fs.setOwner(p, owner, group);
         }
       }

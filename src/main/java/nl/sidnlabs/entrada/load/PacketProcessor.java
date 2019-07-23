@@ -138,7 +138,7 @@ public class PacketProcessor {
   private ServerContext serverCtx;
 
   private Future<Map<String, Set<Partition>>> outputFuture;
-  private LinkedBlockingQueue<RowData> packetQueue;
+  private LinkedBlockingQueue<RowData> rowQueue;
 
   private HistoricalMetricManager historicalMetricManager;
 
@@ -183,14 +183,16 @@ public class PacketProcessor {
       Date start = new Date();
 
       if (fileArchiveService.exists(file, serverCtx.getServerInfo().getName())) {
-        log.info("file {} already processed!, continue with next file", file);
+        if (log.isDebugEnabled()) {
+          log.info("file {} already processed!, continue with next file", file);
+        }
         // move the pcap file to archive location or delete
         fileArchiveService.archive(file, start, 0);
         continue;
       }
       if (outputFuture == null) {
         // open the output file writer
-        outputFuture = outputWriter.start(true, icmpEnabled, packetQueue);
+        outputFuture = outputWriter.start(true, icmpEnabled, rowQueue);
       }
       read(file);
       // flush expired packets after every file, to avoid a large cache eating up the heap
@@ -205,7 +207,7 @@ public class PacketProcessor {
     // to finish
     if (Objects.nonNull(outputFuture)) {
       // mark all data procssed
-      pushPacket(RowData.NULL);
+      pushRow(RowData.NULL);
       // wait until writer is done
       log.info("Wait until output writer(s) have finished");
       Map<String, Set<Partition>> partitions = waitForWriter(outputFuture);
@@ -241,7 +243,7 @@ public class PacketProcessor {
     requestCache = new HashMap<>();
     activeZoneTransfers = new HashMap<>();
     outputFuture = null;
-    packetQueue = new LinkedBlockingQueue<>(MAX_QUEUE_SIZE);
+    rowQueue = new LinkedBlockingQueue<>(MAX_QUEUE_SIZE);
   }
 
   private void logStats() {
@@ -322,6 +324,8 @@ public class PacketProcessor {
   }
 
   private void read(String file) {
+    log.info("Start reading from file {}", file);
+
     // try to open file, if file is not good pcap handle exception and fail fast.
     if (!createReader(file)) {
       log.error("Skip bad input file: " + file);
@@ -329,8 +333,6 @@ public class PacketProcessor {
     }
 
     long readStart = System.currentTimeMillis();
-    log.info("Start reading packets from file {}", file);
-
     // get filename only to map parquet row to pcap file for possible
     // later detailed analysis
     String fileName = FileUtil.filename(file);
@@ -370,7 +372,7 @@ public class PacketProcessor {
         return;
       }
       // handle icmp
-      pushPacket(new RowData(currentPacket, null, null, null, false, fileName));
+      pushRow(new RowData(currentPacket, null, null, null, false, fileName));
 
     } else {
       // must be dnspacket
@@ -463,7 +465,7 @@ public class PacketProcessor {
 
     if (request != null && request.getPacket() != null && request.getMessage() != null) {
 
-      pushPacket(
+      pushRow(
           new RowData(request.getPacket(), request.getMessage(), dnsPacket, msg, false, fileName));
 
     } else {
@@ -474,13 +476,15 @@ public class PacketProcessor {
         log.debug("Found no request for response");
       }
 
-      pushPacket(new RowData(null, null, dnsPacket, msg, false, fileName));
+      pushRow(new RowData(null, null, dnsPacket, msg, false, fileName));
     }
   }
 
-  private void pushPacket(RowData pc) {
+  private void pushRow(RowData pc) {
     try {
-      packetQueue.put(pc);
+      // the put() method will block until enough space is available in the queue
+      // to prevent having large amount of rows in memory when the writer cannot keep up.
+      rowQueue.put(pc);
     } catch (InterruptedException e) {
       // ignoire error, just log
       log.error("Error while sending packet to writer queue.");
@@ -630,7 +634,7 @@ public class PacketProcessor {
         if (cacheValue.getMessage() != null
             && cacheValue.getMessage().getHeader().getQr() == MessageType.QUERY) {
 
-          pushPacket(new RowData(cacheValue.getPacket(), cacheValue.getMessage(), null, null, true,
+          pushRow(new RowData(cacheValue.getPacket(), cacheValue.getMessage(), null, null, true,
               cacheValue.getFilename()));
 
           purgeCounter++;

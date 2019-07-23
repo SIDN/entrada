@@ -24,7 +24,7 @@ public class ImpalaDatabaseConfig {
     DataSource ds = new DataSource();
     // check to see if we are connection to a Keberized Impala
     if (!StringUtils.isBlank(env.getProperty("kerberos.keytab"))) {
-      ds.setURL(env.getProperty("keberos.impala.url"));
+      ds.setURL(env.getProperty("kerberos.impala.url"));
     } else {
       ds.setURL(env.getProperty("impala.url"));
     }

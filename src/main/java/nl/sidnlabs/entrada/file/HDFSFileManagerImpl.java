@@ -345,14 +345,14 @@ public class HDFSFileManagerImpl implements FileManager {
   }
 
   private boolean chown(FileSystem fs, String path, String owner, String group) {
-    log.info("Chown directory: {} owner: {} group: {}", path, owner, group);
+    log.info("Chown: {} owner: {} group: {}", path, owner, group);
 
     Path p = new Path(path);
     try {
       if (owner != null || group != null) {
         if (fs.isDirectory(p)) {
           for (FileStatus child : fs.listStatus(p)) {
-            chown(child.getPath().toString(), owner, group);
+            chown(fs, child.getPath().toString(), owner, group);
           }
         }
         fs.setOwner(p, owner, group);

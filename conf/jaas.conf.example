@@ -1,3 +1,13 @@
+/**
+ * ---------------------------------------------------------------------------------
+ * JAAS Login Configuration for the Impala 
+ *
+ * NOTE: make sure the keyTab path is correct, when deployed using Docker
+ * this path is an internal container path and must be mapped to the host
+ *
+ * ---------------------------------------------------------------------------------
+ */
+
 Client {
   com.sun.security.auth.module.Krb5LoginModule required
   useTicketCache=false

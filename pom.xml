@@ -35,7 +35,7 @@
 
 	<properties>
 		<sidn-dnslib>0.1.7-SNAPSHOT</sidn-dnslib>
-		<sidn-pcaplib>0.1.8-SNAPSHOT</sidn-pcaplib>
+		<sidn-pcaplib>0.1.9-SNAPSHOT</sidn-pcaplib>
 		<hadoop.version>3.1.1</hadoop.version>
 		<!-- need this for eclipse bug https://github.com/spring-projects/spring-boot/issues/16846#issuecomment-492792506 -->
 		<maven-jar-plugin.version>3.1.1</maven-jar-plugin.version>

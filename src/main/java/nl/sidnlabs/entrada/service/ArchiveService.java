@@ -16,7 +16,7 @@ import nl.sidnlabs.entrada.util.FileUtil;
 
 @Log4j2
 @Component
-public class FileArchiveService {
+public class ArchiveService {
 
   public enum ArchiveOption {
     NONE, ARCHIVE, DELETE;
@@ -31,7 +31,7 @@ public class FileArchiveService {
   private FileArchiveRepository fileArchiveRepository;
   private ServerContext serverContext;
 
-  public FileArchiveService(FileManagerFactory fileManagerFactory,
+  public ArchiveService(FileManagerFactory fileManagerFactory,
       FileArchiveRepository fileArchiveRepository,
       @Value("${entrada.pcap.archive.mode}") String archiveMode, ServerContext serverContext) {
 
@@ -56,13 +56,13 @@ public class FileArchiveService {
    */
   @Transactional
   public void archive(String file, Date start, int packets) {
-    log.info("Archive: {} with mode {}", file, archiveOption);
-
     File f = new File(file);
-
     FileManager fmSrc = fileManagerFactory.getFor(file);
-    // move the pcap file to the archive location
+
     if (ArchiveOption.ARCHIVE == archiveOption) {
+      // move the pcap file to the archive location
+      log.info("Archive: {} with mode: {}", file, archiveOption);
+
       FileManager fmDst = fileManagerFactory.getFor(archiveLocation);
 
       if (!fmSrc.isLocal() && !StringUtils.equals(fmDst.schema(), fmSrc.schema())) {

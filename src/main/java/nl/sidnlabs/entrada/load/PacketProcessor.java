@@ -57,7 +57,7 @@ import nl.sidnlabs.entrada.file.FileManagerFactory;
 import nl.sidnlabs.entrada.metric.HistoricalMetricManager;
 import nl.sidnlabs.entrada.metric.Metric;
 import nl.sidnlabs.entrada.model.Partition;
-import nl.sidnlabs.entrada.service.FileArchiveService;
+import nl.sidnlabs.entrada.service.ArchiveService;
 import nl.sidnlabs.entrada.service.PartitionService;
 import nl.sidnlabs.entrada.support.RequestCacheKey;
 import nl.sidnlabs.entrada.support.RequestCacheValue;
@@ -123,7 +123,7 @@ public class PacketProcessor {
 
   private StateManager stateManager;
   private OutputWriter outputWriter;
-  private FileArchiveService fileArchiveService;
+  private ArchiveService fileArchiveService;
 
   // max lifetime for cached packets, in milliseconds (configured in minutes)
   private int cacheTimeout;
@@ -147,7 +147,7 @@ public class PacketProcessor {
   private Multimap<Datagram, DatagramPayload> datagrams = TreeMultimap.create();
 
   public PacketProcessor(ServerContext serverCtx, StateManager persistenceManager,
-      OutputWriter outputWriter, FileArchiveService fileArchiveService,
+      OutputWriter outputWriter, ArchiveService fileArchiveService,
       FileManagerFactory fileManagerFactory, QueryEngine queryEngine,
       PartitionService partitionService, HistoricalMetricManager historicalMetricManager) {
 

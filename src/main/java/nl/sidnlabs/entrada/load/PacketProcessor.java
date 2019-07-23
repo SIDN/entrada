@@ -178,7 +178,7 @@ public class PacketProcessor {
 
     // get the state from the previous run
     loadState();
-
+    int fileCounter = 0;
     for (String file : inputFiles) {
       Date start = new Date();
 
@@ -190,6 +190,8 @@ public class PacketProcessor {
         fileArchiveService.archive(file, start, 0);
         continue;
       }
+
+      fileCounter++;
       if (outputFuture == null) {
         // open the output file writer
         outputFuture = outputWriter.start(true, icmpEnabled, rowQueue);
@@ -211,7 +213,7 @@ public class PacketProcessor {
       // wait until writer is done
       log.info("Wait until output writer(s) have finished");
       Map<String, Set<Partition>> partitions = waitForWriter(outputFuture);
-      log.info("Output writer(s) have finished, continue uploading results");
+      log.info("Output writer(s) have finished, continue with uploading the output data");
       // upload newly created data to fs
       upload(partitions);
       createPartitions(partitions);
@@ -219,6 +221,8 @@ public class PacketProcessor {
       // the next pcap might have the missing responses
       persistState();
     }
+
+    log.info("Ready, processed {} new files", fileCounter);
   }
 
   private void createPartitions(Map<String, Set<Partition>> partitions) {

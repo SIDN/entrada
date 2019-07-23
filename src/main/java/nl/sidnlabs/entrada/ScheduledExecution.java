@@ -38,16 +38,11 @@ public class ScheduledExecution {
 
   @Scheduled(fixedDelayString = "#{${entrada.execution.delay}*1000}")
   public void run() {
-    log.info("Start loading data");
-    // show resolver info to make sure the resolver data has been loaded
-    if (log.isDebugEnabled()) {
-      resolverChecks.stream().forEach(r -> {
-        r.init();
-        log.debug("Loaded {} IP subnets for {} resolver service", r.getSize(), r.getName());
-      });
-    }
+    log.info("Start loading data forname servers: {}", servers);
+    // initialize DnsResolverCheck to make sure they use uptodate data
+    resolverChecks.stream().forEach(DnsResolverCheck::init);
 
-    // create new processor each time, to avoid cache getting too big or having
+    // create new processor each time, to avoid caches getting too big or having
     // memory leaks leading to OOM Exceptions
     PacketProcessor processor = applicationContext.getBean(PacketProcessor.class);
 
@@ -59,11 +54,11 @@ public class ScheduledExecution {
       Arrays.stream(StringUtils.split(servers, ",")).forEach(s -> runForServer(s, processor));
     }
 
-    log.info("Finished loading data");
+    log.info("Completed loading name server data");
   }
 
   private void runForServer(String server, PacketProcessor processor) {
-    log.info("Start loading data for server: {}", server);
+    log.info("Start loading name data for server: {}", server);
 
     serverCtx.setServer(server);
 
@@ -71,10 +66,10 @@ public class ScheduledExecution {
       // record time spent while processing all pcap files
       processTimer.record(processor::execute);
     } catch (Exception e) {
-      log.error("Error while processing pcap data for server: {}", server, e);
+      log.error("Error while processing pcap data for name server: {}", server, e);
     }
 
-    log.info("Done loading data for server: {}", server);
+    log.info("Completed loading data for name server: {}", server);
   }
 
 }

@@ -652,8 +652,6 @@ public class PacketProcessor {
   }
 
   private boolean createReader(String file) {
-    log.info("Start loading queue from file:" + file);
-
     FileManager fm = fileManagerFactory.getFor(file);
     Optional<InputStream> ois = fm.open(file);
 

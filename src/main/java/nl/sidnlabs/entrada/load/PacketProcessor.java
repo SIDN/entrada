@@ -21,7 +21,6 @@ package nl.sidnlabs.entrada.load;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -51,7 +50,6 @@ import nl.sidnlabs.dnslib.message.Message;
 import nl.sidnlabs.dnslib.types.MessageType;
 import nl.sidnlabs.dnslib.types.ResourceRecordType;
 import nl.sidnlabs.entrada.ServerContext;
-import nl.sidnlabs.entrada.engine.QueryEngine;
 import nl.sidnlabs.entrada.file.FileManager;
 import nl.sidnlabs.entrada.file.FileManagerFactory;
 import nl.sidnlabs.entrada.metric.HistoricalMetricManager;
@@ -59,6 +57,7 @@ import nl.sidnlabs.entrada.metric.Metric;
 import nl.sidnlabs.entrada.model.Partition;
 import nl.sidnlabs.entrada.service.ArchiveService;
 import nl.sidnlabs.entrada.service.PartitionService;
+import nl.sidnlabs.entrada.service.UploadService;
 import nl.sidnlabs.entrada.support.RequestCacheKey;
 import nl.sidnlabs.entrada.support.RequestCacheValue;
 import nl.sidnlabs.entrada.support.RowData;
@@ -97,20 +96,8 @@ public class PacketProcessor {
   @Value("${entrada.icmp.enable}")
   private boolean icmpEnabled;
 
-  @Value("${entrada.location.work}")
-  private String workLocation;
-
   @Value("${entrada.location.input}")
   private String inputLocation;
-
-  @Value("${entrada.location.output}")
-  private String outputLocation;
-
-  @Value("${entrada.database.table.dns}")
-  private String tableNameDns;
-
-  @Value("${entrada.database.table.icmp}")
-  private String tableNameIcmp;
 
   @Value("${entrada.input.file.skipfirst}")
   private boolean skipFirst;
@@ -131,37 +118,32 @@ public class PacketProcessor {
 
   // keep list of active zone transfers
   private Map<RequestCacheKey, Integer> activeZoneTransfers;
-
   private FileManagerFactory fileManagerFactory;
-  private QueryEngine queryEngine;
   private PartitionService partitionService;
   private ServerContext serverCtx;
-
   private Future<Map<String, Set<Partition>>> outputFuture;
   private LinkedBlockingQueue<RowData> rowQueue;
-
-  private HistoricalMetricManager historicalMetricManager;
-
+  private HistoricalMetricManager metricManager;
+  private UploadService uploadService;
   // aps with state, loaded at start and persisted at end
   private Multimap<TCPFlow, SequencePayload> flows = TreeMultimap.create();
   private Multimap<Datagram, DatagramPayload> datagrams = TreeMultimap.create();
 
   public PacketProcessor(ServerContext serverCtx, StateManager persistenceManager,
       OutputWriter outputWriter, ArchiveService fileArchiveService,
-      FileManagerFactory fileManagerFactory, QueryEngine queryEngine,
-      PartitionService partitionService, HistoricalMetricManager historicalMetricManager) {
+      FileManagerFactory fileManagerFactory, PartitionService partitionService,
+      HistoricalMetricManager historicalMetricManager, UploadService uploadService) {
 
     this.serverCtx = serverCtx;
     this.stateManager = persistenceManager;
     this.outputWriter = outputWriter;
     this.fileArchiveService = fileArchiveService;
     this.fileManagerFactory = fileManagerFactory;
-    this.queryEngine = queryEngine;
     this.partitionService = partitionService;
-
+    this.uploadService = uploadService;
     // convert minutes to seconds
     this.cacheTimeout = 1000 * 60 * cacheTimeoutConfig;
-    this.historicalMetricManager = historicalMetricManager;
+    this.metricManager = historicalMetricManager;
   }
 
 
@@ -215,7 +197,7 @@ public class PacketProcessor {
       Map<String, Set<Partition>> partitions = waitForWriter(outputFuture);
       log.info("Output writer(s) have finished, continue with uploading the output data");
       // upload newly created data to fs
-      upload(partitions);
+      uploadService.upload(partitions);
       createPartitions(partitions);
       // save unmatched packet state to file
       // the next pcap might have the missing responses
@@ -256,76 +238,77 @@ public class PacketProcessor {
     log.info("-----------------------------------------");
   }
 
-  /**
-   * Move created data from the work location to the output location. The original data will be
-   * deleted.
-   */
-  private void upload(Map<String, Set<Partition>> partitions) {
-    FileManager fmOutput = fileManagerFactory.getFor(outputLocation);
+  // /**
+  // * Move created data from the work location to the output location. The original data will be
+  // * deleted.
+  // */
+  // private void upload(Map<String, Set<Partition>> partitions) {
+  // FileManager fmOutput = fileManagerFactory.getFor(outputLocation);
+  //
+  // // move dns data to the database location on local or remote fs
+  // String location = locationForDNS();
+  // FileManager fmInput = fileManagerFactory.getFor(location);
+  // if (new File(location).exists()) {
+  // // delete .crc files
+  // cleanup(fmInput, location, partitions.get("dns"));
+  //
+  // String dstLocation = FileUtil.appendPath(outputLocation, tableNameDns);
+  // if (fmOutput.upload(location, dstLocation, false)) {
+  // /*
+  // * make sure the database table contains all the required partitions. If not create the
+  // * missing database partition(s)
+  // */
+  // queryEngine.addPartition(tableNameDns, partitions.get("dns"));
+  //
+  // // only delete work loc when upload was ok, if upload failed
+  // // it will be retried next time
+  // log.info("Delete work location: {}", location);
+  // fmInput.rmdir(location);
+  // }
+  // }
+  //
+  // if (icmpEnabled) {
+  // // move icmp data
+  // location = locationForICMP();
+  // if (new File(location).exists()) {
+  // // delete .crc files
+  // cleanup(fmInput, location, partitions.get("icmp"));
+  //
+  // String dstLocation = FileUtil.appendPath(outputLocation, tableNameIcmp);
+  // if (fmOutput.upload(location, dstLocation, false)) {
+  //
+  // queryEngine.addPartition(tableNameIcmp, partitions.get("icmp"));
+  //
+  // log.info("Delete work location: {}", location);
+  // fmInput.rmdir(location);
+  // }
+  // }
+  // }
+  // }
 
-    // move dns data to the database location on local or remote fs
-    String location = locationForDNS();
-    FileManager fmInput = fileManagerFactory.getFor(location);
-    if (new File(location).exists()) {
-      // delete .crc files
-      cleanup(fmInput, location, partitions.get("dns"));
+  // /**
+  // * Cleanup generated data, parquet-mr generates .crc files, these files should not be uploaded.
+  // *
+  // * @param fm filemanager to use
+  // * @param location location of the generated data
+  // * @param partitions created partitions
+  // */
+  // private void cleanup(FileManager fm, String location, Set<Partition> partitions) {
+  // partitions
+  // .stream()
+  // .forEach(
+  // p -> fm.files(FileUtil.appendPath(location, p.toPath()), ".crc").forEach(fm::delete));
+  // }
 
-      String dstLocation = FileUtil.appendPath(outputLocation, tableNameDns);
-      if (fmOutput.upload(location, dstLocation, false)) {
-        /*
-         * make sure the database table contains all the required partitions. If not create the
-         * missing database partition(s)
-         */
-        queryEngine.addPartition(tableNameDns, partitions.get("dns"));
-
-        // only delete work loc when upload was ok, if upload failed
-        // it will be retried next time
-        log.info("Delete work location: {}", location);
-        fmInput.rmdir(location);
-      }
-    }
-
-    if (icmpEnabled) {
-      // move icmp data
-      location = locationForICMP();
-      if (new File(location).exists()) {
-        // delete .crc files
-        cleanup(fmInput, location, partitions.get("icmp"));
-
-        String dstLocation = FileUtil.appendPath(outputLocation, tableNameIcmp);
-        if (fmOutput.upload(location, dstLocation, false)) {
-
-          queryEngine.addPartition(tableNameIcmp, partitions.get("icmp"));
-
-          log.info("Delete work location: {}", location);
-          fmInput.rmdir(location);
-        }
-      }
-    }
-  }
-
-  /**
-   * Cleanup generated data, parquet-mr generates .crc files, these files should not be uploaded.
-   * 
-   * @param fm filemanager to use
-   * @param location location of the generated data
-   * @param partitions created partitions
-   */
-  private void cleanup(FileManager fm, String location, Set<Partition> partitions) {
-    partitions
-        .stream()
-        .forEach(
-            p -> fm.files(FileUtil.appendPath(location, p.toPath()), ".crc").forEach(fm::delete));
-  }
-
-  private String locationForDNS() {
-    return FileUtil.appendPath(workLocation, serverCtx.getServerInfo().getNormalizedName(), "dns/");
-  }
-
-  private String locationForICMP() {
-    return FileUtil
-        .appendPath(workLocation, serverCtx.getServerInfo().getNormalizedName(), "icmp/");
-  }
+  // private String locationForDNS() {
+  // return FileUtil.appendPath(workLocation, serverCtx.getServerInfo().getNormalizedName(),
+  // "dns/");
+  // }
+  //
+  // private String locationForICMP() {
+  // return FileUtil
+  // .appendPath(workLocation, serverCtx.getServerInfo().getNormalizedName(), "icmp/");
+  // }
 
   private void read(String file) {
     log.info("Start reading from file {}", file);
@@ -499,6 +482,8 @@ public class PacketProcessor {
    * Save the loader state with incomplete datagrams, tcp streams and unmatched dns queries to disk.
    */
   private void persistState() {
+    log.info("Write internal state to file");
+
     int flowCount = 0;
     int datagramCount = 0;
     int cacheCount = 0;
@@ -545,8 +530,8 @@ public class PacketProcessor {
       // flush metrics to make sure that metrics that can be sent already are sent
       // always send historical stats to monitoring
       if (metrics) {
-        historicalMetricManager.flush();
-        stateManager.write(historicalMetricManager.getMetricCache());
+        metricManager.flush();
+        stateManager.write(metricManager.getMetricCache());
       }
 
     } catch (Exception e) {
@@ -563,12 +548,13 @@ public class PacketProcessor {
     log.info("Persist {} TCP flows", flowCount);
     log.info("Persist {} Datagrams", datagramCount);
     log.info("Persist {} DNS requests from cache", cacheCount);
-    log.info("Persist {} unsent metrics", historicalMetricManager.getMetricCache().size());
+    log.info("Persist {} unsent metrics", metricManager.getMetricCache().size());
     log.info("----------------------------------------------------");
   }
 
   @SuppressWarnings("unchecked")
   private void loadState() {
+    log.info("Load internal state from file");
 
     try {
       if (!stateManager.stateAvailable()) {
@@ -598,8 +584,7 @@ public class PacketProcessor {
       requestCache = (Map<RequestCacheKey, RequestCacheValue>) stateManager.read();
 
       if (metrics) {
-        historicalMetricManager
-            .setMetricCache((Map<String, TreeMap<Long, Metric>>) stateManager.read());
+        metricManager.setMetricCache((Map<String, TreeMap<Long, Metric>>) stateManager.read());
       }
     } catch (Exception e) {
       log.error("Error reading state file", e);
@@ -613,9 +598,7 @@ public class PacketProcessor {
     log.info("Loaded TCP state {} TCP flows", flows.size());
     log.info("Loaded Datagram state {} Datagrams", datagrams.size());
     log.info("Loaded Request cache {} DNS requests", requestCache.size());
-    log
-        .info("Loaded metrics state {} unsent metrics",
-            historicalMetricManager.getMetricCache().size());
+    log.info("Loaded metrics state {} metrics", metricManager.getMetricCache().size());
     log.info("----------------------------------------------------");
   }
 

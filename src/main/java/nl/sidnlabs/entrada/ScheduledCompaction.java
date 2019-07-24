@@ -77,6 +77,7 @@ public class ScheduledCompaction {
     } catch (Exception e) {
       log.error("Compacting failed for: {}", p);
     }
+    // mark the partition tgo indicate the compaction process failed.
     partitionService.closePartition(p, start, new Date(), false);
     return false;
   }

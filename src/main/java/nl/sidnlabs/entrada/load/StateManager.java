@@ -43,8 +43,10 @@ public class StateManager {
   public void write(Object data) {
     if (output == null) {
       String f = createStateFileName();
+      if (log.isDebugEnabled()) {
+        log.debug("Create KRYO output linked to file {}", f);
+      }
       try {
-        log.info("Create KRYO output linked to file {}", f);
         output = new Output(new FileOutputStream(f));
       } catch (Exception e) {
         throw new ApplicationException("Cannot create state file: " + f, e);
@@ -57,8 +59,10 @@ public class StateManager {
   public Object read() {
     if (input == null) {
       String f = createStateFileName();
+      if (log.isDebugEnabled()) {
+        log.debug("Create KRYO input linked to file {}", f);
+      }
       try {
-        log.info("Create KRYO input linked to file {}", f);
         input = new Input(new FileInputStream(f));
       } catch (Exception e) {
         throw new ApplicationException("Cannot read state file: " + f, e);

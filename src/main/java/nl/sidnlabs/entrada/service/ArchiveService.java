@@ -1,6 +1,7 @@
 package nl.sidnlabs.entrada.service;
 
 import java.io.File;
+import java.time.LocalDate;
 import java.util.Date;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,6 +18,9 @@ import nl.sidnlabs.entrada.util.FileUtil;
 @Log4j2
 @Component
 public class ArchiveService {
+
+  @Value("${entrada.database.files.max.age}")
+  private int maxAge;
 
   public enum ArchiveOption {
     NONE, ARCHIVE, DELETE;
@@ -113,6 +117,16 @@ public class ArchiveService {
 
       fileArchiveRepository.save(fa);
     }
+  }
+
+  @Transactional
+  public void clean() {
+    LocalDate maxDate = LocalDate.now().minusDays(maxAge);
+    log.info("Check for files in database older than: {}", maxDate);
+
+    int rows = fileArchiveRepository.deleteOlderThan(maxDate);
+
+    log.info("Deleted {} files from database older than: {}", rows, maxDate);
   }
 
 

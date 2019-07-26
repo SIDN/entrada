@@ -63,8 +63,8 @@ import nl.sidnlabs.entrada.support.RequestCacheValue;
 import nl.sidnlabs.entrada.support.RowData;
 import nl.sidnlabs.entrada.util.CompressionUtil;
 import nl.sidnlabs.entrada.util.FileUtil;
+import nl.sidnlabs.pcap.FlowData;
 import nl.sidnlabs.pcap.PcapReader;
-import nl.sidnlabs.pcap.SequencePayload;
 import nl.sidnlabs.pcap.packet.DNSPacket;
 import nl.sidnlabs.pcap.packet.Datagram;
 import nl.sidnlabs.pcap.packet.DatagramPayload;
@@ -126,7 +126,7 @@ public class PacketProcessor {
   private HistoricalMetricManager metricManager;
   private UploadService uploadService;
   // aps with state, loaded at start and persisted at end
-  private Multimap<TCPFlow, SequencePayload> flows = TreeMultimap.create();
+  private Map<TCPFlow, FlowData> flows = new HashMap<>();
   private Multimap<Datagram, DatagramPayload> datagrams = TreeMultimap.create();
 
   public PacketProcessor(ServerContext serverCtx, StateManager persistenceManager,
@@ -406,7 +406,7 @@ public class PacketProcessor {
             || msg.getQuestions().get(0).getQType() == ResourceRecordType.IXFR)) {
 
       if (log.isDebugEnabled()) {
-        log.debug("Detected zonetransfer for: " + dnsPacket.getFlow());
+        log.debug("Detected zone transfer for: " + dnsPacket.getFlow());
       }
       // keep track of ongoing zone transfer, we do not want to store all the response
       // packets for an ixfr/axfr.
@@ -430,6 +430,9 @@ public class PacketProcessor {
     RequestCacheKey key = new RequestCacheKey(msg.getHeader().getId(), null, dnsPacket.getDst(),
         dnsPacket.getDstPort());
     if (activeZoneTransfers.containsKey(key)) {
+      if (log.isDebugEnabled()) {
+        log.debug("Ignore {} zone transfer response(s)", msg.getAnswer().size());
+      }
       // this response is part of an active zonetransfer.
       // only let the first response continue, reuse the "time" field of the RequestKey to
       // keep track of this.
@@ -484,25 +487,26 @@ public class PacketProcessor {
   private void persistState() {
     log.info("Write internal state to file");
 
-    int flowCount = 0;
     int datagramCount = 0;
     int cacheCount = 0;
 
     try {
-      if (flows != null) {
-        // persist tcp state
-        Map<TCPFlow, Collection<SequencePayload>> pmap = new HashMap<>();
-        for (Map.Entry<TCPFlow, Collection<SequencePayload>> entry : flows.asMap().entrySet()) {
-          Collection<SequencePayload> payloads = new ArrayList<>();
-          for (SequencePayload sequencePayload : entry.getValue()) {
-            payloads.add(sequencePayload);
-          }
-          pmap.put(entry.getKey(), payloads);
-          flowCount++;
-        }
+      // persist tcp state
+      stateManager.write(flows);
 
-        stateManager.write(pmap);
-      }
+      // // persist tcp state
+      // Map<TCPFlow, Collection<SequencePayload>> pmap = new HashMap<>();
+      // for (Map.Entry<TCPFlow, Collection<SequencePayload>> entry : flows.().entrySet()) {
+      // Collection<SequencePayload> payloads = new ArrayList<>();
+      // for (SequencePayload sequencePayload : entry.getValue()) {
+      // payloads.add(sequencePayload);
+      // }
+      // pmap.put(entry.getKey(), payloads);
+      // flowCount++;
+      // }
+      //
+      // stateManager.write(pmap);
+      // }
 
       if (datagrams != null) {
         // persist IP datagrams
@@ -545,7 +549,7 @@ public class PacketProcessor {
 
 
     log.info("------------- State persistence stats --------------");
-    log.info("Persist {} TCP flows", flowCount);
+    log.info("Persist {} TCP flows", flows.size());
     log.info("Persist {} Datagrams", datagramCount);
     log.info("Persist {} DNS requests from cache", cacheCount);
     log.info("Persist {} unsent metrics", metricManager.getMetricCache().size());
@@ -563,13 +567,16 @@ public class PacketProcessor {
       }
 
       // read persisted TCP sessions
-      Map<TCPFlow, Collection<SequencePayload>> map =
-          (Map<TCPFlow, Collection<SequencePayload>>) stateManager.read();
-      for (Map.Entry<TCPFlow, Collection<SequencePayload>> entry : map.entrySet()) {
-        for (SequencePayload sequencePayload : entry.getValue()) {
-          flows.put(entry.getKey(), sequencePayload);
-        }
-      }
+      flows = (Map<TCPFlow, FlowData>) stateManager.read();
+
+      // Map<TCPFlow, Collection<SequencePayload>> map =
+      // (Map<TCPFlow, Collection<SequencePayload>>) stateManager.read();
+      // for (Map.Entry<TCPFlow, Collection<SequencePayload>> entry : map.entrySet()) {
+      // for (SequencePayload sequencePayload : entry.getValue()) {
+      // flows.put(entry.getKey(), sequencePayload);
+      // }
+      // }
+
       // read persisted IP datagrams
       HashMap<Datagram, Collection<DatagramPayload>> inMap =
           (HashMap<Datagram, Collection<DatagramPayload>>) stateManager.read();

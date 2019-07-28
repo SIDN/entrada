@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.zip.GZIPInputStream;
 import org.apache.commons.compress.compressors.xz.XZCompressorInputStream;
+import org.apache.commons.lang3.StringUtils;
 import nl.sidnlabs.entrada.exception.ApplicationException;
 
 public class CompressionUtil {
@@ -22,17 +23,17 @@ public class CompressionUtil {
    */
   public static InputStream getDecompressorStreamWrapper(InputStream in, String filename,
       int bufSize) throws IOException {
-    String filenameLower = filename.toLowerCase();
-    if (filenameLower.endsWith(".pcap")) {
+
+    if (StringUtils.endsWithIgnoreCase(filename, ".pcap")) {
       return in;
-    } else if (filenameLower.endsWith(".gz")) {
+    } else if (StringUtils.endsWithIgnoreCase(filename, ".gz")) {
       return new GZIPInputStream(in, bufSize);
-    } else if (filenameLower.endsWith(".xz")) {
+    } else if (StringUtils.endsWithIgnoreCase(filename, ".xz")) {
       return new XZCompressorInputStream(in);
     }
 
     // unkown file type
-    throw new ApplicationException("Could not open file with unknown extension: " + filenameLower);
+    throw new ApplicationException("Could not open file with unknown extension: " + filename);
   }
 
 }

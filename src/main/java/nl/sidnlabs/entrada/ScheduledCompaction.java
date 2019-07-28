@@ -92,8 +92,6 @@ public class ScheduledCompaction {
   private boolean shouldCompact(TablePartition p) {
     return LocalDate.of(p.getYear(), p.getMonth(), p.getDay()).isBefore(LocalDate.now())
         && DateUtils.addMinutes(p.getUpdated(), age).before(new Date());
-
-
   }
 
 }

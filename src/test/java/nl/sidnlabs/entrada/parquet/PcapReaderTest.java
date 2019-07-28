@@ -19,21 +19,6 @@ import nl.sidnlabs.pcap.packet.Packet;
 @Log4j2
 public class PcapReaderTest {
 
-  private PcapReader createReaderFor(String file) {
-    ClassPathResource resource = new ClassPathResource(file);
-    log.info("Load pcap from {}", resource);
-
-    try (InputStream is = resource.getInputStream()) {
-      DataInputStream dis = new DataInputStream(new BufferedInputStream(is, 64 * 1024));
-      return new PcapReader(dis);
-
-    } catch (Exception e) {
-      log.error("Error while reading file", e);
-    }
-
-    throw new RuntimeException("Cannot create reader for file: " + file);
-  }
-
   @Test
   public void testDynamicUpdateOk() {
     PcapReader reader = createReaderFor("pcap/sidnlabs-test-dynamic-updates.pcap");
@@ -86,5 +71,39 @@ public class PcapReaderTest {
     assertEquals(2, count);
   }
 
+  @Test
+  public void testTCPPshFlagZeroBytesPayloadOk() {
+    PcapReader reader = createReaderFor("pcap/sidnlabs-test-tcp-psh-with-empty-payload.pcap");
+    List<Packet> pckts = reader.stream().collect(Collectors.toList());
+    assertEquals(2, pckts.size());
+
+    long count = pckts.stream().flatMap(p -> ((DNSPacket) p).getMessages().stream()).count();
+    assertEquals(2, count);
+
+    List<Message> messages = pckts
+        .stream()
+        .flatMap(p -> ((DNSPacket) p).getMessages().stream())
+        .collect(Collectors.toList());
+
+    assertEquals(MessageType.QUERY, messages.get(0).getHeader().getQr());
+    assertEquals(MessageType.RESPONSE, messages.get(1).getHeader().getQr());
+  }
+
+
+
+  private PcapReader createReaderFor(String file) {
+    ClassPathResource resource = new ClassPathResource(file);
+    log.info("Load pcap from {}", resource);
+
+    try (InputStream is = resource.getInputStream()) {
+      DataInputStream dis = new DataInputStream(new BufferedInputStream(is, 64 * 1024));
+      return new PcapReader(dis);
+
+    } catch (Exception e) {
+      log.error("Error while reading file", e);
+    }
+
+    throw new RuntimeException("Cannot create reader for file: " + file);
+  }
 
 }

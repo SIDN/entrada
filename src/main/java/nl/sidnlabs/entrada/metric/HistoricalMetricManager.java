@@ -33,6 +33,7 @@ import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteSender;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.ServerContext;
+import nl.sidnlabs.entrada.load.StateManager;
 
 
 /**
@@ -215,12 +216,16 @@ public class HistoricalMetricManager {
     return secs - (secs % retention);
   }
 
-
-  public Map<String, TreeMap<Long, Metric>> getMetricCache() {
-    return metricCache;
+  public void persistState(StateManager stateManager) {
+    flush();
+    stateManager.write(metricCache);
   }
 
-  public void setMetricCache(Map<String, TreeMap<Long, Metric>> metricCache) {
-    this.metricCache = metricCache;
+  public int size() {
+    return metricCache.size();
+  }
+
+  public void loadState(StateManager stateManager) {
+    metricCache = (Map<String, TreeMap<Long, Metric>>) stateManager.read();
   }
 }

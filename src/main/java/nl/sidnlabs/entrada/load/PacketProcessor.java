@@ -34,7 +34,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
@@ -53,7 +52,6 @@ import nl.sidnlabs.entrada.ServerContext;
 import nl.sidnlabs.entrada.file.FileManager;
 import nl.sidnlabs.entrada.file.FileManagerFactory;
 import nl.sidnlabs.entrada.metric.HistoricalMetricManager;
-import nl.sidnlabs.entrada.metric.Metric;
 import nl.sidnlabs.entrada.model.Partition;
 import nl.sidnlabs.entrada.service.ArchiveService;
 import nl.sidnlabs.entrada.service.PartitionService;
@@ -125,7 +123,7 @@ public class PacketProcessor {
   private LinkedBlockingQueue<RowData> rowQueue;
   private HistoricalMetricManager metricManager;
   private UploadService uploadService;
-  // aps with state, loaded at start and persisted at end
+  // maps with state, loaded at start and persisted at end
   private Map<TCPFlow, FlowData> flows = new HashMap<>();
   private Multimap<Datagram, DatagramPayload> datagrams = TreeMultimap.create();
 
@@ -141,11 +139,10 @@ public class PacketProcessor {
     this.fileManagerFactory = fileManagerFactory;
     this.partitionService = partitionService;
     this.uploadService = uploadService;
-    // convert minutes to seconds
+    // convert minutes to milliseconds
     this.cacheTimeout = 1000 * 60 * cacheTimeoutConfig;
     this.metricManager = historicalMetricManager;
   }
-
 
   public void execute() {
     // reset all counters and reused data structures
@@ -448,8 +445,7 @@ public class PacketProcessor {
       // flush metrics to make sure that metrics that can be sent already are sent
       // always send historical stats to monitoring
       if (metrics) {
-        metricManager.flush();
-        stateManager.write(metricManager.getMetricCache());
+        metricManager.persistState(stateManager);
       }
 
     } catch (Exception e) {
@@ -466,7 +462,7 @@ public class PacketProcessor {
     log.info("Persist {} TCP flows", flows.size());
     log.info("Persist {} Datagrams", datagramCount);
     log.info("Persist {} DNS requests from cache", cacheCount);
-    log.info("Persist {} unsent metrics", metricManager.getMetricCache().size());
+    log.info("Persist {} unsent metrics", metricManager.size());
     log.info("----------------------------------------------------");
   }
 
@@ -496,7 +492,7 @@ public class PacketProcessor {
       requestCache = (Map<RequestCacheKey, RequestCacheValue>) stateManager.read();
 
       if (metrics) {
-        metricManager.setMetricCache((Map<String, TreeMap<Long, Metric>>) stateManager.read());
+        metricManager.loadState(stateManager);
       }
     } catch (Exception e) {
       log.error("Error reading state file", e);
@@ -510,7 +506,7 @@ public class PacketProcessor {
     log.info("Loaded TCP state {} TCP flows", flows.size());
     log.info("Loaded Datagram state {} Datagrams", datagrams.size());
     log.info("Loaded Request cache {} DNS requests", requestCache.size());
-    log.info("Loaded metrics state {} metrics", metricManager.getMetricCache().size());
+    log.info("Loaded metrics state {} metrics", metricManager.size());
     log.info("----------------------------------------------------");
   }
 
@@ -566,7 +562,9 @@ public class PacketProcessor {
       return false;
     }
 
-    // set the state of the reader
+    // set the state of the reader, this can be loaded from disk and given
+    // to the 1st reader. or it can be result of reader x and it is given to reader y
+    // to have state continuity across readers.
     pcapReader.setFlows(flows);
     pcapReader.setDatagrams(datagrams);
 

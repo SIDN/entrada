@@ -36,6 +36,31 @@ public class PcapReaderTest {
     assertEquals(6, dnsMessages);
   }
 
+
+  @Test
+  public void testTCPHandshakeRttOk() {
+    PcapReader reader = createReaderFor("pcap/sidnlabs-test-tcp-handshake.pcap");
+    List<Packet> pckts = reader.stream().collect(Collectors.toList());
+    assertEquals(2, pckts.size());
+
+    long count = pckts
+        .stream()
+        .filter(p -> p.getTcpHandshake() != null && p.getTcpHandshake().rtt() > 0)
+        .count();
+    assertEquals(1, count);
+  }
+
+  @Test
+  public void testTCPPacketRttOk() {
+    PcapReader reader = createReaderFor("pcap/sidnlabs-test-tcp-handshake.pcap");
+    List<Packet> pckts = reader.stream().collect(Collectors.toList());
+    assertEquals(2, pckts.size());
+
+    long count = pckts.stream().filter(p -> p.getTcpPacketRtt() > 0).count();
+    assertEquals(1, count);
+  }
+
+
   @Test
   public void testTCPAllMalformedStreamOk() {
     PcapReader reader = createReaderFor("pcap/sidnlabs-test-tcp-all-malformed-packets.dups.pcap");

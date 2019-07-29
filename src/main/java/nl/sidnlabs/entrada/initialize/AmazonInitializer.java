@@ -1,8 +1,8 @@
 package nl.sidnlabs.entrada.initialize;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Optional;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.internal.BucketNameUtils;
 import com.amazonaws.services.s3.model.BucketLifecycleConfiguration;
+import com.amazonaws.services.s3.model.BucketLifecycleConfiguration.Rule;
 import com.amazonaws.services.s3.model.GetBucketEncryptionResult;
 import com.amazonaws.services.s3.model.PublicAccessBlockConfiguration;
 import com.amazonaws.services.s3.model.SSEAlgorithm;
@@ -35,9 +36,15 @@ public class AmazonInitializer extends AbstractInitializer {
   @Value("${aws.bucket}")
   private String bucket;
   @Value("${athena.output.expiration}")
-  private int expiration;
+  private int outputExpiration;
   @Value("${athena.output.location}")
   private String athenaOutputLocation;
+
+  @Value("${entrada.location.archive}")
+  private String archiveLocation;
+  @Value("${entrada.archive.files.max.age}")
+  private int archiveExpiration;
+
 
   @Value("${aws.bucket.rules.url}")
   private String bucketRules;
@@ -88,39 +95,78 @@ public class AmazonInitializer extends AbstractInitializer {
                   .withBlockPublicPolicy(Boolean.TRUE)
                   .withRestrictPublicBuckets(Boolean.TRUE)));
 
-      // check to see if we should enable default encryption
-      // and make sure that Athena results are deleted after automatically
-      return enableEncryption() && enableBucketLifecycle();
+      enableEncryption();
     }
 
-    /*
-     * no need to check if directories are present. in S3 there are no directories, just prefixes
-     * that are set on a file when it is uploaded.
-     */
-    return amazonS3.doesBucketExistV2(bucket);
+    // check to see if we should enable default encryption
+    // and make sure that Athena results are deleted after automatically
+    // also make sure pcap files archived on S3 have a expiration lifecycle policy
+    return amazonS3.doesBucketExistV2(bucket)
+        && enableBucketLifecycle(athenaOutputLocation, "Delete Athena results", outputExpiration,
+            false)
+        && enableBucketLifecycle(archive, "Delete archived pcap-files", archiveExpiration, true);
   }
 
-  private boolean enableBucketLifecycle() {
-    Optional<S3Details> s3Loc = S3Details.from(athenaOutputLocation);
-    if (s3Loc.isPresent()) {
+  private boolean enableBucketLifecycle(String location, String prefix, int exp, boolean optional) {
 
-      // create lifecycle policy for Athena results
-      BucketLifecycleConfiguration.Rule rule = new BucketLifecycleConfiguration.Rule()
-          .withId("Delete Athena results after " + expiration + " day(s)")
-          .withFilter(new LifecycleFilter(new LifecyclePrefixPredicate(s3Loc.get().getKey())))
-          .withExpirationInDays(expiration)
-          .withStatus(BucketLifecycleConfiguration.ENABLED);
-
-      BucketLifecycleConfiguration configuration =
-          new BucketLifecycleConfiguration().withRules(Arrays.asList(rule));
-
-      // Save the configuration.
-      amazonS3.setBucketLifecycleConfiguration(bucket, configuration);
-
+    if (optional && !fileManager.supported(location)) {
+      // location not a s3 location, but it is an optional policy so not a problem
+      // do nothing
       return true;
     }
 
+    Optional<S3Details> s3Loc = S3Details.from(location);
+    if (s3Loc.isPresent()) {
+
+      BucketLifecycleConfiguration cfg = amazonS3.getBucketLifecycleConfiguration(bucket);
+      if (cfg == null) {
+        // no config found, ceate a new config
+        cfg = new BucketLifecycleConfiguration().withRules(new ArrayList<>());
+      }
+      Optional<Rule> oldRule = cfg
+          .getRules()
+          .stream()
+          .filter(r -> StringUtils.startsWithIgnoreCase(r.getId(), prefix))
+          .findFirst();
+
+      if (!oldRule.isPresent()) {
+        // no rule found found create new
+        cfg
+            .getRules()
+            .add(createExpirationRule(prefix + " after " + exp + " day(s)", s3Loc.get().getKey(),
+                exp));
+        // Save the configuration.
+        amazonS3.setBucketLifecycleConfiguration(bucket, cfg);
+        return true;
+      } else {
+        // existing rule found, check if need to update
+        if (oldRule.get().getExpirationInDays() != exp) {
+          log
+              .info(
+                  "Lifecycle policy rule with prefix: '{}' has changed from {} to {}, creating new policy rule.",
+                  prefix, oldRule.get().getExpirationInDays(), exp);
+          // remove old rule and add new rule
+          cfg.getRules().remove(oldRule.get());
+          cfg
+              .getRules()
+              .add(createExpirationRule(prefix + " after " + exp + " day(s)", s3Loc.get().getKey(),
+                  exp));
+
+          amazonS3.setBucketLifecycleConfiguration(bucket, cfg);
+        }
+        return true;
+      }
+    }
     return false;
+  }
+
+  private BucketLifecycleConfiguration.Rule createExpirationRule(String id, String prefix,
+      int expiration) {
+    return new BucketLifecycleConfiguration.Rule()
+        .withId(id)
+        .withFilter(new LifecycleFilter(new LifecyclePrefixPredicate(prefix)))
+        .withExpirationInDays(expiration)
+        .withStatus(BucketLifecycleConfiguration.ENABLED);
   }
 
   private boolean enableEncryption() {

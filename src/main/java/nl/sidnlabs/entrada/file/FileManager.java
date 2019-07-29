@@ -56,4 +56,14 @@ public interface FileManager {
 
   boolean chown(String path, String owner, String group);
 
+  /**
+   * Get a list of files that have expired, meaning that are older than maxAge days. This will
+   * recursively scan for files.
+   * 
+   * @param location the location to check (recusively)
+   * @param maxAge number of days after which a file is expired
+   * @return
+   */
+  List<String> expired(String location, int maxAge);
+
 }

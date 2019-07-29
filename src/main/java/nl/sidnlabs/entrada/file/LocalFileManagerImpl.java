@@ -7,11 +7,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.FileTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
@@ -159,6 +161,33 @@ public class LocalFileManagerImpl implements FileManager {
   @Override
   public boolean chown(String path, String owner, String group) {
     throw new UnsupportedOperationException();
+  }
+
+  @Override
+  public List<String> expired(String location, int maxAge) {
+    long max = System.currentTimeMillis() - (maxAge * 60 * 60 * 1000);
+
+    try (Stream<Path> stream = Files.walk(Paths.get(location))) {
+      return stream
+          .filter(Files::isRegularFile)
+          .filter(p -> isTooOld(p, max))
+          .map(Path::toString)
+          .collect(Collectors.toList());
+    } catch (Exception e) {
+      log.error("Cannot get list of expired files", e);
+      return Collections.emptyList();
+    }
+  }
+
+  private boolean isTooOld(Path p, long max) {
+    FileTime ft;
+    try {
+      ft = Files.getLastModifiedTime(p);
+    } catch (IOException e) {
+      log.error("Cannot get LastModifiedTime", e);
+      return false;
+    }
+    return ft.toMillis() < max;
   }
 
 }

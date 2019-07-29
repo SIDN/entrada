@@ -3,6 +3,7 @@ package nl.sidnlabs.entrada.service;
 import java.io.File;
 import java.time.LocalDate;
 import java.util.Date;
+import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -20,7 +21,11 @@ import nl.sidnlabs.entrada.util.FileUtil;
 public class ArchiveService {
 
   @Value("${entrada.database.files.max.age}")
-  private int maxAge;
+  private int dbMaxAge;
+
+  @Value("${entrada.archive.files.max.age}")
+  private int fileMaxAge;
+
 
   public enum ArchiveOption {
     NONE, ARCHIVE, DELETE;
@@ -119,14 +124,26 @@ public class ArchiveService {
     }
   }
 
+  /**
+   * Clean processed files from database and archive location
+   */
   @Transactional
   public void clean() {
-    LocalDate maxDate = LocalDate.now().minusDays(maxAge);
+    LocalDate maxDate = LocalDate.now().minusDays(dbMaxAge);
+
+    // clean database
     log.info("Check for files in database older than: {}", maxDate);
-
     int rows = fileArchiveRepository.deleteOlderThan(maxDate);
-
     log.info("Deleted {} files from database older than: {}", rows, maxDate);
+
+
+    // clean output location on local disk or HDFS. AWS is done using a lifecycle policy
+    FileManager fm = fileManagerFactory.getFor(archiveLocation);
+    List<String> expired = fm.expired(archiveLocation, fileMaxAge);
+    log
+        .info("{} archived pcap-file(s) are older than {} day(s) and will be deleted",
+            expired.size());
+    expired.stream().forEach(fm::delete);
   }
 
 

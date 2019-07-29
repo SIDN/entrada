@@ -365,4 +365,10 @@ public class S3FileManagerImpl implements FileManager {
     throw new UnsupportedOperationException();
   }
 
+  @Override
+  public List<String> expired(String location, int maxAge) {
+    // return empty list, expiration handling is done using s3 policies
+    return Collections.emptyList();
+  }
+
 }

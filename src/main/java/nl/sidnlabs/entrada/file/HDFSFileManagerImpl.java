@@ -7,6 +7,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -19,7 +20,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
 import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -369,6 +372,32 @@ public class HDFSFileManagerImpl implements FileManager {
       return false;
     }
     return true;
+  }
+
+
+  @Override
+  public List<String> expired(String location, int maxAge) {
+    if (!exists(location)) {
+      log.error("Location {} does not exist, cannot continue", location);
+      return Collections.emptyList();
+    }
+
+    FileSystem fs = createFS();
+
+    List<String> files = new ArrayList<>();
+    try {
+      RemoteIterator<LocatedFileStatus> fileStatusListIterator =
+          fs.listFiles(new Path(location), true);
+
+      while (fileStatusListIterator.hasNext()) {
+        LocatedFileStatus fileStatus = fileStatusListIterator.next();
+        files.add(fileStatus.getPath().toString());
+      }
+    } catch (IllegalArgumentException | IOException e) {
+      log.error("Error while getting files", e);
+    }
+    // retrun found files, can be partial list in case of an exception
+    return files;
   }
 
 }

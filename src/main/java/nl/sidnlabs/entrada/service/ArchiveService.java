@@ -139,7 +139,7 @@ public class ArchiveService {
 
     // clean output location on local disk or HDFS. AWS is done using a lifecycle policy
     FileManager fm = fileManagerFactory.getFor(archiveLocation);
-    List<String> expired = fm.expired(archiveLocation, fileMaxAge);
+    List<String> expired = fm.expired(archiveLocation, fileMaxAge, ".pcap", ".pcap.gz", ".pcap.xz");
     log
         .info("{} archived pcap-file(s) are older than {} day(s) and will be deleted",
             expired.size());

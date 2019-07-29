@@ -164,7 +164,7 @@ public class LocalFileManagerImpl implements FileManager {
   }
 
   @Override
-  public List<String> expired(String location, int maxAge) {
+  public List<String> expired(String location, int maxAge, String... filter) {
     long max = System.currentTimeMillis() - (maxAge * 60 * 60 * 1000);
 
     try (Stream<Path> stream = Files.walk(Paths.get(location))) {
@@ -172,6 +172,7 @@ public class LocalFileManagerImpl implements FileManager {
           .filter(Files::isRegularFile)
           .filter(p -> isTooOld(p, max))
           .map(Path::toString)
+          .filter(p -> checkFilter(p, Arrays.asList(filter)))
           .collect(Collectors.toList());
     } catch (Exception e) {
       log.error("Cannot get list of expired files", e);

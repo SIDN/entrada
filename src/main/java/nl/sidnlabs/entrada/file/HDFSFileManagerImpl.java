@@ -376,7 +376,7 @@ public class HDFSFileManagerImpl implements FileManager {
 
 
   @Override
-  public List<String> expired(String location, int maxAge) {
+  public List<String> expired(String location, int maxAge, String... filter) {
     if (!exists(location)) {
       log.error("Location {} does not exist, cannot continue", location);
       return Collections.emptyList();
@@ -397,7 +397,10 @@ public class HDFSFileManagerImpl implements FileManager {
       log.error("Error while getting files", e);
     }
     // retrun found files, can be partial list in case of an exception
-    return files;
+    return files
+        .stream()
+        .filter(p -> checkFilter(p, Arrays.asList(filter)))
+        .collect(Collectors.toList());
   }
 
 }

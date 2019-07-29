@@ -366,7 +366,7 @@ public class S3FileManagerImpl implements FileManager {
   }
 
   @Override
-  public List<String> expired(String location, int maxAge) {
+  public List<String> expired(String location, int maxAge, String... filter) {
     // return empty list, expiration handling is done using s3 policies
     return Collections.emptyList();
   }

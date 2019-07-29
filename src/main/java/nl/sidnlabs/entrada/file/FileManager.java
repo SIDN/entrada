@@ -64,6 +64,6 @@ public interface FileManager {
    * @param maxAge number of days after which a file is expired
    * @return
    */
-  List<String> expired(String location, int maxAge);
+  List<String> expired(String location, int maxAge, String... filter);
 
 }

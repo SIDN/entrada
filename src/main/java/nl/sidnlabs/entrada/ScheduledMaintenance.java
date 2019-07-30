@@ -29,5 +29,4 @@ public class ScheduledMaintenance {
     log.info("Finished maintenance");
   }
 
-
 }

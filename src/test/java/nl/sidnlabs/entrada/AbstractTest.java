@@ -1,4 +1,4 @@
-package nl.sidnlabs.entrada.parquet;
+package nl.sidnlabs.entrada;
 
 import java.io.BufferedInputStream;
 import java.io.DataInputStream;
@@ -17,7 +17,6 @@ public class AbstractTest {
     try (InputStream is = resource.getInputStream()) {
       DataInputStream dis = new DataInputStream(new BufferedInputStream(is, 64 * 1024));
       return new PcapReader(dis);
-
     } catch (Exception e) {
       log.error("Error while reading file", e);
     }

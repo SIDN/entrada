@@ -1,4 +1,4 @@
-package nl.sidnlabs.entrada.parquet;
+package nl.sidnlabs.entrada;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
@@ -27,6 +27,23 @@ public class TcpRttTest extends AbstractTest {
         .count();
     assertEquals(1, count);
   }
+
+  @Test
+  public void testTCPHandshakeRttSynRetransmissionOk() {
+    PcapReader reader = createReaderFor("pcap/sidnlabs-test-tcp-syn-retransmission.pcap");
+    List<Packet> pckts = reader.stream().collect(Collectors.toList());
+    assertEquals(2, pckts.size());
+
+    // retransmission of client SYN packets, the decoder must ignore the tcp handshake
+    // because it is unclear to which packet the server responded.
+    long count = pckts
+        .stream()
+        .filter(p -> p.getTcpHandshake() != null && p.getTcpHandshake().rtt() > 0)
+        .count();
+    assertEquals(0, count);
+  }
+
+
 
   @Test
   public void testTCPPacketRttOk() {

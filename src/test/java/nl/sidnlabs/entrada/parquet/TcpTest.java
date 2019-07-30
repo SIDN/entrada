@@ -1,13 +1,9 @@
 package nl.sidnlabs.entrada.parquet;
 
 import static org.junit.Assert.assertEquals;
-import java.io.BufferedInputStream;
-import java.io.DataInputStream;
-import java.io.InputStream;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.Test;
-import org.springframework.core.io.ClassPathResource;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.dnslib.message.Message;
 import nl.sidnlabs.dnslib.types.MessageType;
@@ -17,7 +13,7 @@ import nl.sidnlabs.pcap.packet.DNSPacket;
 import nl.sidnlabs.pcap.packet.Packet;
 
 @Log4j2
-public class PcapReaderTest {
+public class TcpTest extends AbstractTest {
 
   @Test
   public void testDynamicUpdateOk() {
@@ -35,31 +31,6 @@ public class PcapReaderTest {
     long dnsMessages = pckts.stream().flatMap(p -> ((DNSPacket) p).getMessages().stream()).count();
     assertEquals(6, dnsMessages);
   }
-
-
-  @Test
-  public void testTCPHandshakeRttOk() {
-    PcapReader reader = createReaderFor("pcap/sidnlabs-test-tcp-handshake.pcap");
-    List<Packet> pckts = reader.stream().collect(Collectors.toList());
-    assertEquals(2, pckts.size());
-
-    long count = pckts
-        .stream()
-        .filter(p -> p.getTcpHandshake() != null && p.getTcpHandshake().rtt() > 0)
-        .count();
-    assertEquals(1, count);
-  }
-
-  @Test
-  public void testTCPPacketRttOk() {
-    PcapReader reader = createReaderFor("pcap/sidnlabs-test-tcp-handshake.pcap");
-    List<Packet> pckts = reader.stream().collect(Collectors.toList());
-    assertEquals(2, pckts.size());
-
-    long count = pckts.stream().filter(p -> p.getTcpPacketRtt() > 0).count();
-    assertEquals(1, count);
-  }
-
 
   @Test
   public void testTCPAllMalformedStreamOk() {
@@ -87,16 +58,6 @@ public class PcapReaderTest {
   }
 
   @Test
-  public void testUDP2DnsMessagesOk() {
-    PcapReader reader = createReaderFor("pcap/sidnlabs-test-udp-2-dns-ok.pcap");
-    List<Packet> pckts = reader.stream().collect(Collectors.toList());
-    assertEquals(2, pckts.size());
-
-    long count = pckts.stream().flatMap(p -> ((DNSPacket) p).getMessages().stream()).count();
-    assertEquals(2, count);
-  }
-
-  @Test
   public void testTCPPshFlagZeroBytesPayloadOk() {
     PcapReader reader = createReaderFor("pcap/sidnlabs-test-tcp-psh-with-empty-payload.pcap");
     List<Packet> pckts = reader.stream().collect(Collectors.toList());
@@ -114,21 +75,15 @@ public class PcapReaderTest {
     assertEquals(MessageType.RESPONSE, messages.get(1).getHeader().getQr());
   }
 
+  @Test
+  public void testMultipleDNSInSingleTCPStreamOk() {
+    PcapReader reader =
+        createReaderFor("pcap/sidnlabs-test-multiple-dns-in-single-tcp-stream.pcap");
+    List<Packet> pckts = reader.stream().collect(Collectors.toList());
+    assertEquals(4, pckts.size());
 
-
-  private PcapReader createReaderFor(String file) {
-    ClassPathResource resource = new ClassPathResource(file);
-    log.info("Load pcap from {}", resource);
-
-    try (InputStream is = resource.getInputStream()) {
-      DataInputStream dis = new DataInputStream(new BufferedInputStream(is, 64 * 1024));
-      return new PcapReader(dis);
-
-    } catch (Exception e) {
-      log.error("Error while reading file", e);
-    }
-
-    throw new RuntimeException("Cannot create reader for file: " + file);
+    long dnsMessages = pckts.stream().flatMap(p -> ((DNSPacket) p).getMessages().stream()).count();
+    assertEquals(4, dnsMessages);
   }
 
 }

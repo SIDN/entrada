@@ -40,6 +40,7 @@ import org.springframework.stereotype.Component;
 import com.google.common.net.InetAddresses;
 import com.maxmind.db.CHMCache;
 import com.maxmind.geoip2.DatabaseReader;
+import com.maxmind.geoip2.exception.AddressNotFoundException;
 import com.maxmind.geoip2.model.AsnResponse;
 import com.maxmind.geoip2.model.IspResponse;
 import lombok.extern.log4j.Log4j2;
@@ -180,12 +181,16 @@ public class GeoIPServiceImpl implements GeoIPService {
    * @see nl.sidn.pcap.ip.geo.GeoIPService#lookupCountry(java.net.InetAddress)
    */
   @Override
-  public Optional<String> lookupCountry(InetAddress addr) {
+  public Optional<String> lookupCountry(InetAddress ip) {
     try {
-      return Optional.ofNullable(geoReader.country(addr).getCountry().getIsoCode());
+      return Optional.ofNullable(geoReader.country(ip).getCountry().getIsoCode());
+    } catch (AddressNotFoundException e) {
+      if (log.isDebugEnabled()) {
+        log.debug("Maxmind error, IP not in database: " + ip);
+      }
     } catch (Exception e) {
       if (log.isDebugEnabled()) {
-        log.debug("No country found for: " + addr);
+        log.debug("No country found for: " + ip);
       }
     }
     return Optional.empty();
@@ -200,17 +205,33 @@ public class GeoIPServiceImpl implements GeoIPService {
   public Optional<String> lookupASN(InetAddress ip) {
     try {
       if (usePaidVersion) {
+        // paid version returns IspResponse
         IspResponse r = asnReader.isp(ip);
-        return Optional.ofNullable(r.getAutonomousSystemNumber().toString());
+        return asn(r.getAutonomousSystemNumber(), ip);
       }
+      // use free version
       AsnResponse r = asnReader.asn(ip);
-      return Optional.ofNullable(r.getAutonomousSystemNumber().toString());
+      return asn(r.getAutonomousSystemNumber(), ip);
+    } catch (AddressNotFoundException e) {
+      if (log.isDebugEnabled()) {
+        log.debug("Maxmind error, IP not in database: " + ip);
+      }
     } catch (Exception e) {
       if (log.isDebugEnabled()) {
-        log.debug("No asn found for: " + ip);
+        log.debug("Error while doing ASN lookup for: " + ip);
       }
     }
     return Optional.empty();
+  }
+
+  public Optional<String> asn(Integer asn, InetAddress ip) {
+    if (asn == null) {
+      if (log.isDebugEnabled()) {
+        log.debug("No asn found for: " + ip);
+      }
+      return Optional.empty();
+    }
+    return Optional.ofNullable(asn.toString());
   }
 
   /*

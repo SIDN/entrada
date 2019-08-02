@@ -19,6 +19,7 @@ public class ScheduledExecution {
 
   private ServerContext serverCtx;
   private ApplicationContext applicationContext;
+  private SharedContext sharedContext;
   private List<DnsResolverCheck> resolverChecks;
 
   @Value("${entrada.nameservers}")
@@ -27,18 +28,28 @@ public class ScheduledExecution {
   private Timer processTimer;
 
   public ScheduledExecution(ServerContext serverCtx, ApplicationContext applicationContext,
-      List<DnsResolverCheck> resolverChecks, MeterRegistry registry) {
+      List<DnsResolverCheck> resolverChecks, MeterRegistry registry, SharedContext sharedContext) {
 
     this.serverCtx = serverCtx;
     this.applicationContext = applicationContext;
     this.resolverChecks = resolverChecks;
-
+    this.sharedContext = sharedContext;
     processTimer = registry.timer("processor.execution.time");
   }
 
   @Scheduled(fixedDelayString = "#{${entrada.execution.delay}*1000}")
   public void run() {
     log.info("Start loading data forname servers: {}", servers);
+
+
+    if (!sharedContext.isEnabled()) {
+      // processing not enabled
+      log.info("Processing new PCAP data is currently not enabled");
+      return;
+    }
+
+    sharedContext.setExecutionStatus(true);
+
     // initialize DnsResolverCheck to make sure they use uptodate data
     resolverChecks.stream().forEach(DnsResolverCheck::init);
 
@@ -53,6 +64,8 @@ public class ScheduledExecution {
       // individual servers configured, process each server directory
       Arrays.stream(StringUtils.split(servers, ",")).forEach(s -> runForServer(s, processor));
     }
+
+    sharedContext.setExecutionStatus(false);
 
     log.info("Completed loading name server data");
   }

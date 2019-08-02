@@ -26,11 +26,14 @@ public class ScheduledCompaction {
 
   private PartitionService partitionService;
   private QueryEngine queryEngine;
+  private SharedContext sharedContext;
 
 
-  public ScheduledCompaction(PartitionService partitionService, QueryEngine queryEngine) {
+  public ScheduledCompaction(PartitionService partitionService, QueryEngine queryEngine,
+      SharedContext sharedContext) {
     this.partitionService = partitionService;
     this.queryEngine = queryEngine;
+    this.sharedContext = sharedContext;
   }
 
 
@@ -41,7 +44,7 @@ public class ScheduledCompaction {
       initialDelay = 60 * 1000)
   public void run() {
 
-    if (!enabled) {
+    if (!enabled || !sharedContext.isEnabled()) {
       // compaction not enabled
       log.info("Compaction not enabled, mark any uncompacted partition as compacted");
       partitionService.closeUncompactedPartitions();
@@ -49,6 +52,8 @@ public class ScheduledCompaction {
     }
 
     log.info("Start partition compaction");
+
+    sharedContext.setCompactionStatus(true);
 
     List<TablePartition> partitions = partitionService.uncompactedPartitions();
 
@@ -60,6 +65,8 @@ public class ScheduledCompaction {
         return;
       }
     }
+
+    sharedContext.setCompactionStatus(false);
 
     log.info("Finished partition compaction");
   }

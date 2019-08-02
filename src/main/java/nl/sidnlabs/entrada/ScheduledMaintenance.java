@@ -10,9 +10,11 @@ import nl.sidnlabs.entrada.service.ArchiveService;
 public class ScheduledMaintenance {
 
   private ArchiveService archiveService;
+  private SharedContext sharedContext;
 
-  public ScheduledMaintenance(ArchiveService archiveService) {
+  public ScheduledMaintenance(ArchiveService archiveService, SharedContext sharedContext) {
     this.archiveService = archiveService;
+    this.sharedContext = sharedContext;
   }
 
   /**
@@ -23,8 +25,18 @@ public class ScheduledMaintenance {
   public void run() {
     log.info("Start maintenance");
 
+    if (!sharedContext.isEnabled()) {
+      // processing not enabled
+      log.info("Maintenance is currently not enabled");
+      return;
+    }
+
+    sharedContext.setMaintenanceStatus(true);
+
     // clean file table, prevent building up a huge history
     archiveService.clean();
+
+    sharedContext.setMaintenanceStatus(false);
 
     log.info("Finished maintenance");
   }

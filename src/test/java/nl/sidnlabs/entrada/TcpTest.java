@@ -86,4 +86,16 @@ public class TcpTest extends AbstractTest {
     assertEquals(4, dnsMessages);
   }
 
+  @Test
+  public void testTCPOptionTsFoundOk() {
+    PcapReader reader = createReaderFor("pcap/sidnlabs-test-tcp-ts-option.pcap");
+    List<Packet> pckts = reader.stream().collect(Collectors.toList());
+    assertEquals(1, pckts.size());
+
+    // Packet p = pckts.get(0);
+    // assertEquals(637077908, p.getTcpOptionTSval());
+    // assertEquals(44805039, p.getTcpOptionTSecr());
+  }
+
+
 }

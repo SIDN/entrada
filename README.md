@@ -1,8 +1,8 @@
 # ENTRADA
 
-ENTRADA - A big data tool for network analytics.
+ENTRADA - A big data tool for DNS data analytics.
 
-ENTRADA processes data (PCAP-files) from an input location (local, HDFS or S3) and converts and enriches the PCAP-data to Apache Parquet format, finally sending the results to one of following endpoints: 
+ENTRADA processes DNS data (PCAP-files) from an input location (local, HDFS or S3) and converts and enriches the data to Apache Parquet format, finally sending the results to one of following endpoints: 
 - HDFS + Impala (hadoop)
 - S3 + Athena (aws)
 - Local disk (local)

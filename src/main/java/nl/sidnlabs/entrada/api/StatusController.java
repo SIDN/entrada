@@ -6,12 +6,14 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import lombok.Builder;
+import lombok.Value;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.SharedContext;
 
 @Log4j2
 @RestController
-@RequestMapping("/status")
+@RequestMapping("/api/status")
 public class StatusController {
 
   private SharedContext sharedContext;
@@ -37,9 +39,19 @@ public class StatusController {
   }
 
   @GetMapping
-  public ExecutionStatus status() {
+  public StatusResult status() {
     log.info("Get execution status");
     return sharedContext.getStatus();
+  }
+
+
+  @Builder
+  @Value
+  public static class StatusResult {
+    private boolean enabled;
+    private boolean execution;
+    private boolean compaction;
+    private boolean maintenance;
   }
 
 }

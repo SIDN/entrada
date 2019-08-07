@@ -7,7 +7,7 @@ ENTRADA processes DNS data (PCAP-files) from an input location (local, HDFS or S
 - S3 + Athena (aws)
 - Local disk (local)
 
-See the [database schema](https://github.com/SIDN/entrada/wiki/Data-model) for more information about all the database columns.  
+See the [database schema](https://entrada.sidnlabs.nl/datamodel/) for more information about all the database columns.  
 
 The data is enriched by adding the following details to each row.   
 - Geolocation (Country)
@@ -28,7 +28,7 @@ ENTRADA handles the required workflow actions such as:
 - Uploading data to HDFS or S3
 - Compacting Parquet files on HDFS or S3
 
-For more information see the [ENTRADA wiki](https://github.com/SIDN/entrada/wiki).
+For more information see the [ENTRADA website](https://entrada.sidnlabs.nl/).
 
 ## How to use
 
@@ -42,7 +42,7 @@ Start the container using the `docker-compose` command:
 ```
 
 
-For more more details about deployment and available onfiguration options see the [ENTRADA wiki](https://github.com/SIDN/entrada/wiki/).  
+For more more details about deployment and available onfiguration options see the [ENTRADA website](https://entrada.sidnlabs.nl/).  
 
 ## License
 

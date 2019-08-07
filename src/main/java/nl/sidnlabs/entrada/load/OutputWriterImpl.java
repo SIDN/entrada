@@ -92,21 +92,6 @@ public class OutputWriterImpl implements OutputWriter {
     this.icmpRowBuilder = icmpRowBuilder;
   }
 
-
-  private void write(RowData p) {
-    if (p != null) {
-      int proto = lookupProtocol(p);
-      if (proto == PacketFactory.PROTOCOL_TCP) {
-        writeDns(dnsRowBuilder.build(p), serverCtx.getServerInfo().getServer());
-      } else if (proto == PacketFactory.PROTOCOL_UDP) {
-        writeDns(dnsRowBuilder.build(p), serverCtx.getServerInfo().getServer());
-      } else if (proto == PacketFactory.PROTOCOL_ICMP_V4
-          || proto == PacketFactory.PROTOCOL_ICMP_V6) {
-        writeIcmp(icmpRowBuilder.build(p), serverCtx.getServerInfo().getServer());
-      }
-    }
-  }
-
   /**
    * Lookup protocol, if no request is found then get the proto from the response.
    * 
@@ -176,23 +161,6 @@ public class OutputWriterImpl implements OutputWriter {
   }
 
   /**
-   * Write row to disk
-   * 
-   * @param batch list of rows
-   * @return true if the final PacketCombination.NULL packet has been received.
-   */
-  private boolean process(List<RowData> batch) {
-    for (RowData pc : batch) {
-      if (pc == RowData.NULL) {
-        // stop
-        return true;
-      }
-      write(pc);
-    }
-    return false;
-  }
-
-  /**
    * Start reading from the input queue until the PacketCombination.NULL has been received. This
    * method uses @Async so it will be executed on a separate thread.
    */
@@ -233,6 +201,36 @@ public class OutputWriterImpl implements OutputWriter {
       }
     }
   }
+
+  /**
+   * Write row to disk
+   * 
+   * @param batch list of rows
+   * @return true if the final PacketCombination.NULL packet has been received.
+   */
+  private boolean process(List<RowData> batch) {
+    for (RowData pc : batch) {
+      if (pc == RowData.NULL) {
+        // stop
+        return true;
+      }
+      write(pc);
+    }
+    return false;
+  }
+
+  private void write(RowData p) {
+    if (p != null) {
+      int proto = lookupProtocol(p);
+      if (proto == PacketFactory.PROTOCOL_TCP || proto == PacketFactory.PROTOCOL_UDP) {
+        writeDns(dnsRowBuilder.build(p), serverCtx.getServerInfo().getServer());
+      } else if (proto == PacketFactory.PROTOCOL_ICMP_V4
+          || proto == PacketFactory.PROTOCOL_ICMP_V6) {
+        writeIcmp(icmpRowBuilder.build(p), serverCtx.getServerInfo().getServer());
+      }
+    }
+  }
+
 
 
   private void sleep() {

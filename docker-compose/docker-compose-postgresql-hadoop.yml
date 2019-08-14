@@ -11,7 +11,8 @@ services:
       
       # PostgreSQL config options, make sure the the database is created before
       # starting the container
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://db.example.com:5432/entrada
+      # replace <host_or_ip> with the actual host of ip, do not use localhost
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://<host_or_ip>:5432/entrada
       - SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver
       - SPRING_DATASOURCE_USERNAME=
       - SPRING_DATASOURCE_PASSWORD=

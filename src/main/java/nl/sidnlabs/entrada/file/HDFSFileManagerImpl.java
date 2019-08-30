@@ -142,38 +142,61 @@ public class HDFSFileManagerImpl implements FileManager {
     }
 
     if (f.isDirectory()) {
-      uploadDir(fs, src, pathDst);
+      uploadDir(fs, src, pathDst, archive);
     } else {
-      upload(fs, pathSrc, pathDst);
-    }
-
-    if (!archive) {
-      // when uploading non-pcap data files set the correct hdfs permissions
-      return chown(fs, dst, owner, group);
+      upload(fs, pathSrc, pathDst, archive);
     }
     return true;
   }
 
-  private boolean uploadDir(FileSystem fs, String src, Path dst) {
+  private boolean uploadDir(FileSystem fs, String src, Path dst, boolean archive) {
     // uploading a (sub)directory will fail if the dir already exists
     // at the destination, therefore upload each file individual and make
     // sure the directories exist.
+
+    if (log.isDebugEnabled()) {
+      log.debug("Upload dir {} to {}", src, dst);
+    }
+
     Set<Path> dirs = new HashSet<>();
     try (Stream<java.nio.file.Path> walk =
         Files.walk(Paths.get(src)).filter(p -> p.toFile().isFile())) {
 
       walk.forEach(p -> {
+        if (log.isDebugEnabled()) {
+          log.debug("Check if {} needs to be uploaded {}", p);
+        }
+
         Path srcPath = new Path(p.toString());
         Path dir = new Path(FileUtil
             .appendPath(dst.toString(),
                 StringUtils.substringAfter(srcPath.getParent().toString(), src)));
         if (!dirs.contains(dir)) {
           // new dir, try op create
+          if (log.isDebugEnabled()) {
+            log.debug("Create HDFS directory {}", dir);
+          }
+
           mkdir(fs, dir);
           dirs.add(dir);
         }
-        upload(fs, srcPath, new Path(FileUtil.appendPath(dir.toString(), srcPath.getName())));
+
+        if (log.isDebugEnabled()) {
+          log.debug("Upload file {}", srcPath);
+        }
+
+        upload(fs, srcPath, new Path(FileUtil.appendPath(dir.toString(), srcPath.getName())),
+            archive);
+
+        if (log.isDebugEnabled()) {
+          log.debug("Completed uploading file {}", srcPath);
+        }
       });
+
+      if (log.isDebugEnabled()) {
+        log.debug("Completed upload");
+      }
+
       return true;
     } catch (Exception e) {
       log.error("Error while uploading {} to {}", src, dst, e);
@@ -182,9 +205,22 @@ public class HDFSFileManagerImpl implements FileManager {
     return false;
   }
 
-  private boolean upload(FileSystem fs, Path src, Path dst) {
+  private boolean upload(FileSystem fs, Path src, Path dst, boolean archive) {
+    if (log.isDebugEnabled()) {
+      log.debug("Upload file {} to {}", src, dst);
+    }
+
     try {
       fs.copyFromLocalFile(false, true, src, dst);
+
+      if (!archive) {
+        // when uploading non-pcap data files set the correct hdfs permissions
+        if (log.isDebugEnabled()) {
+          log.debug("Setting correct file permissions to uploaded files");
+        }
+        chown(fs, dst.toString(), owner, group);
+      }
+
       return true;
     } catch (IOException e) {
       log.error("Error while uploading {} to {}", src, dst, e);
@@ -348,6 +384,11 @@ public class HDFSFileManagerImpl implements FileManager {
   }
 
   private boolean chown(FileSystem fs, String path, String owner, String group) {
+
+    if (log.isDebugEnabled()) {
+      log.debug("Chown permissions for path: {}", path);
+    }
+
     Path p = new Path(path);
     try {
       if (owner != null && group != null) {

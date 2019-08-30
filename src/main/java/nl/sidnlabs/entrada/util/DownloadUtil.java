@@ -15,8 +15,8 @@ public class DownloadUtil {
 
   private DownloadUtil() {}
 
-  public static Optional<byte[]> getAsBytes(String url, int timeout) {
-    log.info("GET URL: " + url);
+  public static Optional<byte[]> getAsBytes(String url, String logUrl, int timeout) {
+    log.info("GET URL: " + logUrl);
 
     CloseableHttpClient client =
         HttpClientBuilder.create().setDefaultRequestConfig(createConfig(timeout * 1000)).build();
@@ -27,7 +27,7 @@ public class DownloadUtil {
         return Optional.ofNullable(EntityUtils.toByteArray(response.getEntity()));
       }
     } catch (Exception e) {
-      log.error("Errror executing HTTP GET request for: " + url);
+      log.error("Errror executing HTTP GET request for: " + logUrl);
     }
 
     return Optional.empty();

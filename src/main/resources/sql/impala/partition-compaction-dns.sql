@@ -62,7 +62,7 @@ AS SELECT
   	res_len,
   	tcp_hs_rtt,
     tcp_pk_rtt,
-    cast(time/1000 as timestamp),
+    cast(time/1000 as timestamp) query_ts,
   	year,
   	month,
   	day,

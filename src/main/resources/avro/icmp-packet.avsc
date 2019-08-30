@@ -1,8 +1,8 @@
 {
   "type": "record",
   "name": "icmpdata",
-  "namespace": "nl.sidnlabs.idnp.data.icmp",
-  "doc": "ICMP packets",
+  "namespace": "nl.sidnlabs.entrada.icmp",
+  "doc": "ICMP packet",
   "fields": [
     { "name": "time", "type": "long" },
     { "name": "icmp_type", "type": "int" },

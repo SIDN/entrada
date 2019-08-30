@@ -1,9 +1,7 @@
 package nl.sidnlabs.entrada.engine;
 
 import java.util.Set;
-import java.util.concurrent.Future;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.stereotype.Component;
 import nl.sidnlabs.entrada.model.Partition;
 import nl.sidnlabs.entrada.model.jpa.TablePartition;
@@ -13,9 +11,9 @@ import nl.sidnlabs.entrada.model.jpa.TablePartition;
 public class LocalQueryEngine implements QueryEngine {
 
   @Override
-  public Future<Boolean> addPartition(String table, Set<Partition> partitions) {
+  public boolean addPartition(String table, Set<Partition> partitions) {
     // do nothing
-    return new AsyncResult<>(Boolean.TRUE);
+    return true;
   }
 
   @Override

@@ -77,7 +77,7 @@ public class GeoIPServiceImpl implements GeoIPService {
   @Value("${geoip.maxmind.url.asn.paid}")
   private String urlAsnDbPaid;
 
-  @Value("${geoip.maxmind.subsciption.key}")
+  @Value("${geoip.maxmind.license.key}")
   private String licenseKey;
 
   private boolean usePaidVersion;
@@ -101,22 +101,26 @@ public class GeoIPServiceImpl implements GeoIPService {
     if (shouldUpdate(countryFile)) {
       log.info("GEOIP country database does not exist or is too old, fetch latest version");
       String url = urlCountryDb;
+      String logUrl = urlAsnDb;
       if (usePaidVersion) {
         log.info("Download paid Maxmind country database");
         url = urlCountryDbPaid + licenseKey;
+        logUrl = urlCountryDbPaid + "******";
       }
-      download(countryFile, url, 30);
+      download(countryFile, url, logUrl, 30);
     }
 
 
     if (shouldUpdate(asnFile)) {
       log.info("GEOIP ASN database does not exist or is too old, fetch latest version");
       String url = urlAsnDb;
+      String logUrl = urlAsnDb;
       if (usePaidVersion) {
         log.info("Download paid Maxmind ISP database");
         url = urlAsnDbPaid + licenseKey;
+        logUrl = urlAsnDbPaid + "******";
       }
-      download(asnFile, url, 30);
+      download(asnFile, url, logUrl, 30);
     }
 
     try {
@@ -254,8 +258,8 @@ public class GeoIPServiceImpl implements GeoIPService {
   }
 
 
-  public boolean download(String database, String url, int timeout) {
-    Optional<byte[]> data = DownloadUtil.getAsBytes(url, timeout);
+  public boolean download(String database, String url, String logUrl, int timeout) {
+    Optional<byte[]> data = DownloadUtil.getAsBytes(url, logUrl, timeout);
     if (data.isPresent()) {
       InputStream is = new ByteArrayInputStream(data.get());
       try {

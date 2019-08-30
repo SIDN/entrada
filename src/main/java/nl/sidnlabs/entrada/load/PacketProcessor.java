@@ -532,6 +532,11 @@ public class PacketProcessor {
           pushRow(new RowData(cacheValue.getPacket(), cacheValue.getMessage(), null, null, true,
               cacheValue.getFilename()));
 
+          if (log.isDebugEnabled()) {
+            log
+                .debug("Expired query for: "
+                    + cacheValue.getMessage().getQuestions().get(0).getQName());
+          }
           purgeCounter++;
         }
       }

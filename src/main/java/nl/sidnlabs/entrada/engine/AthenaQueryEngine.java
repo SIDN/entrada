@@ -1,13 +1,11 @@
 package nl.sidnlabs.entrada.engine;
 
 import java.util.Set;
-import java.util.concurrent.Future;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.scheduling.annotation.Async;
-import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.stereotype.Component;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.file.FileManager;
@@ -36,14 +34,10 @@ public class AthenaQueryEngine extends AbstractQueryEngine {
 
   @Override
   @Async
-  public Future<Boolean> addPartition(String table, Set<Partition> partitions) {
+  public boolean addPartition(String table, Set<Partition> partitions) {
     // The data is already in Hive format, no need to create individual partitions
     // just run "MSCK REPAIR TABLE" to have Athena discover then new partitions.
-    if (execute(SQL_REPAIR_TABLE + database + "." + table)) {
-      return new AsyncResult<>(Boolean.TRUE);
-    }
-
-    return new AsyncResult<>(Boolean.FALSE);
+    return execute(SQL_REPAIR_TABLE + database + "." + table);
   }
 
   @Override

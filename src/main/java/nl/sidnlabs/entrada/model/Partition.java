@@ -15,7 +15,7 @@ public class Partition {
 
   public String toPath() {
     return "year=" + year + "/month=" + month + "/day=" + day + "/server="
-        + StringUtils.defaultIfBlank(server, "__default__");
+        + StringUtils.defaultIfBlank(StringUtils.deleteWhitespace(server), "__default__");
   }
 
 

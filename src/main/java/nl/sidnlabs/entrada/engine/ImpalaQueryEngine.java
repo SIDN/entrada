@@ -3,15 +3,12 @@ package nl.sidnlabs.entrada.engine;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Future;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.stereotype.Component;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.file.FileManager;
@@ -49,8 +46,7 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
   }
 
   @Override
-  @Async
-  public Future<Boolean> addPartition(String table, Set<Partition> partitions) {
+  public boolean addPartition(String table, Set<Partition> partitions) {
 
     Map<String, Object> values = new HashMap<>();
     values.put("DATABASE_NAME", database);
@@ -69,17 +65,14 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
       log.info("Create partition, sql: {}", sql);
 
       if (!execute(sql)) {
-        return new AsyncResult<>(Boolean.FALSE);
+        return false;
       }
     }
 
     // do a refresh after the partition has been added to update the table metadata
     String sqlRefresh = TemplateUtil.template(SQL_REFRESH_TABLE, values);
 
-    if (execute(sqlRefresh)) {
-      return new AsyncResult<>(Boolean.TRUE);
-    }
-    return new AsyncResult<>(Boolean.FALSE);
+    return execute(sqlRefresh);
   }
 
 

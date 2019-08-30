@@ -20,7 +20,7 @@ import nl.sidnlabs.entrada.exception.ApplicationException;
 @Value
 public class ParquetPartition<T> {
 
-  private static final int ROWGROUP_SIZE = 512 * 1024 * 1024;;
+  private static final int ROWGROUP_SIZE = 512 * 1024 * 1024;
 
   private ParquetWriter<T> writer;
   private String filename;

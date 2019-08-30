@@ -82,6 +82,23 @@ public class TcpRttTest extends AbstractTest {
     assertEquals(2, count);
   }
 
+  @Test
+  public void testTCPStreamOk() {
+    PcapReader reader =
+        createReaderForComppressed("pcap/sidnlabs-test-tcp-stream-many-dns-msg-per-tcp-packet.gz");
+
+    List<Packet> pckts = reader.stream().collect(Collectors.toList());
+    assertEquals(55, pckts.size());
+
+    long count = pckts
+        .stream()
+        .skip(1)
+        .filter(
+            p -> ((DNSPacket) p).getMessages().get(0).getHeader().getQr() == MessageType.RESPONSE)
+        .filter(p -> p.getTcpHandshake() == null && p.getTcpPacketRtt() >= 0)
+        .count();
+    assertEquals(4, count);
+  }
 
 
 }

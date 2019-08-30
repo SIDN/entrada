@@ -65,7 +65,15 @@ public class UploadService {
          * make sure the database table contains all the required partitions. If not create the
          * missing database partition(s)
          */
+        if (log.isDebugEnabled()) {
+          log.debug("Before add partition");
+        }
+
         queryEngine.addPartition(tableNameDns, partitions.get("dns"));
+
+        if (log.isDebugEnabled()) {
+          log.debug("After add partition");
+        }
 
         // only delete work loc when upload was ok, if upload failed
         // it will be retried next time

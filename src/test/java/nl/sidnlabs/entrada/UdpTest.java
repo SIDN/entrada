@@ -21,5 +21,15 @@ public class UdpTest extends AbstractTest {
     assertEquals(2, count);
   }
 
+  @Test
+  public void testUDPShortnameOk() {
+    PcapReader reader = createReaderFor("pcap/sidnlabs-test-udp-1-lookup-co.nz.pcap");
+    List<Packet> pckts = reader.stream().collect(Collectors.toList());
+    assertEquals(2, pckts.size());
+
+    long count = pckts.stream().flatMap(p -> ((DNSPacket) p).getMessages().stream()).count();
+    assertEquals(2, count);
+  }
+
 
 }

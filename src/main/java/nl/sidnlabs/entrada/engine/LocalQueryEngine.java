@@ -46,4 +46,10 @@ public class LocalQueryEngine implements QueryEngine {
     return true;
   }
 
+  @Override
+  public boolean preCompact(TablePartition p) {
+    // do nothing
+    return true;
+  }
+
 }

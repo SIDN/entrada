@@ -53,6 +53,8 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
     values.put("TABLE_NAME", table);
 
     for (Partition p : partitions) {
+      log.info("Add partition: {} to table: {}", p, table);
+
       values.put("YEAR", Integer.valueOf(p.getYear()));
       values.put("MONTH", Integer.valueOf(p.getMonth()));
       values.put("DAY", Integer.valueOf(p.getDay()));
@@ -67,12 +69,16 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
       if (!execute(sql)) {
         return false;
       }
+
+
+      // do a refresh after the partition has been added to update the table metadata
+      String sqlRefresh = TemplateUtil.template(SQL_REFRESH_TABLE, values);
+      if (!execute(sqlRefresh)) {
+        return false;
+      }
     }
 
-    // do a refresh after the partition has been added to update the table metadata
-    String sqlRefresh = TemplateUtil.template(SQL_REFRESH_TABLE, values);
-
-    return execute(sqlRefresh);
+    return true;
   }
 
 
@@ -94,6 +100,15 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
     log.info("Perform post-compaction actions");
 
     log.info("Execute refresh and compute stats for table: {}", p.getTable());
+    // update meta data
+    return execute(TemplateUtil.template(SQL_REFRESH_TABLE, templateValues(p)));
+  }
+
+
+  private Map<String, Object> templateValues(TablePartition p) {
+    log.info("Perform post-compaction actions");
+
+    log.info("Execute refresh and compute stats for table: {}", p.getTable());
     // update meta data and compute stats for partition
     Map<String, Object> values = new HashMap<>();
     values.put("DATABASE_NAME", database);
@@ -104,9 +119,13 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
     values.put("SERVER", p.getServer());
     values.put("PARTITION", TemplateUtil.template(SQL_PARTITION_TEMPLATE, values));
 
-    return execute(TemplateUtil.template(SQL_REFRESH_TABLE, values))
-        && execute(TemplateUtil.template(SQL_COMPUTE_STATS, values));
+    return values;
   }
 
+  @Override
+  public boolean preCompact(TablePartition p) {
+    // update partition stats before compaction so the query planner can optimize the CTAS query
+    return execute(TemplateUtil.template(SQL_COMPUTE_STATS, templateValues(p)));
+  }
 
 }

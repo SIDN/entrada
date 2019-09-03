@@ -73,6 +73,12 @@ public class ScheduledExecution {
   private void runForServer(String server, PacketProcessor processor) {
     log.info("Start loading name data for server: {}", server);
 
+    if (!sharedContext.isEnabled()) {
+      // processing not enabled
+      log.info("Processing new PCAP data is currently not enabled");
+      return;
+    }
+
     serverCtx.setServer(server);
 
     try {

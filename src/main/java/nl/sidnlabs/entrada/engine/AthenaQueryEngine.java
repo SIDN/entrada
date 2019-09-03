@@ -57,4 +57,9 @@ public class AthenaQueryEngine extends AbstractQueryEngine {
     return execute(SQL_REPAIR_TABLE + database + "." + p.getTable());
   }
 
+  @Override
+  public boolean preCompact(TablePartition p) {
+    // do nothing
+    return true;
+  }
 }

@@ -1,6 +1,5 @@
 CREATE EXTERNAL TABLE ${DATABASE_NAME}.tmp_compaction
   PARTITIONED BY (year, month, day, server)
-  SORT BY (domainname)
   COMMENT 'ENTRADA Compaction temp table'
   STORED AS PARQUET
   LOCATION '${TABLE_LOC}'

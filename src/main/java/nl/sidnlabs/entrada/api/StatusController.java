@@ -35,7 +35,6 @@ public class StatusController {
   public void start() {
     log.info("Start execution");
     sharedContext.setEnabled(true);
-
   }
 
   @GetMapping

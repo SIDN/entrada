@@ -99,9 +99,14 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
   public boolean postCompact(TablePartition p) {
     log.info("Perform post-compaction actions");
 
-    log.info("Execute refresh and compute stats for table: {}", p.getTable());
-    // update meta data
-    return execute(TemplateUtil.template(SQL_REFRESH_TABLE, templateValues(p)));
+    log
+        .info("Perform post-compaction actions, refresh and compute stats for table: {}",
+            p.getTable());
+    Map<String, Object> values = templateValues(p);
+    // update meta data to let impala know the files have been updated and recalculate partition
+    // statistics
+    return execute(TemplateUtil.template(SQL_REFRESH_TABLE, values))
+        && execute(TemplateUtil.template(SQL_COMPUTE_STATS, values));
   }
 
 

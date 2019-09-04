@@ -33,7 +33,7 @@ public class ScheduledMaintenance {
 
     sharedContext.setMaintenanceStatus(true);
 
-    // clean file table, prevent building up a huge history
+    // delete processed files that have expired
     archiveService.clean();
 
     sharedContext.setMaintenanceStatus(false);

@@ -1,4 +1,13 @@
-CREATE EXTERNAL TABLE ${DATABASE_NAME}.tmp_compaction
+/*
+ * SQL-query for compacting many small parquet files into fewer larger files.
+ * Create a temporary external table and insert the partition data into this table.
+ * Impala will compact the smaller parquet files from the src partition into
+ * largers files. Using the NOSHUFFLE query hint to prevent Impala from adding a network
+ * shuffle operation to the query plan.
+ * Shuffling data across the network will make the query run much slower
+ * see: https://impala.apache.org/docs/build/html/topics/impala_hints.html
+ */
+CREATE /* +NOSHUFFLE */ EXTERNAL TABLE ${DATABASE_NAME}.tmp_compaction
   PARTITIONED BY (year, month, day, server)
   COMMENT 'ENTRADA Compaction temp table'
   STORED AS PARQUET

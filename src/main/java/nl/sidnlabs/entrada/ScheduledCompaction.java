@@ -61,6 +61,7 @@ public class ScheduledCompaction {
     for (TablePartition p : partitions) {
       if (shouldCompact(p) && !compact(p)) {
         // stop compacting until the error is fixed
+        log.error("Compaction failed");
         return;
       }
     }

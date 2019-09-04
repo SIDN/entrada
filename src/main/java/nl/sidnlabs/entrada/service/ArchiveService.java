@@ -13,6 +13,7 @@ import nl.sidnlabs.entrada.ServerContext;
 import nl.sidnlabs.entrada.file.FileManager;
 import nl.sidnlabs.entrada.file.FileManagerFactory;
 import nl.sidnlabs.entrada.model.jpa.FileArchive;
+import nl.sidnlabs.entrada.model.jpa.FileArchive.ArchiveModeType;
 import nl.sidnlabs.entrada.model.jpa.FileArchiveRepository;
 import nl.sidnlabs.entrada.util.FileUtil;
 
@@ -26,15 +27,10 @@ public class ArchiveService {
   @Value("${entrada.archive.files.max.age}")
   private int fileMaxAge;
 
-
-  public enum ArchiveOption {
-    NONE, ARCHIVE, DELETE;
-  }
-
   @Value("${entrada.location.archive}")
   private String archiveLocation;
 
-  private ArchiveOption archiveOption;
+  private ArchiveModeType archiveOption;
 
   private FileManagerFactory fileManagerFactory;
   private FileArchiveRepository fileArchiveRepository;
@@ -46,7 +42,7 @@ public class ArchiveService {
 
     this.fileManagerFactory = fileManagerFactory;
     this.fileArchiveRepository = fileArchiveRepository;
-    this.archiveOption = ArchiveOption.valueOf(StringUtils.upperCase(archiveMode));
+    this.archiveOption = ArchiveModeType.valueOf(StringUtils.upperCase(archiveMode));
     this.serverContext = serverContext;
   }
 
@@ -68,7 +64,7 @@ public class ArchiveService {
     File f = new File(file);
     FileManager fmSrc = fileManagerFactory.getFor(file);
 
-    if (ArchiveOption.ARCHIVE == archiveOption) {
+    if (ArchiveModeType.ARCHIVE == archiveOption) {
       // move the pcap file to the archive location
       log.info("Archive: {} with mode: {}", file, archiveOption);
 
@@ -102,7 +98,7 @@ public class ArchiveService {
     }
 
     // delete pcap file when archive or delete option is chosen
-    if (ArchiveOption.ARCHIVE == archiveOption || ArchiveOption.DELETE == archiveOption) {
+    if (ArchiveModeType.ARCHIVE == archiveOption || ArchiveModeType.DELETE == archiveOption) {
       fmSrc.delete(file);
     }
 
@@ -118,6 +114,7 @@ public class ArchiveService {
           .dateStart(start)
           .rows(packets)
           .time((int) (now.getTime() - start.getTime()) / 1000)
+          .mode(archiveOption)
           .build();
 
       fileArchiveRepository.save(fa);
@@ -136,13 +133,11 @@ public class ArchiveService {
     int rows = fileArchiveRepository.deleteOlderThan(maxDate);
     log.info("Deleted {} files from database older than: {}", rows, maxDate);
 
-
-    // clean output location on local disk or HDFS. AWS is done using a lifecycle policy
+    // clean output location on local disk or HDFS. AWS is cleaned using a lifecycle policy
     FileManager fm = fileManagerFactory.getFor(archiveLocation);
     List<String> expired = fm.expired(archiveLocation, fileMaxAge, ".pcap", ".pcap.gz", ".pcap.xz");
-    log
-        .info("{} archived pcap-file(s) are older than {} day(s) and will be deleted",
-            expired.size());
+
+    log.info("{} archived file(s) older than {} day(s) will be deleted", expired.size());
     expired.stream().forEach(fm::delete);
   }
 

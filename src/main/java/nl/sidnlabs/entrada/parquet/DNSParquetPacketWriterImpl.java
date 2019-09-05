@@ -67,6 +67,7 @@ public class DNSParquetPacketWriterImpl extends AbstractParquetRowWriter {
         .month(cal.get(Calendar.MONTH) + 1)
         .day(cal.get(Calendar.DAY_OF_MONTH))
         .server(server)
+        .dns(true)
         .build();
 
     writer.write(record, schema(DNS_AVRO_SCHEMA), partition);

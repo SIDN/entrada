@@ -44,7 +44,7 @@ public class DNSRowBuilder extends AbstractRowBuilder {
   }
 
   @Override
-  public Row build(RowData combo) {
+  public Row build(RowData combo, String server) {
 
     packetCounter++;
     if (packetCounter % STATUS_COUNT == 0) {

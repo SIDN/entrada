@@ -55,7 +55,7 @@ public class UploadService {
     // move dns data to the database location on local or remote fs
     String location = locationForDNS();
     FileManager fmInput = fileManagerFactory.getFor(location);
-    if (new File(location).exists()) {
+    if (partitions.get("dns") != null && new File(location).exists()) {
       // delete .crc files
       cleanup(fmInput, location, partitions.get("dns"));
 
@@ -82,7 +82,7 @@ public class UploadService {
       }
     }
 
-    if (icmpEnabled) {
+    if (icmpEnabled && partitions.get("icmp") != null) {
       // move icmp data
       location = locationForICMP();
       if (new File(location).exists()) {

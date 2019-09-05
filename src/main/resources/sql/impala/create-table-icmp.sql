@@ -47,11 +47,12 @@ create external table if not exists ${DATABASE_NAME}.${TABLE_NAME} (
 	orig_dns_edns_version SMALLINT,
 	orig_dns_edns_do BOOLEAN,
 	orig_dns_labels INT,
-	server_location string,
+	server_location STRING,
 	pcap_file STRING,
 	ip_pub_resolver STRING,
-	query_ts TIMESTAMP
-) partitioned by (year INT, month INT, day INT, server string)
+	query_ts TIMESTAMP,
+	server STRING
+) partitioned by (year INT, month INT, day INT)
   STORED AS PARQUETFILE
   LOCATION '${TABLE_LOC}';
 

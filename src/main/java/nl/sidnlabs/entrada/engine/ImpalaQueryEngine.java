@@ -22,17 +22,6 @@ import nl.sidnlabs.entrada.util.TemplateUtil;
 @ConditionalOnProperty(name = "entrada.engine", havingValue = "hadoop")
 public class ImpalaQueryEngine extends AbstractQueryEngine {
 
-  private static final String SQL_PARTITION_TEMPLATE =
-      "(year=${YEAR},month=${MONTH},day=${DAY},server='${SERVER}')";
-
-  private static final String SQL_REFRESH_TABLE =
-      "REFRESH ${DATABASE_NAME}.${TABLE_NAME} PARTITION " + SQL_PARTITION_TEMPLATE;
-
-  private static final String SQL_COMPUTE_STATS =
-      "COMPUTE INCREMENTAL STATS ${DATABASE_NAME}.${TABLE_NAME} PARTITION "
-          + SQL_PARTITION_TEMPLATE;
-
-
   @Value("${entrada.database.name}")
   private String database;
 
@@ -59,10 +48,11 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
       values.put("MONTH", Integer.valueOf(p.getMonth()));
       values.put("DAY", Integer.valueOf(p.getDay()));
       values.put("SERVER", p.getServer());
-      values.put("PARTITION", TemplateUtil.template(SQL_PARTITION_TEMPLATE, values));
 
       String sql = TemplateUtil
-          .template(new ClassPathResource("/sql/impala/create-partition.sql", getClass()), values);
+          .template(
+              new ClassPathResource("/sql/impala/create-partition-" + table + ".sql", getClass()),
+              values);
 
       log.info("Create partition, sql: {}", sql);
 
@@ -72,7 +62,11 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
 
 
       // do a refresh after the partition has been added to update the table metadata
-      String sqlRefresh = TemplateUtil.template(SQL_REFRESH_TABLE, values);
+      String sqlRefresh = TemplateUtil
+          .template(
+              new ClassPathResource("/sql/impala/refresh-partition-" + table + ".sql", getClass()),
+              values);
+
       if (!execute(sqlRefresh)) {
         return false;
       }
@@ -80,8 +74,6 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
 
     return true;
   }
-
-
 
   @Override
   public String compactionLocation(TablePartition p) {
@@ -105,16 +97,21 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
     Map<String, Object> values = templateValues(p);
     // update meta data to let impala know the files have been updated and recalculate partition
     // statistics
-    return execute(TemplateUtil.template(SQL_REFRESH_TABLE, values))
-        && execute(TemplateUtil.template(SQL_COMPUTE_STATS, values));
+
+    String sqlRefresh = TemplateUtil
+        .template(new ClassPathResource("/sql/impala/refresh-partition-" + p.getTable() + ".sql",
+            getClass()), values);
+
+    String sqlComputeStats = TemplateUtil
+        .template(
+            new ClassPathResource("/sql/impala/compute-stats-" + p.getTable() + ".sql", getClass()),
+            values);
+
+    return execute(sqlRefresh) && execute(sqlComputeStats);
   }
 
 
   private Map<String, Object> templateValues(TablePartition p) {
-    log.info("Perform post-compaction actions");
-
-    log.info("Execute refresh and compute stats for table: {}", p.getTable());
-    // update meta data and compute stats for partition
     Map<String, Object> values = new HashMap<>();
     values.put("DATABASE_NAME", database);
     values.put("TABLE_NAME", p.getTable());
@@ -122,15 +119,18 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
     values.put("MONTH", Integer.valueOf(p.getMonth()));
     values.put("DAY", Integer.valueOf(p.getDay()));
     values.put("SERVER", p.getServer());
-    values.put("PARTITION", TemplateUtil.template(SQL_PARTITION_TEMPLATE, values));
-
     return values;
   }
 
   @Override
   public boolean preCompact(TablePartition p) {
     // update partition stats before compaction so the query planner can optimize the CTAS query
-    return execute(TemplateUtil.template(SQL_COMPUTE_STATS, templateValues(p)));
+    String sqlComputeStats = TemplateUtil
+        .template(
+            new ClassPathResource("/sql/impala/compute-stats-" + p.getTable() + ".sql", getClass()),
+            templateValues(p));
+
+    return execute(sqlComputeStats);
   }
 
 }

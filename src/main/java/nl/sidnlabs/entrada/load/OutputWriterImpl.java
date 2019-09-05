@@ -222,11 +222,12 @@ public class OutputWriterImpl implements OutputWriter {
   private void write(RowData p) {
     if (p != null) {
       int proto = lookupProtocol(p);
+      String svr = serverCtx.getServerInfo().getServer();
       if (proto == PacketFactory.PROTOCOL_TCP || proto == PacketFactory.PROTOCOL_UDP) {
-        writeDns(dnsRowBuilder.build(p), serverCtx.getServerInfo().getServer());
+        writeDns(dnsRowBuilder.build(p, svr), svr);
       } else if (proto == PacketFactory.PROTOCOL_ICMP_V4
           || proto == PacketFactory.PROTOCOL_ICMP_V6) {
-        writeIcmp(icmpRowBuilder.build(p), serverCtx.getServerInfo().getServer());
+        writeIcmp(icmpRowBuilder.build(p, svr), svr);
       }
     }
   }

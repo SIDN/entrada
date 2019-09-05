@@ -30,7 +30,7 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
   }
 
   @Override
-  public Row build(RowData combo) {
+  public Row build(RowData combo, String server) {
 
     ICMPPacket icmpPacket = (ICMPPacket) combo.getRequest();
 
@@ -97,6 +97,7 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
     // add file name
     row.addColumn(column("pcap_file", combo.getPcapFilename()));
 
+    row.addColumn(column("server", server));
     // if no anycast location is encoded in the name then the anycast server name and location will
     // be null
     // only store this column in case of anycast, to save storage space.

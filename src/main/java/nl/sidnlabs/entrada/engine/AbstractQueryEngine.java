@@ -70,6 +70,7 @@ public abstract class AbstractQueryEngine implements QueryEngine {
     String dropTableSql = TemplateUtil.template(SQL_DROP_TMP_TABLE, values);
 
     if (!cleanup(location, dropTableSql)) {
+      log.error("Cannot cleanup compaction resources, cannot continue with compaction");
       return false;
     }
 
@@ -80,6 +81,7 @@ public abstract class AbstractQueryEngine implements QueryEngine {
         && deleteSrcParquetData(fileManager,
             FileUtil.appendPath(outputLocation, p.getTable(), p.getPath()))
         && move(p, FileUtil.appendPath(location, p.getPath())))) {
+      log.error("Compaction for table: {} failed", p.getTable());
       return false;
     }
 
@@ -106,6 +108,10 @@ public abstract class AbstractQueryEngine implements QueryEngine {
     // get list of compacted files
     List<String> filesToMove = fileManager.files(location);
     // move new parquet files to src table now.
+
+    // create server component of filename, skip if server is null ( can be for icmp)
+    String svr = p.getServer() != null ? "-" + p.getServer() + "-" : "";
+
     for (String f : filesToMove) {
 
       // create a new filename and encode the date and server name in the filename
@@ -114,7 +120,7 @@ public abstract class AbstractQueryEngine implements QueryEngine {
               StringUtils
                   .join(p.getYear(), StringUtils.leftPad(String.valueOf(p.getMonth()), 2, "0"),
                       StringUtils.leftPad(String.valueOf(p.getDay()), 2, "0"))
-                  + "-" + p.getServer() + "-" + UUID.randomUUID() + ".parquet");
+                  + svr + UUID.randomUUID() + ".parquet");
 
       if (!fileManager.move(f, newName, false)) {
         return false;

@@ -72,7 +72,7 @@ public class ScheduledCompaction {
   }
 
   private boolean compact(TablePartition p) {
-    log.info("Compact table: {} partition: {}", p.getTable(), p.toPath());
+    log.info("Compact table: {} partition: {}", p.getTable(), p.getPath());
 
     Date start = new Date();
     try {

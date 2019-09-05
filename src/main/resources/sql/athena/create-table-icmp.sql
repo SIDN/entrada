@@ -50,8 +50,9 @@ CREATE EXTERNAL TABLE IF NOT EXISTS ${DATABASE_NAME}.${TABLE_NAME}(
 	time bigint,
 	query_ts TIMESTAMP,
 	pcap_file STRING,
-	ip_pub_resolver STRING
-) PARTITIONED BY (year int, month int, day int, server string)
+	ip_pub_resolver STRING,
+	server STRING
+) PARTITIONED BY (year int, month int, day int)
 ROW FORMAT SERDE
 'org.apache.hadoop.hive.ql.io.parquet.serde.ParquetHiveSerDe'
 WITH SERDEPROPERTIES (

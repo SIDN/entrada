@@ -10,7 +10,6 @@ import javax.persistence.SequenceGenerator;
 import javax.persistence.Table;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
-import org.apache.commons.lang3.StringUtils;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -68,10 +67,4 @@ public class TablePartition {
   @Column(name = "updated_ts")
   @Temporal(TemporalType.TIMESTAMP)
   private Date updated;
-
-  public String toPath() {
-    return "year=" + year + "/month=" + month + "/day=" + day + "/server="
-        + StringUtils.defaultIfBlank(server, "__default__");
-  }
-
 }

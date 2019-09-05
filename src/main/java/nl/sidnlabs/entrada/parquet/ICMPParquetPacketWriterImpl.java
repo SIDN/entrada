@@ -60,6 +60,7 @@ public class ICMPParquetPacketWriterImpl extends AbstractParquetRowWriter {
         .year(cal.get(Calendar.YEAR))
         .month(cal.get(Calendar.MONTH) + 1)
         .day(cal.get(Calendar.DAY_OF_MONTH))
+        .dns(false)
         .server(server)
         .build();
 

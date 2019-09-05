@@ -55,9 +55,9 @@ AS SELECT
     time,
     date_add('millisecond', mod(time,1000),from_unixtime(time/1000)) query_ts,
     pcap_file,
+    server,
     year,
     month,
-    day,
-    server
+    day
 FROM ${DATABASE_NAME}.${TABLE_NAME}
-WHERE year=${YEAR} AND month=${MONTH} AND day=${DAY} AND server='${SERVER}';
+WHERE year=${YEAR} AND month=${MONTH} AND day=${DAY};

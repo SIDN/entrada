@@ -1,0 +1,1 @@
+ALTER TABLE entrada_partition ALTER COLUMN server DROP NOT NULL;

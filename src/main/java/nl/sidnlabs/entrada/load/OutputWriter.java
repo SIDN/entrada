@@ -28,4 +28,7 @@ public interface OutputWriter {
   Future<Map<String, Set<Partition>>> start(boolean dns, boolean icmp,
       LinkedBlockingQueue<RowData> input);
 
+
+  Map<String, Set<Partition>> activePartitions();
+
 }

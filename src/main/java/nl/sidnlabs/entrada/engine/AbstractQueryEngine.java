@@ -1,9 +1,11 @@
 package nl.sidnlabs.entrada.engine;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
@@ -19,6 +21,8 @@ public abstract class AbstractQueryEngine implements QueryEngine {
 
   private static final String SQL_DROP_TMP_TABLE =
       "DROP TABLE IF EXISTS ${DATABASE_NAME}.tmp_compaction;";
+
+  private static final String PARQUET_FILE_EXT = ".parq";
 
   @Value("${entrada.location.output}")
   protected String outputLocation;
@@ -76,12 +80,33 @@ public abstract class AbstractQueryEngine implements QueryEngine {
 
     String sql = TemplateUtil.template(getCompactionScript(p.getTable()), values);
 
-    // create tmp table with compacted parquet files AND delete old parquet files from src table
-    if (!(preCompact(p) && execute(sql)
-        && deleteSrcParquetData(fileManager,
-            FileUtil.appendPath(outputLocation, p.getTable(), p.getPath()))
-        && move(p, FileUtil.appendPath(location, p.getPath())))) {
-      log.error("Compaction for table: {} failed", p.getTable());
+    List<String> sourceFiles =
+        listSourceParquetData(FileUtil.appendPath(outputLocation, p.getTable(), p.getPath()));
+
+    // create tmp table and select all data into this table, this will compacted all the data in new
+    // larger parquet files
+    // then move the new files to the src table AND delete the old parquet files from src table
+    if (!(preCompact(p) && execute(sql))) {
+      log
+          .error("Compaction for table: {} failed, could not create new parquet files",
+              p.getTable());
+      return false;
+    }
+
+    List<String> filesToMove = listSourceParquetData(FileUtil.appendPath(location, p.getPath()));
+    if (!move(p, filesToMove)) {
+      log.error("Compaction for table: {} failed, could not move new parquet data", p.getTable());
+      // rollback moving data files, by deleting parquet files that have already been moved to the
+      // new location, ignore any error from deleteFiles method, because some of the files might not
+      // exist
+      deleteFiles(newFilesToDelete(p, outputLocation, filesToMove));
+      return false;
+    }
+
+    if (!deleteFiles(sourceFiles)) {
+      log
+          .error("Compaction for table: {} failed, could not delete source paquet files",
+              p.getTable());
       return false;
     }
 
@@ -89,30 +114,48 @@ public abstract class AbstractQueryEngine implements QueryEngine {
     return postCompact(p) && cleanup(location, dropTableSql);
   }
 
+  private List<String> newFilesToDelete(TablePartition p, String newlocation, List<String> files) {
+    List<String> newFilesToDelete = new ArrayList<>();
+    for (String f : files) {
+      String newName = FileUtil
+          .appendPath(newlocation, p.getTable(), p.getPath(),
+              StringUtils.substringAfterLast(f, "/"));
+      newFilesToDelete.add(newName);
+    }
+    return newFilesToDelete;
+  }
+
   private ClassPathResource getCompactionScript(String table) {
     return new ClassPathResource("/sql/" + scriptPrefix + "/partition-compaction-" + table + ".sql",
         getClass());
   }
 
-  private boolean deleteSrcParquetData(FileManager fileManager, String location) {
-    List<String> files = fileManager.files(location);
+  private boolean deleteFiles(List<String> files) {
     for (String f : files) {
-      if (StringUtils.endsWith(f, ".parquet") && !fileManager.delete(f)) {
-        return false;
+      if (StringUtils.contains(f, PARQUET_FILE_EXT)) {
+        // try 2 times to delete the file, the first time might
+        // fail becaue of a temporary error condition?
+        return fileManager.delete(f) || fileManager.delete(f);
       }
     }
     return true;
   }
 
-  private boolean move(TablePartition p, String location) {
-    // get list of compacted files
-    List<String> filesToMove = fileManager.files(location);
-    // move new parquet files to src table now.
+  private List<String> listSourceParquetData(String location) {
+    return fileManager
+        .files(location)
+        .stream()
+        .filter(f -> StringUtils.contains(f, PARQUET_FILE_EXT))
+        .collect(Collectors.toList());
+  }
+
+  private boolean move(TablePartition p, List<String> files) {
+    // move new parquet files to src table.
 
     // create server component of filename, skip if server is null ( can be for icmp)
     String svr = p.getServer() != null ? "-" + p.getServer() + "-" : "";
 
-    for (String f : filesToMove) {
+    for (String f : files) {
 
       // create a new filename and encode the date and server name in the filename
       String newName = FileUtil
@@ -120,7 +163,7 @@ public abstract class AbstractQueryEngine implements QueryEngine {
               StringUtils
                   .join(p.getYear(), StringUtils.leftPad(String.valueOf(p.getMonth()), 2, "0"),
                       StringUtils.leftPad(String.valueOf(p.getDay()), 2, "0"))
-                  + svr + UUID.randomUUID() + ".parquet");
+                  + svr + UUID.randomUUID() + PARQUET_FILE_EXT);
 
       if (!fileManager.move(f, newName, false)) {
         return false;

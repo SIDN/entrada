@@ -156,6 +156,15 @@ public class OutputWriterImpl implements OutputWriter {
     }
   }
 
+
+  @Override
+  public Map<String, Set<Partition>> activePartitions() {
+    Map<String, Set<Partition>> results = new HashMap<>();
+    results.put("dns", new HashSet<>(dnsPartitions));
+    results.put("icmp", new HashSet<>(icmpPartitions));
+    return results;
+  }
+
   public boolean isOpen() {
     return open;
   }

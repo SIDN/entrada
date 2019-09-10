@@ -150,7 +150,7 @@ public class LocalFileManagerImpl implements FileManager {
     log.info("Create directory: {} ", path);
     File f = new File(path);
 
-    if (!f.exists()) {
+    if (!f.exists() && !Files.isSymbolicLink(f.toPath())) {
       return f.mkdirs();
     }
 

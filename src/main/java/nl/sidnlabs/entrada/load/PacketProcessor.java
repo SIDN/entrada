@@ -103,6 +103,9 @@ public class PacketProcessor {
   @Value("${management.metrics.export.graphite.enabled}")
   private boolean metrics;
 
+  @Value("#{${entrada.partition.activity.ping:5}*60*1000}")
+  private int maxPartitionPingMs;
+
   private PcapReader pcapReader;
   protected Map<RequestCacheKey, RequestCacheValue> requestCache;
 
@@ -155,6 +158,8 @@ public class PacketProcessor {
       return;
     }
 
+    long procStart = System.currentTimeMillis();
+
     // get the state from the previous run
     loadState();
     int fileCounter = 0;
@@ -180,6 +185,11 @@ public class PacketProcessor {
       purgeCache();
       // move the pcap file to archive location or delete
       fileArchiveService.archive(file, start, (int) packetCounter);
+      // make sure the active paritions are not compacted during bulk loading
+      if (pingPartitions(procStart)) {
+        // reset timer
+        procStart = System.currentTimeMillis();
+      }
 
       logStats();
     }
@@ -202,6 +212,29 @@ public class PacketProcessor {
     }
 
     log.info("Ready, processed {} new files", fileCounter);
+  }
+
+  /**
+   * Update the last updated date for active partitions, to prevent the partition from being
+   * compacted when processing a bulk load of pcap data which might take hours and in this time the
+   * partition is otherwise not updated in the database.
+   * 
+   * @param procStart
+   * @return
+   */
+  private boolean pingPartitions(long procStart) {
+    if (System.currentTimeMillis() - procStart > maxPartitionPingMs) {
+      // last partition ping was > configured for partitionActivePing
+      outputWriter
+          .activePartitions()
+          .entrySet()
+          .stream()
+          .forEach(e -> partitionService.ping(e.getKey(), e.getValue()));
+
+      return true;
+    }
+
+    return false;
   }
 
   private void createPartitions(Map<String, Set<Partition>> partitions) {

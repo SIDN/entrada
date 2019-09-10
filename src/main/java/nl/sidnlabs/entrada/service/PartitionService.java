@@ -64,6 +64,24 @@ public class PartitionService {
     save(tp);
   }
 
+  @Transactional
+  public void ping(String table, Set<Partition> partitions) {
+    log.info("Ping {} partition(s)", partitions.size());
+
+    partitions.stream().forEach(p -> pingPartition(table, p));
+  }
+
+  private void pingPartition(String table, Partition p) {
+    log.info("Ping partition: {}", p);
+
+    TablePartition tp = tablePartitionRepository.findByTableAndPath(table, p.toPath());
+    if (tp != null) {
+      // update existing partition only
+      tp.setUpdated(new Date());
+      save(tp);
+    }
+  }
+
   public List<TablePartition> uncompactedPartitions() {
     return tablePartitionRepository.findUnCompactedForEngine(engine);
   }

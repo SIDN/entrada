@@ -32,4 +32,19 @@ public class UdpTest extends AbstractTest {
   }
 
 
+  @Test
+  public void testEdns0512Ok() {
+    PcapReader reader = createReaderFor("pcap/sidnlabs-test-udp-edns-size-512-1-request.pcap");
+    List<Packet> pckts = reader.stream().collect(Collectors.toList());
+    assertEquals(1, pckts.size());
+
+    long count = pckts.stream().flatMap(p -> ((DNSPacket) p).getMessages().stream()).count();
+    assertEquals(1, count);
+
+    DNSPacket p = (DNSPacket) pckts.get(0);
+    assertEquals(512, p.getMessage().getPseudo().getUdpPlayloadSize());
+  }
+
+
+
 }

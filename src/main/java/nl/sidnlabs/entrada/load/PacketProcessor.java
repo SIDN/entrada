@@ -222,8 +222,10 @@ public class PacketProcessor {
    * @param procStart
    * @return
    */
-  private boolean pingPartitions(long procStart) {
-    if (System.currentTimeMillis() - procStart > maxPartitionPingMs) {
+  private boolean pingPartitions(long start) {
+    long now = System.currentTimeMillis();
+
+    if ((now - start) > maxPartitionPingMs) {
       // last partition ping was > configured for partitionActivePing
       outputWriter
           .activePartitions()

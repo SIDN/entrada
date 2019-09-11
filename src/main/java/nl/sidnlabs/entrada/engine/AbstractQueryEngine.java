@@ -103,10 +103,11 @@ public abstract class AbstractQueryEngine implements QueryEngine {
       return false;
     }
 
-    if (!deleteFiles(sourceFiles)) {
+    int deleteErrors = deleteFiles(sourceFiles);
+    if (deleteErrors > 0) {
       log
-          .error("Compaction for table: {} failed, could not delete source paquet files",
-              p.getTable());
+          .error("Compaction for table: {} failed, could not delete {} source paquet file(s)",
+              deleteErrors, p.getTable());
       return false;
     }
 
@@ -130,15 +131,16 @@ public abstract class AbstractQueryEngine implements QueryEngine {
         getClass());
   }
 
-  private boolean deleteFiles(List<String> files) {
+  private int deleteFiles(List<String> files) {
+    int errors = 0;
     for (String f : files) {
       if (StringUtils.contains(f, PARQUET_FILE_EXT)) {
-        // try 2 times to delete the file, the first time might
-        // fail becaue of a temporary error condition?
-        return fileManager.delete(f) || fileManager.delete(f);
+        if (!fileManager.delete(f)) {
+          errors++;
+        }
       }
     }
-    return true;
+    return errors;
   }
 
   private List<String> listSourceParquetData(String location) {

@@ -167,6 +167,7 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   @Override
   public boolean match(String address) {
     // use 2 bloomfilter to do faster check for addresses that have been seen before
+
     if (!matchFilter.mightContain(address) && !nonMatchFilter.mightContain(address)) {
       // new address is not matched before as a match or a non-match
 
@@ -181,6 +182,7 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
             return true;
           }
         }
+
         nonMatchFilter.put(address);
         return false;
       }
@@ -191,42 +193,16 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
           return true;
         }
       }
-
       nonMatchFilter.put(address);
       return false;
     }
 
-    // address has been seen before it must be a match of non-match
-    // check if it is not in nonMatchFilter, then it must be a match and return true
-    return !nonMatchFilter.mightContain(address);
+    // address has been seen before it must be a match or non-match
 
+    // check if it may be in the matchFilter AND DEFINITELY NOT in the nonMatchFilter
+    // then it is a guaranteed match
+    return matchFilter.mightContain(address) && !nonMatchFilter.mightContain(address);
   }
-
-  // @Override
-  // public boolean match(String address) {
-  //
-  // if (StringUtils.contains(address, ".")) {
-  // for (IpSubnet sn : matchers4) {
-  // if (subnetContains(sn, address)) {
-  // matchFilter.put(address);
-  // return true;
-  // }
-  // }
-  // nonMatchFilter.put(address);
-  // return false;
-  // }
-  //
-  // for (IpSubnet sn : matchers6) {
-  // if (subnetContains(sn, address)) {
-  // matchFilter.put(address);
-  // return true;
-  // }
-  // }
-  //
-  // return false;
-  //
-  //
-  // }
 
   private boolean subnetContains(IpSubnet subnet, String address) {
     try {

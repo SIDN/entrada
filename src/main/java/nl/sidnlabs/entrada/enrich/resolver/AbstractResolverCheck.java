@@ -24,38 +24,27 @@ import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import java.io.File;
 import java.io.IOException;
 import java.net.UnknownHostException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import javax.annotation.PostConstruct;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.jboss.netty.handler.ipfilter.IpSubnet;
 import org.springframework.beans.factory.annotation.Value;
-import com.google.common.hash.BloomFilter;
-import com.google.common.hash.Funnels;
 import lombok.extern.log4j.Log4j2;
 
 @Log4j2
 public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
-  private static final int BLOOMFILTER_SIZE = 100000;
-
   private List<IpSubnet> matchers4 = new ArrayList<>();
   private List<IpSubnet> matchers6 = new ArrayList<>();
-
-  /*
-   * Two bloomfilters are used to track addresses that have been a match or a non-match. if an
-   * address is not in any of the filters then do the normal lookup.
-   */
-  BloomFilter<String> matchFilter =
-      BloomFilter.create(Funnels.stringFunnel(StandardCharsets.UTF_8), BLOOMFILTER_SIZE, 0.01);
-
-  BloomFilter<String> nonMatchFilter =
-      BloomFilter.create(Funnels.stringFunnel(StandardCharsets.UTF_8), BLOOMFILTER_SIZE, 0.01);
+  // TODO: make sure the map does not get too big and causes OOM
+  private Map<String, Boolean> results = new HashMap<>();
 
   @Value("${entrada.location.work}")
   private String workDir;
@@ -70,6 +59,8 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
       log.info("File {} cannot be read, reload from source as backup", file);
       update(file);
     }
+
+    results.clear();
   }
 
   private void update(File file) {
@@ -94,7 +85,7 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
       // write subnets to file so we do not need to get them from source every time the app starts
       writeToFile(subnets, file);
     }
-    log.info("Loaded {} resolver addresses from file: {}", getSize(), file);
+    log.info("Loaded {} resolver addresses from file: {}", getMatchers(), file);
   }
 
   private IpSubnet subnetFor(String address) {
@@ -149,7 +140,7 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
         .filter(Objects::nonNull)
         .forEach(s -> matchers6.add(s));
 
-    log.info("Loaded {} resolver addresses from file: {}", getSize(), file);
+    log.info("Loaded {} resolver addresses from file: {}", getMatchers(), file);
 
     return !matchers4.isEmpty() || !matchers6.isEmpty();
   }
@@ -166,42 +157,35 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
   @Override
   public boolean match(String address) {
-    // use 2 bloomfilter to do faster check for addresses that have been seen before
+    // use map to do faster check for addresses that have been seen before
 
-    if (!matchFilter.mightContain(address) && !nonMatchFilter.mightContain(address)) {
-      // new address is not matched before as a match or a non-match
+    Boolean result = results.get(address);
+    if (result == null) {
+      // ip address has not been seen before, do subnet matching
 
       // matchers are split into a v4 and v6 group
-      // to allow us to quickly skip the version we don't need
-      // to check
+      // to allow us to quickly skip the version we don't need to check
 
       if (StringUtils.contains(address, ".")) {
-        for (IpSubnet sn : matchers4) {
-          if (subnetContains(sn, address)) {
-            matchFilter.put(address);
-            return true;
-          }
-        }
-
-        nonMatchFilter.put(address);
-        return false;
-      }
-
-      for (IpSubnet sn : matchers6) {
-        if (subnetContains(sn, address)) {
-          matchFilter.put(address);
+        // do v4 check
+        if (matchers4.stream().anyMatch(m -> subnetContains(m, address))) {
+          results.put(address, Boolean.TRUE);
           return true;
         }
       }
-      nonMatchFilter.put(address);
+      // do v6 check
+      else if (matchers6.stream().anyMatch(m -> subnetContains(m, address))) {
+        results.put(address, Boolean.TRUE);
+        return true;
+      }
+
+      // address not a known resolver
+      results.put(address, Boolean.FALSE);
       return false;
     }
 
-    // address has been seen before it must be a match or non-match
-
-    // check if it may be in the matchFilter AND DEFINITELY NOT in the nonMatchFilter
-    // then it is a guaranteed match
-    return matchFilter.mightContain(address) && !nonMatchFilter.mightContain(address);
+    // address has been seen before, return cached result
+    return result.booleanValue();
   }
 
   private boolean subnetContains(IpSubnet subnet, String address) {
@@ -218,8 +202,14 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   }
 
   @Override
-  public int getSize() {
+  public int getMatchers() {
     return matchers4.size() + matchers6.size();
+  }
+
+  @Override
+  public void done() {
+    log.info("{} resolver cache contains {} IP addresses", getName(), results.size());
+    results.clear();
   }
 
 }

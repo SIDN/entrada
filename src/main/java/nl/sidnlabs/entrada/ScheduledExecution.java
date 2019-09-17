@@ -67,6 +67,8 @@ public class ScheduledExecution {
 
     sharedContext.setExecutionStatus(false);
 
+    resolverChecks.stream().forEach(DnsResolverCheck::done);
+
     log.info("Completed loading name server data");
   }
 

@@ -8,6 +8,7 @@ public interface DnsResolverCheck {
 
   boolean match(String address);
 
-  int getSize();
+  int getMatchers();
 
+  void done();
 }

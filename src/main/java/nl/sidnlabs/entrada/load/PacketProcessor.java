@@ -115,7 +115,9 @@ public class PacketProcessor {
 
   // max lifetime for cached packets, in milliseconds (configured in minutes)
   private int cacheTimeout;
-  private int packetCounter;
+  private int totalPacketCounter;
+  private int requestPacketCounter;
+  private int responsePacketCounter;
 
   // keep list of active zone transfers
   private Map<RequestCacheKey, Integer> activeZoneTransfers;
@@ -184,7 +186,7 @@ public class PacketProcessor {
       // flush expired packets after every file, to avoid a large cache eating up the heap
       purgeCache();
       // move the pcap file to archive location or delete
-      fileArchiveService.archive(file, start, (int) packetCounter);
+      fileArchiveService.archive(file, start, totalPacketCounter);
       // make sure the active paritions are not compacted during bulk loading
       if (pingPartitions(procStart)) {
         // reset timer
@@ -257,7 +259,9 @@ public class PacketProcessor {
   }
 
   private void reset() {
-    packetCounter = 0;
+    totalPacketCounter = 0;
+    requestPacketCounter = 0;
+    responsePacketCounter = 0;
     requestCache = new HashMap<>();
     activeZoneTransfers = new HashMap<>();
     outputFuture = null;
@@ -266,7 +270,9 @@ public class PacketProcessor {
 
   private void logStats() {
     log.info("--------- Done processing data-----------");
-    log.info("{} packets", packetCounter);
+    log.info("{} total DNS messages", totalPacketCounter);
+    log.info("{} request", requestPacketCounter);
+    log.info("{} response", responsePacketCounter);
     log.info("-----------------------------------------");
   }
 
@@ -308,9 +314,9 @@ public class PacketProcessor {
   }
 
   private void process(Packet currentPacket, String fileName) {
-    packetCounter++;
-    if (packetCounter % 100000 == 0) {
-      log.info("Processed " + packetCounter + " packets");
+    totalPacketCounter++;
+    if (totalPacketCounter % 100000 == 0) {
+      log.info("Processed " + totalPacketCounter + " packets");
     }
 
     if (isICMP(currentPacket)) {
@@ -360,6 +366,7 @@ public class PacketProcessor {
   }
 
   private void handDnsQuery(DNSPacket dnsPacket, Message msg, String fileName) {
+    requestPacketCounter++;
     // check for ixfr/axfr request
     if (!msg.getQuestions().isEmpty()
         && (msg.getQuestions().get(0).getQType() == ResourceRecordType.AXFR
@@ -383,6 +390,7 @@ public class PacketProcessor {
   }
 
   private void handDnsResponse(DNSPacket dnsPacket, Message msg, String fileName) {
+    responsePacketCounter++;
     // try to find the request
 
     // check for ixfr/axfr response, the query might be missing from the response

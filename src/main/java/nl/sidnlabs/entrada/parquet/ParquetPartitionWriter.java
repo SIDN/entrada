@@ -46,7 +46,6 @@ public class ParquetPartitionWriter {
       // a new partition object and parquet file will be created.
       partitions.remove(partitionStr);
     }
-
   }
 
   public void close() {

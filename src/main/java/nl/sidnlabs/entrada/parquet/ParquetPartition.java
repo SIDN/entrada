@@ -58,7 +58,9 @@ public class ParquetPartition<T> {
       writer.write(data);
       rows++;
     } catch (Exception e) {
-      throw new ApplicationException("Cannot write data", e);
+      // cannot write this row, log error and continue
+      // do not stop the writer
+      log.error("Error writing row to parquet", e);
     }
   }
 
@@ -69,7 +71,9 @@ public class ParquetPartition<T> {
     try {
       writer.close();
     } catch (IOException e) {
-      throw new ApplicationException("Cannot close file: " + filename, e);
+      // cannot close this writer, log error and continue
+      // do not stop the writer
+      log.error("Cannot close file: " + filename, e);
     }
   }
 }

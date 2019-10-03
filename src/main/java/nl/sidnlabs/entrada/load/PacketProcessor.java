@@ -298,6 +298,9 @@ public class PacketProcessor {
       if (log.isDebugEnabled()) {
         log.debug("Done with decoding, start cleanup");
       }
+    } catch (Exception e) {
+      // log all exception, should not happen
+      log.error("Got exception from PCAP reader", e);
     } finally {
       // clear expired cache entries
       pcapReader

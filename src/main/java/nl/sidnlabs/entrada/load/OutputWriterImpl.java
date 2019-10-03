@@ -223,7 +223,12 @@ public class OutputWriterImpl implements OutputWriter {
         // stop
         return true;
       }
-      write(pc);
+      try {
+        write(pc);
+      } catch (Exception e) {
+        // error while writing to parquet, log and continue
+        log.error("Error while writing row data to parquet", e);
+      }
     }
     return false;
   }

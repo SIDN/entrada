@@ -109,16 +109,6 @@ public class OutputWriterImpl implements OutputWriter {
     return -1;
   }
 
-  private void writeDns(Row row, String server) {
-    dnsPartitions.add(dnsWriter.write(row, server));
-    dnsCounter++;
-  }
-
-  private void writeIcmp(Row row, String server) {
-    icmpPartitions.add(icmpWriter.write(row, server));
-    icmpCounter++;
-  }
-
   private Map<String, Set<Partition>> close() {
     log.info("Closing writer");
 
@@ -246,7 +236,15 @@ public class OutputWriterImpl implements OutputWriter {
     }
   }
 
+  private void writeDns(Row row, String server) {
+    dnsPartitions.add(dnsWriter.write(row, server));
+    dnsCounter++;
+  }
 
+  private void writeIcmp(Row row, String server) {
+    icmpPartitions.add(icmpWriter.write(row, server));
+    icmpCounter++;
+  }
 
   private void sleep() {
     try {

@@ -15,7 +15,8 @@ public abstract class AbstractTest {
     log.info("Load pcap from {}", resource);
 
     try {
-      DataInputStream is = new DataInputStream(resource.getInputStream());
+      DataInputStream is = new DataInputStream(
+          CompressionUtil.getDecompressorStreamWrapper(resource.getInputStream(), file));
       return new PcapReader(is);
     } catch (Exception e) {
       log.error("Error while reading file", e);
@@ -30,7 +31,7 @@ public abstract class AbstractTest {
 
     try {
       InputStream decompressor =
-          CompressionUtil.getDecompressorStreamWrapper(resource.getInputStream(), file, 64 * 1024);
+          CompressionUtil.getDecompressorStreamWrapper(resource.getInputStream(), file);
 
       DataInputStream dis = new DataInputStream(decompressor);
       return new PcapReader(dis);

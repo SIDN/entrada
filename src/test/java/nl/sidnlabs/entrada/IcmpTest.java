@@ -28,7 +28,6 @@ public class IcmpTest extends AbstractTest {
     assertTrue(p instanceof ICMPPacket);
 
     ICMPPacket icmp = (ICMPPacket) p;
-    assertNotEquals(Packet.NULL, icmp);
 
     assertTrue(icmp.getOriginalIPPacket() instanceof DNSPacket);
     DNSPacket dns = (DNSPacket) icmp.getOriginalIPPacket();
@@ -36,6 +35,28 @@ public class IcmpTest extends AbstractTest {
     assertEquals(1, dns.getMessageCount());
     assertEquals("google.nl.", dns.getMessage().getQuestions().get(0).getQName());
     assertEquals(ResourceRecordType.DS, dns.getMessage().getQuestions().get(0).getQType());
+  }
+
+
+  @Test
+  public void testIcmpWithIcmpPayloadOk() {
+    // this pcap contains a single icmp packet where the payload is also an (partial) icmp packet
+    PcapReader reader = createReaderFor("pcap/sidnlabs-test-icmpv6-with-icmpv6-payload.pcap");
+    List<Packet> pckts = reader.stream().collect(Collectors.toList());
+    assertEquals(1, pckts.size());
+
+    Packet p = pckts.get(0);
+    assertNotEquals(Packet.NULL, p);
+
+    assertTrue(p instanceof ICMPPacket);
+    ICMPPacket icmp = (ICMPPacket) p;
+    assertEquals(3, icmp.getType());
+    assertEquals(0, icmp.getCode());
+
+    assertTrue(icmp.getOriginalIPPacket() instanceof ICMPPacket);
+    ICMPPacket nestedIcmp = (ICMPPacket) icmp.getOriginalIPPacket();
+    assertEquals(129, nestedIcmp.getType());
+    assertEquals(0, nestedIcmp.getCode());
   }
 
 }

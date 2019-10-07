@@ -604,8 +604,7 @@ public class PacketProcessor {
     }
 
     try {
-      InputStream decompressor =
-          CompressionUtil.getDecompressorStreamWrapper(ois.get(), file, bufferSizeConfig * 1024);
+      InputStream decompressor = CompressionUtil.getDecompressorStreamWrapper(ois.get(), file);
       this.pcapReader = new PcapReader(
           new DataInputStream(new BufferedInputStream(decompressor, bufferSizeConfig * 1024)));
     } catch (IOException e) {

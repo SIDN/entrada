@@ -2,9 +2,9 @@ package nl.sidnlabs.entrada.util;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.zip.GZIPInputStream;
-import org.apache.commons.compress.compressors.xz.XZCompressorInputStream;
+import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.lang3.StringUtils;
+import org.tukaani.xz.XZInputStream;
 import nl.sidnlabs.entrada.exception.ApplicationException;
 
 public class CompressionUtil {
@@ -21,15 +21,15 @@ public class CompressionUtil {
    *         returns the inputstream as-is
    * @throws IOException when stream cannot be created
    */
-  public static InputStream getDecompressorStreamWrapper(InputStream in, String filename,
-      int bufSize) throws IOException {
+  public static InputStream getDecompressorStreamWrapper(InputStream in, String filename)
+      throws IOException {
 
     if (StringUtils.endsWithIgnoreCase(filename, ".pcap")) {
       return in;
     } else if (StringUtils.endsWithIgnoreCase(filename, ".gz")) {
-      return new GZIPInputStream(in, bufSize);
+      return new GzipCompressorInputStream(in, true);
     } else if (StringUtils.endsWithIgnoreCase(filename, ".xz")) {
-      return new XZCompressorInputStream(in);
+      return new XZInputStream(in);
     }
 
     // unkown file type

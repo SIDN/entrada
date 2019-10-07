@@ -45,6 +45,21 @@ public class UdpTest extends AbstractTest {
     assertEquals(512, p.getMessage().getPseudo().getUdpPlayloadSize());
   }
 
+  @Test
+  public void testXzCompressionWithMultiplePartsOk() {
+    // xz files can be concatenated, so the file may contain multiple parts.
+    // this test file contains 2 parts with 1 packet each
+    // only the 1st pcap contains the pcap header, all other compressed pcap files
+    // that are concatenated have no pcap header, only packet headers for each packet
+    PcapReader reader =
+        createReaderFor("pcap/sidnlabs-test-xz-compression-multiple-parts-2-packets.pcap.xz");
+    List<Packet> pckts = reader.stream().collect(Collectors.toList());
+    assertEquals(2, pckts.size());
+
+    long count = pckts.stream().flatMap(p -> ((DNSPacket) p).getMessages().stream()).count();
+    assertEquals(2, count);
+  }
+
 
 
 }

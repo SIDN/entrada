@@ -105,6 +105,7 @@ public class ArchiveService {
     // add the file to the database
     if (!exists(file, serverContext.getServerInfo().getName())) {
       Date now = new Date();
+
       FileArchive fa = FileArchive
           .builder()
           .dateEnd(now)
@@ -113,8 +114,9 @@ public class ArchiveService {
           .server(serverContext.getServerInfo().getName())
           .dateStart(start)
           .rows(packets)
-          .time((int) (now.getTime() - start.getTime()) / 1000)
+          .time(now.getTime() - start.getTime())
           .mode(archiveOption)
+          .bytes(FileUtil.size(file))
           .build();
 
       fileArchiveRepository.save(fa);

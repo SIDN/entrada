@@ -84,4 +84,9 @@ public class FileUtil {
     return null;
   }
 
+  public static long size(String file) {
+    File f = new File(file);
+    return f.exists() ? f.length() : -1;
+  }
+
 }

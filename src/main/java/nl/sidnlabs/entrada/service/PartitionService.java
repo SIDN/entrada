@@ -69,6 +69,12 @@ public class PartitionService {
     partitions.stream().forEach(p -> pingPartition(table, p));
   }
 
+  /**
+   * Update partition update data to indicate that the partition is still being actively written to.
+   * 
+   * @param table the table the partition belongs to
+   * @param p the partition that is still being used
+   */
   private void pingPartition(String table, Partition p) {
     TablePartition tp = tablePartitionRepository.findByTableAndPath(table, p.toPath());
     if (tp != null) {

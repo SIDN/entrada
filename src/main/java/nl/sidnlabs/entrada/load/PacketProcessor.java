@@ -187,7 +187,7 @@ public class PacketProcessor {
       purgeCache();
       // move the pcap file to archive location or delete
       fileArchiveService.archive(file, start, totalPacketCounter);
-      // make sure the active paritions are not compacted during bulk loading
+      // make sure the active partitions are not compacted during bulk loading
       if (pingPartitions(procStart)) {
         // reset timer
         procStart = System.currentTimeMillis();

@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -12,6 +13,7 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.file.FileManager;
+import nl.sidnlabs.entrada.model.Partition;
 import nl.sidnlabs.entrada.model.jpa.TablePartition;
 import nl.sidnlabs.entrada.util.FileUtil;
 import nl.sidnlabs.entrada.util.TemplateUtil;
@@ -177,6 +179,47 @@ public abstract class AbstractQueryEngine implements QueryEngine {
   private boolean cleanup(String location, String dropTableSql) {
     // delete any old data and make sure the tmp table is not still around
     return fileManager.rmdir(location) && execute(dropTableSql);
+  }
+
+
+  @Override
+  public boolean addPartition(String table, Set<Partition> partitions) {
+
+    Map<String, Object> values = new HashMap<>();
+    values.put("DATABASE_NAME", database);
+    values.put("TABLE_NAME", table);
+
+    for (Partition p : partitions) {
+      log.info("Add partition: {} to table: {}", p, table);
+
+      values.put("YEAR", Integer.valueOf(p.getYear()));
+      values.put("MONTH", Integer.valueOf(p.getMonth()));
+      values.put("DAY", Integer.valueOf(p.getDay()));
+      values.put("SERVER", p.getServer());
+
+      String sql = TemplateUtil
+          .template(new ClassPathResource("/sql/create-partition-" + table + ".sql", getClass()),
+              values);
+
+      log.info("Create partition, sql: {}", sql);
+
+      if (!execute(sql)) {
+        log.error("Create partition failed for: {}", p);
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  public boolean postCompact(TablePartition p) {
+    // do nothing
+    return true;
+  }
+
+  public boolean preCompact(TablePartition p) {
+    // do nothing
+    return true;
   }
 
 }

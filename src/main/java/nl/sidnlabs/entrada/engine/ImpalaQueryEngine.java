@@ -2,7 +2,6 @@ package nl.sidnlabs.entrada.engine;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,7 +11,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.file.FileManager;
-import nl.sidnlabs.entrada.model.Partition;
 import nl.sidnlabs.entrada.model.jpa.TablePartition;
 import nl.sidnlabs.entrada.util.FileUtil;
 import nl.sidnlabs.entrada.util.TemplateUtil;
@@ -32,47 +30,6 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
   public ImpalaQueryEngine(@Qualifier("impalaJdbcTemplate") JdbcTemplate jdbcTemplate,
       @Qualifier("hdfs") FileManager fileManager) {
     super(jdbcTemplate, fileManager, "impala");
-  }
-
-  @Override
-  public boolean addPartition(String table, Set<Partition> partitions) {
-
-    Map<String, Object> values = new HashMap<>();
-    values.put("DATABASE_NAME", database);
-    values.put("TABLE_NAME", table);
-
-    for (Partition p : partitions) {
-      log.info("Add partition: {} to table: {}", p, table);
-
-      values.put("YEAR", Integer.valueOf(p.getYear()));
-      values.put("MONTH", Integer.valueOf(p.getMonth()));
-      values.put("DAY", Integer.valueOf(p.getDay()));
-      values.put("SERVER", p.getServer());
-
-      String sql = TemplateUtil
-          .template(
-              new ClassPathResource("/sql/impala/create-partition-" + table + ".sql", getClass()),
-              values);
-
-      log.info("Create partition, sql: {}", sql);
-
-      if (!execute(sql)) {
-        return false;
-      }
-
-
-      // do a refresh after the partition has been added to update the table metadata
-      String sqlRefresh = TemplateUtil
-          .template(
-              new ClassPathResource("/sql/impala/refresh-partition-" + table + ".sql", getClass()),
-              values);
-
-      if (!execute(sqlRefresh)) {
-        return false;
-      }
-    }
-
-    return true;
   }
 
   @Override

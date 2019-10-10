@@ -45,7 +45,7 @@ public class FileArchive {
   private Date dateEnd;
 
   @Column(name = "time")
-  private int time;
+  private long time;
 
   @Column(name = "file")
   private String file;
@@ -61,6 +61,9 @@ public class FileArchive {
 
   @Column(name = "mode")
   private ArchiveModeType mode;
+
+  @Column(name = "bytes")
+  private long bytes;
 
 
   @Converter(autoApply = true)

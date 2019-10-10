@@ -259,9 +259,6 @@ public class PacketProcessor {
   }
 
   private void reset() {
-    totalPacketCounter = 0;
-    requestPacketCounter = 0;
-    responsePacketCounter = 0;
     requestCache = new HashMap<>();
     activeZoneTransfers = new HashMap<>();
     outputFuture = null;
@@ -269,7 +266,7 @@ public class PacketProcessor {
   }
 
   private void logStats() {
-    log.info("--------- Done processing data-----------");
+    log.info("--------- Done processing pcap file -----------");
     log.info("{} total DNS messages", totalPacketCounter);
     log.info("{} request", requestPacketCounter);
     log.info("{} response", responsePacketCounter);
@@ -278,6 +275,10 @@ public class PacketProcessor {
 
   private void read(String file) {
     log.info("Start reading from file {}", file);
+
+    totalPacketCounter = 0;
+    requestPacketCounter = 0;
+    responsePacketCounter = 0;
 
     // try to open file, if file is not good pcap handle exception and fail fast.
     if (!createReader(file)) {

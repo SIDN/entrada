@@ -64,6 +64,26 @@ public class ArchiveService {
     File f = new File(file);
     FileManager fmSrc = fileManagerFactory.getFor(file);
 
+    // add the file to the database
+    if (!exists(file, serverContext.getServerInfo().getName())) {
+      Date now = new Date();
+
+      FileArchive fa = FileArchive
+          .builder()
+          .dateEnd(now)
+          .file(f.getName())
+          .path(f.getParent())
+          .server(serverContext.getServerInfo().getName())
+          .dateStart(start)
+          .rows(packets)
+          .time(now.getTime() - start.getTime())
+          .mode(archiveOption)
+          .bytes(FileUtil.size(file))
+          .build();
+
+      fileArchiveRepository.save(fa);
+    }
+
     if (ArchiveModeType.ARCHIVE == archiveOption) {
       // move the pcap file to the archive location
       log.info("Archive: {} with mode: {}", file, archiveOption);
@@ -100,26 +120,6 @@ public class ArchiveService {
     // delete pcap file when archive or delete option is chosen
     if (ArchiveModeType.ARCHIVE == archiveOption || ArchiveModeType.DELETE == archiveOption) {
       fmSrc.delete(file);
-    }
-
-    // add the file to the database
-    if (!exists(file, serverContext.getServerInfo().getName())) {
-      Date now = new Date();
-
-      FileArchive fa = FileArchive
-          .builder()
-          .dateEnd(now)
-          .file(f.getName())
-          .path(f.getParent())
-          .server(serverContext.getServerInfo().getName())
-          .dateStart(start)
-          .rows(packets)
-          .time(now.getTime() - start.getTime())
-          .mode(archiveOption)
-          .bytes(FileUtil.size(file))
-          .build();
-
-      fileArchiveRepository.save(fa);
     }
   }
 

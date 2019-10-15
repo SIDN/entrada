@@ -6,6 +6,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import nl.sidnlabs.entrada.file.FileManager;
+import nl.sidnlabs.entrada.model.Partition;
 import nl.sidnlabs.entrada.model.jpa.TablePartition;
 import nl.sidnlabs.entrada.util.FileUtil;
 
@@ -33,6 +34,12 @@ public class AthenaQueryEngine extends AbstractQueryEngine {
   @Override
   public String tableLocation(TablePartition p) {
     return FileUtil.appendPath(compactionLocation(p), p.getPath());
+  }
+
+  @Override
+  public boolean postAddPartition(String table, Partition p) {
+    // do nothing
+    return true;
   }
 
 }

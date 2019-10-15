@@ -52,4 +52,9 @@ public class LocalQueryEngine implements QueryEngine {
     return true;
   }
 
+  @Override
+  public boolean postAddPartition(String table, Partition p) {
+    // do nothing
+    return true;
+  }
 }

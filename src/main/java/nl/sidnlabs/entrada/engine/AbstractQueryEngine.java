@@ -203,7 +203,7 @@ public abstract class AbstractQueryEngine implements QueryEngine {
 
       log.info("Create partition, sql: {}", sql);
 
-      if (!execute(sql)) {
+      if (!execute(sql) || !postAddPartition(table, p)) {
         log.error("Create partition failed for: {}", p);
         return false;
       }

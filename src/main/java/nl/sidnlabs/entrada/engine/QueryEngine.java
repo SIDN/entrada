@@ -10,6 +10,8 @@ public interface QueryEngine {
 
   boolean addPartition(String table, Set<Partition> partitions);
 
+  boolean postAddPartition(String table, Partition p);
+
   boolean compact(TablePartition p);
 
   String compactionLocation(TablePartition p);

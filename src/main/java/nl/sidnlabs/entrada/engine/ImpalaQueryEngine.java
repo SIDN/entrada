@@ -11,6 +11,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.file.FileManager;
+import nl.sidnlabs.entrada.model.Partition;
 import nl.sidnlabs.entrada.model.jpa.TablePartition;
 import nl.sidnlabs.entrada.util.FileUtil;
 import nl.sidnlabs.entrada.util.TemplateUtil;
@@ -51,31 +52,37 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
     log
         .info("Perform post-compaction actions, refresh and compute stats for table: {}",
             p.getTable());
-    Map<String, Object> values = templateValues(p);
+    Map<String, Object> values =
+        templateValues(p.getTable(), p.getYear(), p.getMonth(), p.getDay(), p.getServer());
     // update meta data to let impala know the files have been updated and recalculate partition
     // statistics
-
-    String sqlRefresh = TemplateUtil
-        .template(new ClassPathResource("/sql/impala/refresh-partition-" + p.getTable() + ".sql",
-            getClass()), values);
 
     String sqlComputeStats = TemplateUtil
         .template(
             new ClassPathResource("/sql/impala/compute-stats-" + p.getTable() + ".sql", getClass()),
             values);
 
-    return execute(sqlRefresh) && execute(sqlComputeStats);
+    return refresh(p.getTable(), values) && execute(sqlComputeStats);
   }
 
+  private boolean refresh(String table, Map<String, Object> values) {
+    String sqlRefresh = TemplateUtil
+        .template(
+            new ClassPathResource("/sql/impala/refresh-partition-" + table + ".sql", getClass()),
+            values);
 
-  private Map<String, Object> templateValues(TablePartition p) {
+    return execute(sqlRefresh);
+  }
+
+  private Map<String, Object> templateValues(String table, int year, int month, int day,
+      String server) {
     Map<String, Object> values = new HashMap<>();
     values.put("DATABASE_NAME", database);
-    values.put("TABLE_NAME", p.getTable());
-    values.put("YEAR", Integer.valueOf(p.getYear()));
-    values.put("MONTH", Integer.valueOf(p.getMonth()));
-    values.put("DAY", Integer.valueOf(p.getDay()));
-    values.put("SERVER", p.getServer());
+    values.put("TABLE_NAME", table);
+    values.put("YEAR", Integer.valueOf(year));
+    values.put("MONTH", Integer.valueOf(month));
+    values.put("DAY", Integer.valueOf(day));
+    values.put("SERVER", server);
     return values;
   }
 
@@ -85,9 +92,16 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
     String sqlComputeStats = TemplateUtil
         .template(
             new ClassPathResource("/sql/impala/compute-stats-" + p.getTable() + ".sql", getClass()),
-            templateValues(p));
+            templateValues(p.getTable(), p.getYear(), p.getMonth(), p.getDay(), p.getServer()));
 
     return execute(sqlComputeStats);
+  }
+
+  @Override
+  public boolean postAddPartition(String table, Partition p) {
+    // refresh the updated impala partition, so the new files can be used.
+    return refresh(table,
+        templateValues(table, p.getYear(), p.getMonth(), p.getDay(), p.getServer()));
   }
 
 }

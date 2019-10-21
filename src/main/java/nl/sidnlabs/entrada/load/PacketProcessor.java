@@ -19,7 +19,6 @@
  */
 package nl.sidnlabs.entrada.load;
 
-import java.io.BufferedInputStream;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -49,6 +48,7 @@ import nl.sidnlabs.dnslib.message.Message;
 import nl.sidnlabs.dnslib.types.MessageType;
 import nl.sidnlabs.dnslib.types.ResourceRecordType;
 import nl.sidnlabs.entrada.ServerContext;
+import nl.sidnlabs.entrada.SharedContext;
 import nl.sidnlabs.entrada.file.FileManager;
 import nl.sidnlabs.entrada.file.FileManagerFactory;
 import nl.sidnlabs.entrada.metric.HistoricalMetricManager;
@@ -112,6 +112,7 @@ public class PacketProcessor {
   private StateManager stateManager;
   private OutputWriter outputWriter;
   private ArchiveService fileArchiveService;
+  private SharedContext sharedContext;
 
   // max lifetime for cached packets, in milliseconds (configured in minutes)
   private int cacheTimeout;
@@ -135,7 +136,8 @@ public class PacketProcessor {
   public PacketProcessor(ServerContext serverCtx, StateManager persistenceManager,
       OutputWriter outputWriter, ArchiveService fileArchiveService,
       FileManagerFactory fileManagerFactory, PartitionService partitionService,
-      HistoricalMetricManager historicalMetricManager, UploadService uploadService) {
+      HistoricalMetricManager historicalMetricManager, UploadService uploadService,
+      SharedContext sharedContext) {
 
     this.serverCtx = serverCtx;
     this.stateManager = persistenceManager;
@@ -147,6 +149,7 @@ public class PacketProcessor {
     // convert minutes to milliseconds
     this.cacheTimeout = 1000 * 60 * cacheTimeoutConfig;
     this.metricManager = historicalMetricManager;
+    this.sharedContext = sharedContext;
   }
 
   public void execute() {
@@ -194,6 +197,12 @@ public class PacketProcessor {
       }
 
       logStats();
+      // check if file porcessing has been cancelled.
+      if (!sharedContext.isEnabled()) {
+        // processing not enabled break current file processing loop
+        log.info("Processing PCAP data is currently not enabled, stopping now");
+        break;
+      }
     }
 
     // check if any file have been processed if so, send "end" packet to writer and wait foor writer
@@ -605,9 +614,9 @@ public class PacketProcessor {
     }
 
     try {
-      InputStream decompressor = CompressionUtil.getDecompressorStreamWrapper(ois.get(), file);
-      this.pcapReader = new PcapReader(
-          new DataInputStream(new BufferedInputStream(decompressor, bufferSizeConfig * 1024)));
+      InputStream decompressor =
+          CompressionUtil.getDecompressorStreamWrapper(ois.get(), bufferSizeConfig * 1024, file);
+      this.pcapReader = new PcapReader(new DataInputStream(decompressor));
     } catch (IOException e) {
       log.error("Error creating pcap reader for: " + file, e);
       return false;

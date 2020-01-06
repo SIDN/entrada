@@ -173,7 +173,7 @@ public class PacketProcessor {
 
       if (fileArchiveService.exists(file, serverCtx.getServerInfo().getName())) {
         if (log.isDebugEnabled()) {
-          log.info("file {} already processed!, continue with next file", file);
+          log.debug("file {} already processed!, continue with next file", file);
         }
         // move the pcap file to archive location or delete
         fileArchiveService.archive(file, start, 0);
@@ -619,6 +619,11 @@ public class PacketProcessor {
       this.pcapReader = new PcapReader(new DataInputStream(decompressor));
     } catch (IOException e) {
       log.error("Error creating pcap reader for: " + file, e);
+      try {
+        ois.get().close();
+      } catch (Exception e2) {
+        log.error("Cannot close inputstream, maybe it was not yet opened");
+      }
       return false;
     }
 

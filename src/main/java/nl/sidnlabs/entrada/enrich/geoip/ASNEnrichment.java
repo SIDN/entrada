@@ -1,6 +1,7 @@
 package nl.sidnlabs.entrada.enrich.geoip;
 
 import java.util.Optional;
+import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.stereotype.Component;
 import nl.sidnlabs.entrada.enrich.AddressEnrichment;
 
@@ -27,9 +28,9 @@ public class ASNEnrichment implements AddressEnrichment {
    */
   @Override
   public boolean match(String address) {
-    Optional<String> r = geoLookup.lookupASN(address);
+    Optional<Pair<Integer, String>> r = geoLookup.lookupASN(address);
     if (r.isPresent()) {
-      value = r.get();
+      value = r.get().getKey() != null ? r.get().getKey() + "" : null;
       return true;
     }
 

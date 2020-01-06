@@ -19,6 +19,7 @@
  */
 package nl.sidnlabs.entrada.enrich.geoip;
 
+
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -34,7 +35,9 @@ import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.lang3.RegExUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import com.google.common.net.InetAddresses;
@@ -44,7 +47,6 @@ import com.maxmind.geoip2.exception.AddressNotFoundException;
 import com.maxmind.geoip2.model.AsnResponse;
 import com.maxmind.geoip2.model.IspResponse;
 import lombok.extern.log4j.Log4j2;
-import nl.sidnlabs.entrada.exception.ApplicationException;
 import nl.sidnlabs.entrada.util.DownloadUtil;
 import nl.sidnlabs.entrada.util.FileUtil;
 
@@ -63,11 +65,8 @@ public class GeoIPServiceImpl implements GeoIPService {
   private static final String FILENAME_GEOIP2_ASN = "GeoIP2-ISP.mmdb";
 
 
-  @Value("${geoip.maxmind.location}")
-  private String location;
   @Value("${geoip.maxmind.age.max}")
   private int maxAge;
-
   @Value("${geoip.maxmind.url.country}")
   private String urlCountryDb;
   @Value("${geoip.maxmind.url.asn}")
@@ -77,18 +76,30 @@ public class GeoIPServiceImpl implements GeoIPService {
   @Value("${geoip.maxmind.url.asn.paid}")
   private String urlAsnDbPaid;
 
-  @Value("${geoip.maxmind.license.key}")
-  private String licenseKey;
+  @Value("${geoip.maxmind.license.free}")
+  private String licenseKeyFree;
 
-  private boolean usePaidVersion;
+  @Value("${geoip.maxmind.license.paid}")
+  private String licenseKeyPaid;
+
+  @Value("${geoip.maxmind.location}")
+  private String location;
 
   private DatabaseReader geoReader;
   private DatabaseReader asnReader;
 
+  private boolean usePaidVersion;
+
   @PostConstruct
   public void initialize() {
 
-    usePaidVersion = StringUtils.isNotBlank(licenseKey);
+    log.info("Using Maxmind database location: {}", location);
+    if (StringUtils.isBlank(licenseKeyFree) && StringUtils.isBlank(licenseKeyPaid)) {
+      throw new RuntimeException(
+          "No valid Maxmind license key found, provide key for either the free of paid license.");
+    }
+
+    usePaidVersion = StringUtils.isNotBlank(licenseKeyPaid);
 
     File loc = new File(location);
     if (!loc.exists()) {
@@ -100,27 +111,23 @@ public class GeoIPServiceImpl implements GeoIPService {
 
     if (shouldUpdate(countryFile)) {
       log.info("GEOIP country database does not exist or is too old, fetch latest version");
-      String url = urlCountryDb;
-      String logUrl = urlAsnDb;
+      String url = urlCountryDb + licenseKeyFree;
       if (usePaidVersion) {
         log.info("Download paid Maxmind country database");
-        url = urlCountryDbPaid + licenseKey;
-        logUrl = urlCountryDbPaid + "******";
+        url = urlCountryDbPaid + licenseKeyPaid;
       }
-      download(countryFile, url, logUrl, 30);
+      download(countryFile, url, 30);
     }
 
 
     if (shouldUpdate(asnFile)) {
       log.info("GEOIP ASN database does not exist or is too old, fetch latest version");
-      String url = urlAsnDb;
-      String logUrl = urlAsnDb;
+      String url = urlAsnDb + licenseKeyFree;
       if (usePaidVersion) {
         log.info("Download paid Maxmind ISP database");
-        url = urlAsnDbPaid + licenseKey;
-        logUrl = urlAsnDbPaid + "******";
+        url = urlAsnDbPaid + licenseKeyPaid;
       }
-      download(asnFile, url, logUrl, 30);
+      download(asnFile, url, 30);
     }
 
     try {
@@ -131,7 +138,7 @@ public class GeoIPServiceImpl implements GeoIPService {
       database = new File(FileUtil.appendPath(location, asnFile));
       asnReader = new DatabaseReader.Builder(database).withCache(new CHMCache()).build();
     } catch (IOException e) {
-      throw new ApplicationException("Error initializing Maxmind GEO/ASN database", e);
+      throw new RuntimeException("Error initializing Maxmind GEO/ASN database", e);
     }
   }
 
@@ -151,7 +158,21 @@ public class GeoIPServiceImpl implements GeoIPService {
    */
   private boolean shouldUpdate(String database) {
     File f = new File(FileUtil.appendPath(location, database));
-    return !f.exists() || isExpired(f, maxAge);
+
+    if (log.isDebugEnabled()) {
+      log.debug("Check for file expiration for: {}", f);
+    }
+    if (!f.exists()) {
+      log.info("File does not exist: {}", f);
+      return true;
+    }
+
+    if (isExpired(f, maxAge)) {
+      log.info("File is expired: {}", f);
+      return true;
+    }
+
+    return false;
   }
 
   private boolean isExpired(File f, int max) {
@@ -206,16 +227,16 @@ public class GeoIPServiceImpl implements GeoIPService {
    * @see nl.sidn.pcap.ip.geo.GeoIPService#lookupASN(java.net.InetAddress)
    */
   @Override
-  public Optional<String> lookupASN(InetAddress ip) {
+  public Optional<Pair<Integer, String>> lookupASN(InetAddress ip) {
     try {
       if (usePaidVersion) {
         // paid version returns IspResponse
         IspResponse r = asnReader.isp(ip);
-        return asn(r.getAutonomousSystemNumber(), ip);
+        return asn(r.getAutonomousSystemNumber(), r.getAutonomousSystemOrganization(), ip);
       }
       // use free version
       AsnResponse r = asnReader.asn(ip);
-      return asn(r.getAutonomousSystemNumber(), ip);
+      return asn(r.getAutonomousSystemNumber(), r.getAutonomousSystemOrganization(), ip);
     } catch (AddressNotFoundException e) {
       if (log.isDebugEnabled()) {
         log.debug("Maxmind error, IP not in database: " + ip);
@@ -228,14 +249,14 @@ public class GeoIPServiceImpl implements GeoIPService {
     return Optional.empty();
   }
 
-  public Optional<String> asn(Integer asn, InetAddress ip) {
+  public Optional<Pair<Integer, String>> asn(Integer asn, String org, InetAddress ip) {
     if (asn == null) {
       if (log.isDebugEnabled()) {
         log.debug("No asn found for: " + ip);
       }
       return Optional.empty();
     }
-    return Optional.ofNullable(asn.toString());
+    return Optional.ofNullable(Pair.of(asn, org));
   }
 
   /*
@@ -244,7 +265,7 @@ public class GeoIPServiceImpl implements GeoIPService {
    * @see nl.sidn.pcap.ip.geo.GeoIPService#lookupASN(java.lang.String)
    */
   @Override
-  public Optional<String> lookupASN(String ip) {
+  public Optional<Pair<Integer, String>> lookupASN(String ip) {
     InetAddress inetAddr;
     try {
       inetAddr = InetAddresses.forString(ip);
@@ -258,7 +279,9 @@ public class GeoIPServiceImpl implements GeoIPService {
   }
 
 
-  public boolean download(String database, String url, String logUrl, int timeout) {
+  public boolean download(String database, String url, int timeout) {
+    // do not log api key
+    String logUrl = RegExUtils.removePattern(url, "&license_key=.+");
     Optional<byte[]> data = DownloadUtil.getAsBytes(url, logUrl, timeout);
     if (data.isPresent()) {
       InputStream is = new ByteArrayInputStream(data.get());
@@ -268,9 +291,12 @@ public class GeoIPServiceImpl implements GeoIPService {
         log.error("Error while extracting {}", database, e);
         return false;
       }
+
+      return true;
     }
 
-    return true;
+    // no data could be downloaded
+    return false;
   }
 
   private void extractDatabase(InputStream in, String database) throws IOException {

@@ -157,13 +157,15 @@ public class DNSRowBuilder extends AbstractRowBuilder {
         .addColumn(column("qname", normalizedQname))
         .addColumn(column("domainname", domaininfo.getName()))
         .addColumn(column("labels", domaininfo.getLabels()))
-        .addColumn(column("src", srcIpAdress(reqTransport, rspTransport)))
         .addColumn(column("ipv", ipVersion(reqTransport, rspTransport)))
 
         .addColumn(column("dst", dstIpAdress(reqTransport, rspTransport)))
         .addColumn(column("dstp", dstPort(reqTransport, rspTransport)))
         .addColumn(column("srcp", srcPort(reqTransport, rspTransport)));
 
+    if (!privacy) {
+      row.addColumn(column("src", srcIpAdress(reqTransport, rspTransport)));
+    }
 
     int prot = protocol(reqTransport, rspTransport);
     row.addColumn(column("prot", prot));
@@ -276,10 +278,6 @@ public class DNSRowBuilder extends AbstractRowBuilder {
   }
 
   private String srcIpAdress(Packet reqTransport, Packet respTransport) {
-    if (privacy) {
-      // do not keep the src ip address
-      return null;
-    }
     return reqTransport != null ? reqTransport.getSrc() : respTransport.getDst();
   }
 
@@ -376,7 +374,9 @@ public class DNSRowBuilder extends AbstractRowBuilder {
           if (scOption.getAddress() != null) {
             enrich(scOption.getAddress(), "edns_client_subnet_", row);
           }
-          row.addColumn(column("edns_client_subnet", privacy ? null : scOption.export()));
+          if (!privacy) {
+            row.addColumn(column("edns_client_subnet", scOption.export()));
+          }
 
 
         } else if (option instanceof PaddingOption) {

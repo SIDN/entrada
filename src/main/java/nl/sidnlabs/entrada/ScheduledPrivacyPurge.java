@@ -75,7 +75,7 @@ public class ScheduledPrivacyPurge {
         purged++;
       }
     } catch (Exception e) {
-      log.error("Problem while trying to purge partitions");
+      log.error("Problem while trying to purge partitions", e);
     } finally {
       sharedContext.setPrivacyPurgeStatus(false);
       sharedContext.getTableUpdater().release();

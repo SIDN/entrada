@@ -76,6 +76,6 @@ public class TablePartition {
   private Boolean privacyPurgeOk;
 
   @Column(name = "privacy_purge_time")
-  private int privacyPurgeTime;
+  private Integer privacyPurgeTime;
 
 }

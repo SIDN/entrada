@@ -73,7 +73,7 @@ public class ScheduledCompaction {
         compacted++;
       }
     } catch (Exception e) {
-      log.error("Problem while trying to compact partitions");
+      log.error("Problem while trying to compact partitions", e);
     } finally {
       sharedContext.setCompactionStatus(false);
       sharedContext.getTableUpdater().release();

@@ -90,7 +90,6 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
         .addColumn(column("icmp_echo_client_type", icmpPacket.getClientType()))
         .addColumn(column("ip_ttl", icmpPacket.getTtl()))
         .addColumn(column("ip_v", (int) icmpPacket.getIpVersion()))
-        .addColumn(column("ip_src", privacy ? null : icmpPacket.getSrc()))
         .addColumn(column("ip_dst", icmpPacket.getDst()))
         .addColumn(column("l4_prot", (int) icmpPacket.getProtocol()))
         .addColumn(column("l4_srcp", icmpPacket.getSrcPort()))
@@ -98,6 +97,9 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
         // size of ip packet incl headers
         .addColumn(column("ip_len", icmpPacket.getTotalLength()));
 
+    if (!privacy) {
+      row.addColumn(column("ip_src", icmpPacket.getSrc()));
+    }
     // add file name
     row.addColumn(column("pcap_file", combo.getPcapFilename()));
 
@@ -115,7 +117,6 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
       row
           .addColumn(column("orig_ip_ttl", originalPacket.getTtl()))
           .addColumn(column("orig_ip_v", (int) originalPacket.getIpVersion()))
-          .addColumn(column("orig_ip_src", privacy ? null : originalPacket.getSrc()))
           .addColumn(column("orig_ip_dst", originalPacket.getDst()))
           .addColumn(column("orig_l4_prot", (int) originalPacket.getProtocol()))
           .addColumn(column("orig_l4_srcp", originalPacket.getSrcPort()))
@@ -123,6 +124,9 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
           // size of ip packet incl headers
           .addColumn(column("orig_ip_len", originalPacket.getTotalLength()));
 
+      if (!privacy) {
+        row.addColumn(column("orig_ip_src", originalPacket.getSrc()));
+      }
 
       if (originalICMPPacket != null) {
         row

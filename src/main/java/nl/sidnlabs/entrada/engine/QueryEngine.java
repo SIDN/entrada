@@ -21,4 +21,8 @@ public interface QueryEngine {
   boolean preCompact(TablePartition p);
 
   boolean postCompact(TablePartition p);
+
+  boolean purge(TablePartition p);
+
+  boolean postPurge(TablePartition p);
 }

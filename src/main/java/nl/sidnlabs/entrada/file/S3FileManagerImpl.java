@@ -52,7 +52,7 @@ public class S3FileManagerImpl implements FileManager {
   private TransferManager transferManager;
 
   public S3FileManagerImpl(AmazonS3 amazonS3, @Value("${aws.upload.parallelism}") int parallelism,
-      @Value("${aws.upload.multipart.mb.size}") int multipartSize) {
+      @Value("${aws.upload.multipart.mb.size:5}") int multipartSize) {
     this.amazonS3 = amazonS3;
 
     this.transferManager = TransferManagerBuilder
@@ -165,11 +165,13 @@ public class S3FileManagerImpl implements FileManager {
     Optional<S3Details> dstDetails = S3Details.from(outputLocation);
 
     if (dstDetails.isPresent()) {
-
+      // network issues can cause upload to fail, do a simple 2nd retry if 1st try fails
       if (src.isDirectory()) {
-        return uploadDirectory(src, dstDetails.get(), archive);
+        return uploadDirectory(src, dstDetails.get(), archive)
+            || uploadDirectory(src, dstDetails.get(), archive);
       } else {
-        return uploadFile(src, dstDetails.get(), archive);
+        return uploadFile(src, dstDetails.get(), archive)
+            || uploadFile(src, dstDetails.get(), archive);
       }
     } else {
       log.error("Output location: {} is not valid, cannot upload data", outputLocation);
@@ -199,7 +201,7 @@ public class S3FileManagerImpl implements FileManager {
       amazonS3.putObject(request);
       return true;
     } catch (Exception e) {
-      log.error("Error while uploading: {}", src, e);
+      log.error("Error while uploading file: {}", src, e);
     }
 
     return false;
@@ -235,7 +237,7 @@ public class S3FileManagerImpl implements FileManager {
       upload.waitForCompletion();
       return true;
     } catch (Exception e) {
-      log.error("Error while uploading: {}", location, e);
+      log.error("Error while uploading directory: {}", location, e);
     }
 
     return false;

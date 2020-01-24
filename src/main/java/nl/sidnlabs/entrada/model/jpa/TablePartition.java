@@ -67,4 +67,15 @@ public class TablePartition {
   @Column(name = "updated_ts")
   @Temporal(TemporalType.TIMESTAMP)
   private Date updated;
+
+  @Column(name = "privacy_purge_ts")
+  @Temporal(TemporalType.TIMESTAMP)
+  private Date privacyPurgeTs;
+
+  @Column(name = "privacy_purge_ok")
+  private Boolean privacyPurgeOk;
+
+  @Column(name = "privacy_purge_time")
+  private int privacyPurgeTime;
+
 }

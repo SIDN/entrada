@@ -12,7 +12,7 @@
     { "name": "ttl", "type": ["null","int"], "default": null },
     { "name": "ipv", "type": "int" },
     { "name": "prot", "type": "int" },
-    { "name": "src", "type": "string" },
+    { "name": "src", "type": ["null","string"], "default": null},
     { "name": "srcp", "type": ["null","int"], "default": null},
     { "name": "dst", "type": "string" },
     { "name": "dstp", "type": "int"},

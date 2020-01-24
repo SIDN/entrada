@@ -64,14 +64,7 @@ public abstract class AbstractQueryEngine implements QueryEngine {
   public boolean compact(TablePartition p) {
     String location = compactionLocation(p);
 
-    Map<String, Object> values = new HashMap<>();
-    values.put("DATABASE_NAME", database);
-    values.put("TABLE_NAME", p.getTable());
-    values.put("TABLE_LOC", tableLocation(p));
-    values.put("YEAR", p.getYear());
-    values.put("MONTH", p.getMonth());
-    values.put("DAY", p.getDay());
-    values.put("SERVER", p.getServer());
+    Map<String, Object> values = createValueMap(p);
 
     String dropTableSql = TemplateUtil.template(SQL_DROP_TMP_TABLE, values);
 
@@ -88,7 +81,7 @@ public abstract class AbstractQueryEngine implements QueryEngine {
     // create tmp table and select all data into this table, this will compacted all the data in new
     // larger parquet files
     // then move the new files to the src table AND delete the old parquet files from src table
-    if (!(preCompact(p) && execute(sql))) {
+    if (!preCompact(p) || !execute(sql)) {
       log
           .error("Compaction for table: {} failed, could not create new parquet files",
               p.getTable());
@@ -108,13 +101,25 @@ public abstract class AbstractQueryEngine implements QueryEngine {
     int deleteErrors = deleteFiles(sourceFiles);
     if (deleteErrors > 0) {
       log
-          .error("Compaction for table: {} failed, could not delete {} source paquet file(s)",
+          .error("Compaction for table: {} failed, could not delete {} source parquet file(s)",
               deleteErrors, p.getTable());
       return false;
     }
 
     // perform post-compact actions and do cleanup
     return postCompact(p) && cleanup(location, dropTableSql);
+  }
+
+  private Map<String, Object> createValueMap(TablePartition p) {
+    Map<String, Object> values = new HashMap<>();
+    values.put("DATABASE_NAME", database);
+    values.put("TABLE_NAME", p.getTable());
+    values.put("TABLE_LOC", tableLocation(p));
+    values.put("YEAR", p.getYear());
+    values.put("MONTH", p.getMonth());
+    values.put("DAY", p.getDay());
+    values.put("SERVER", p.getServer());
+    return values;
   }
 
   private List<String> newFilesToDelete(TablePartition p, String newlocation, List<String> files) {
@@ -136,21 +141,15 @@ public abstract class AbstractQueryEngine implements QueryEngine {
   private int deleteFiles(List<String> files) {
     int errors = 0;
     for (String f : files) {
-      if (StringUtils.contains(f, PARQUET_FILE_EXT)) {
-        if (!fileManager.delete(f)) {
-          errors++;
-        }
+      if (!fileManager.delete(f)) {
+        errors++;
       }
     }
     return errors;
   }
 
   private List<String> listSourceParquetData(String location) {
-    return fileManager
-        .files(location)
-        .stream()
-        .filter(f -> StringUtils.contains(f, PARQUET_FILE_EXT))
-        .collect(Collectors.toList());
+    return fileManager.files(location).stream().collect(Collectors.toList());
   }
 
   private boolean move(TablePartition p, List<String> files) {
@@ -221,5 +220,69 @@ public abstract class AbstractQueryEngine implements QueryEngine {
     // do nothing
     return true;
   }
+
+  @Override
+  public boolean purge(TablePartition p) {
+    String location = compactionLocation(p);
+
+    Map<String, Object> values = createValueMap(p);
+
+    // reuse the tmp_compaction also for purging, the scheduled job
+    // must make sure compacxtion and purging will never run at the same time.
+    String dropTableSql = TemplateUtil.template(SQL_DROP_TMP_TABLE, values);
+
+    if (!cleanup(location, dropTableSql)) {
+      log.error("Cannot cleanup purging resources, cannot continue with purging");
+      return false;
+    }
+
+    String sql = TemplateUtil.template(getPurgeScript(p.getTable()), values);
+
+    List<String> sourceFiles =
+        listSourceParquetData(FileUtil.appendPath(outputLocation, p.getTable(), p.getPath()));
+
+    // create tmp table and select all data into this table, this will purge all PII attributes and
+    // write all the data in new parquet files then move the new files to the src table AND
+    // delete the old parquet files from the src table
+    if (!execute(sql)) {
+      log.error("Purging for table: {} failed, could not create new parquet files", p.getTable());
+      return false;
+    }
+
+    // purge create new data files, get list of old files and move new files to correct location
+    // and delete the old files.
+    List<String> filesToMove = listSourceParquetData(FileUtil.appendPath(location, p.getPath()));
+    if (!move(p, filesToMove)) {
+      log.error("Compaction for table: {} failed, could not move new parquet data", p.getTable());
+      // rollback moving data files, by deleting parquet files that have already been moved to the
+      // new location, ignore any error from deleteFiles method, because some of the files might not
+      // exist
+      deleteFiles(newFilesToDelete(p, outputLocation, filesToMove));
+      return false;
+    }
+
+    int deleteErrors = deleteFiles(sourceFiles);
+    if (deleteErrors > 0) {
+      log
+          .error("Purging for table: {} failed, could not delete {} source parquet file(s)",
+              deleteErrors, p.getTable());
+      return false;
+    }
+
+    // perform post-purge actions and do cleanup
+    return postPurge(p) && cleanup(location, dropTableSql);
+  }
+
+  private ClassPathResource getPurgeScript(String table) {
+    return new ClassPathResource("/sql/" + scriptPrefix + "/partition-purge-" + table + ".sql",
+        getClass());
+  }
+
+  @Override
+  public boolean postPurge(TablePartition p) {
+    // do nothing
+    return true;
+  }
+
 
 }

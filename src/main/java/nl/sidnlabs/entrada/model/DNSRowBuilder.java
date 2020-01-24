@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import nl.sidnlabs.dnslib.message.Header;
 import nl.sidnlabs.dnslib.message.Message;
@@ -36,6 +37,9 @@ public class DNSRowBuilder extends AbstractRowBuilder {
   private static final int RCODE_QUERY_WITHOUT_RESPONSE = -1;
 
   private ServerContext serverCtx;
+
+  @Value("${entrada.privacy.enabled:false}")
+  private boolean privacy;
 
   public DNSRowBuilder(List<AddressEnrichment> enrichments, ServerContext serverCtx,
       HistoricalMetricManager metricManager) {
@@ -272,6 +276,10 @@ public class DNSRowBuilder extends AbstractRowBuilder {
   }
 
   private String srcIpAdress(Packet reqTransport, Packet respTransport) {
+    if (privacy) {
+      // do not keep the src ip address
+      return null;
+    }
     return reqTransport != null ? reqTransport.getSrc() : respTransport.getDst();
   }
 
@@ -368,7 +376,7 @@ public class DNSRowBuilder extends AbstractRowBuilder {
           if (scOption.getAddress() != null) {
             enrich(scOption.getAddress(), "edns_client_subnet_", row);
           }
-          row.addColumn(column("edns_client_subnet", scOption.export()));
+          row.addColumn(column("edns_client_subnet", privacy ? null : scOption.export()));
 
 
         } else if (option instanceof PaddingOption) {

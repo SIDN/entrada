@@ -57,4 +57,17 @@ public class LocalQueryEngine implements QueryEngine {
     // do nothing
     return true;
   }
+
+  @Override
+  public boolean purge(TablePartition p) {
+    // do nothing
+    return true;
+  }
+
+  @Override
+  public boolean postPurge(TablePartition p) {
+    // do nothing
+    return true;
+  }
+
 }

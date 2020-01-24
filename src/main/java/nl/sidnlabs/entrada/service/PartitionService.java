@@ -1,5 +1,6 @@
 package nl.sidnlabs.entrada.service;
 
+import java.time.LocalDate;
 import java.util.Date;
 import java.util.List;
 import java.util.Set;
@@ -89,16 +90,10 @@ public class PartitionService {
     return tablePartitionRepository.findUnCompactedForEngine(engine);
   }
 
-  @Transactional
-  public void closeUncompactedPartitions() {
-    uncompactedPartitions().stream().forEach(this::closePartition);
-  }
-
-  private void closePartition(TablePartition p) {
-    p.setCompaction(new Date());
-    p.setCompactionTime(0);
-    p.setOk(Boolean.TRUE);
-    save(p);
+  public List<TablePartition> unPurgedPartitions(LocalDate date) {
+    return tablePartitionRepository
+        .findUnUnpurgedForEngine(engine, date.getYear(), date.getMonthValue(),
+            date.getDayOfMonth());
   }
 
   @Transactional
@@ -108,6 +103,16 @@ public class PartitionService {
     p.setCompaction(end);
     long diffInMillies = Math.abs(end.getTime() - start.getTime());
     p.setCompactionTime((int) diffInMillies / 1000);
+    save(p);
+  }
+
+  @Transactional
+  public void purgedPartition(TablePartition p, Date start, Date end, boolean ok) {
+    // mark partition as purged of PII attributes
+    p.setPrivacyPurgeOk(Boolean.valueOf(ok));
+    p.setPrivacyPurgeTs(end);
+    long diffInMillies = Math.abs(end.getTime() - start.getTime());
+    p.setPrivacyPurgeTime((int) diffInMillies / 1000);
     save(p);
   }
 

@@ -51,6 +51,7 @@ public class StatusController {
     private boolean execution;
     private boolean compaction;
     private boolean maintenance;
+    private boolean privacypurge;
   }
 
 }

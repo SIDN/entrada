@@ -3,6 +3,7 @@ package nl.sidnlabs.entrada.model;
 import java.sql.Timestamp;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import nl.sidnlabs.dnslib.message.Header;
 import nl.sidnlabs.dnslib.message.Message;
@@ -22,6 +23,9 @@ import nl.sidnlabs.pcap.packet.Packet;
 public class ICMPRowBuilder extends AbstractRowBuilder {
 
   private ServerContext serverCtx;
+
+  @Value("${entrada.privacy.enabled:false}")
+  private boolean privacy;
 
   public ICMPRowBuilder(List<AddressEnrichment> enrichments, ServerContext serverCtx,
       HistoricalMetricManager metricManager) {
@@ -86,7 +90,7 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
         .addColumn(column("icmp_echo_client_type", icmpPacket.getClientType()))
         .addColumn(column("ip_ttl", icmpPacket.getTtl()))
         .addColumn(column("ip_v", (int) icmpPacket.getIpVersion()))
-        .addColumn(column("ip_src", icmpPacket.getSrc()))
+        .addColumn(column("ip_src", privacy ? null : icmpPacket.getSrc()))
         .addColumn(column("ip_dst", icmpPacket.getDst()))
         .addColumn(column("l4_prot", (int) icmpPacket.getProtocol()))
         .addColumn(column("l4_srcp", icmpPacket.getSrcPort()))
@@ -111,7 +115,7 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
       row
           .addColumn(column("orig_ip_ttl", originalPacket.getTtl()))
           .addColumn(column("orig_ip_v", (int) originalPacket.getIpVersion()))
-          .addColumn(column("orig_ip_src", originalPacket.getSrc()))
+          .addColumn(column("orig_ip_src", privacy ? null : originalPacket.getSrc()))
           .addColumn(column("orig_ip_dst", originalPacket.getDst()))
           .addColumn(column("orig_l4_prot", (int) originalPacket.getProtocol()))
           .addColumn(column("orig_l4_srcp", originalPacket.getSrcPort()))

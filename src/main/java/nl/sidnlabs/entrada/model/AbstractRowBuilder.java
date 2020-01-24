@@ -12,7 +12,7 @@ public abstract class AbstractRowBuilder implements RowBuilder {
 
   protected static final int STATUS_COUNT = 100000;
 
-  protected int packetCounter;
+  protected long packetCounter;
   private List<AddressEnrichment> enrichments;
   protected HistoricalMetricManager metricManager;
 

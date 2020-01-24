@@ -34,6 +34,9 @@ CREATE TABLE IF NOT EXISTS entrada_partition
   compaction_time int,
   compaction_ok boolean,
   updated_ts timestamp,
+  privacy_purge_ts timestamp,
+  privacy_purge_ok boolean,
+  privacy_purge_time int,
   CONSTRAINT entrada_partition_pkey PRIMARY KEY (id)
 );
 

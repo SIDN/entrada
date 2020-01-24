@@ -38,7 +38,8 @@ public class ScheduledCompaction {
 
 
   /**
-   * Execute compaction every x minutes but wait 1 minute before enabling the schedule
+   * Execute compaction every x minutes but wait 1 minute before enabling the schedule, give the
+   * application time to full initialize
    */
   @Scheduled(fixedDelayString = "#{${entrada.parquet.compaction.interval:1}*60*1000}",
       initialDelay = 60 * 1000)
@@ -46,29 +47,40 @@ public class ScheduledCompaction {
 
     if (!enabled || !sharedContext.isEnabled()) {
       // compaction not enabled
-      log.info("Compaction not enabled.");
+      // OR
+      // entrada is not enabled
+      log.debug("Do nothing: compaction is not enabled or a privacy purge is currently running.");
       return;
     }
 
-    log.info("Start partition compaction");
+    int compacted = 0;
 
-    sharedContext.setCompactionStatus(true);
+    try {
+      // make sure not running at the same time as the purge task
+      sharedContext.getTableUpdater().acquire();
+      sharedContext.setCompactionStatus(true);
+      log.info("Start partition compaction");
 
-    List<TablePartition> partitions = partitionService.uncompactedPartitions();
+      List<TablePartition> partitions = partitionService.uncompactedPartitions();
 
-    log.info("Found {} partition(s) that may need to be compacted", partitions.size());
+      log.info("Found {} partition(s) that may need to be compacted", partitions.size());
 
-    for (TablePartition p : partitions) {
-      if (shouldCompact(p) && !compact(p)) {
-        // stop compacting until the error is fixed
-        log.error("Compaction failed");
-        return;
+      for (TablePartition p : partitions) {
+        if (shouldCompact(p) && !compact(p)) {
+          // stop compacting until the error cause is fixed
+          return;
+        }
+        compacted++;
       }
+    } catch (Exception e) {
+      log.error("Problem while trying to compact partitions");
+    } finally {
+      sharedContext.setCompactionStatus(false);
+      sharedContext.getTableUpdater().release();
     }
 
-    sharedContext.setCompactionStatus(false);
 
-    log.info("Finished partition compaction");
+    log.info("Finished partition compaction, processed {} partitions", compacted);
   }
 
   private boolean compact(TablePartition p) {

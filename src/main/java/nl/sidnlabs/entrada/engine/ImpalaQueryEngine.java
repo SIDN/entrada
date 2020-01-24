@@ -65,6 +65,18 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
     return refresh(p.getTable(), values) && execute(sqlComputeStats);
   }
 
+  @Override
+  public boolean postPurge(TablePartition p) {
+
+    log.info("Perform post-purge actions, refresh table: {}", p.getTable());
+    Map<String, Object> values =
+        templateValues(p.getTable(), p.getYear(), p.getMonth(), p.getDay(), p.getServer());
+
+
+    return refresh(p.getTable(), values);
+  }
+
+
   private boolean refresh(String table, Map<String, Object> values) {
     String sqlRefresh = TemplateUtil
         .template(

@@ -10,7 +10,7 @@
     { "name": "icmp_echo_client_type", "type": "int" },
     { "name": "ip_ttl", "type": "int" },
     { "name": "ip_v", "type": "int" },
-    { "name": "ip_src", "type": "string" },
+    { "name": "ip_src", "type": ["null","string"], "default": null},
     { "name": "ip_dst", "type": "string" },
     { "name": "ip_country", "type": ["null","string"], "default": null},
     { "name": "ip_asn", "type": ["null","string"], "default": null},

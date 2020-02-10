@@ -28,6 +28,7 @@ create external table if not exists ${DATABASE_NAME}.${TABLE_NAME} (
 	 qclass INT,
 	 country STRING,
 	 asn STRING,
+	 asn_organisation STRING,
 	 edns_udp INT,
 	 edns_version SMALLINT,
 	 edns_do BOOLEAN,

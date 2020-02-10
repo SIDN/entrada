@@ -40,6 +40,7 @@ AS SELECT
  	qclass,
   	country,
   	asn,
+  	asn_organisation,
   	edns_udp,
   	edns_version,
   	edns_do,

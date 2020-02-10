@@ -29,6 +29,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS ${DATABASE_NAME}.${TABLE_NAME}(
   qclass int,
   country string,
   asn string,
+  asn_organisation string,
   edns_udp int,
   edns_version int,
   edns_do boolean,

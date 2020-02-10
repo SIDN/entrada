@@ -66,7 +66,7 @@ public class UploadService {
          * missing database partition(s)
          */
 
-        queryEngine.addPartition(tableNameDns, partitions.get("dns"));
+        queryEngine.addPartition("dns", tableNameDns, partitions.get("dns"));
 
         // only delete work loc when upload was ok, if upload failed
         // it will be retried next time
@@ -85,7 +85,7 @@ public class UploadService {
         String dstLocation = FileUtil.appendPath(outputLocation, tableNameIcmp);
         if (fmOutput.upload(location, dstLocation, false)) {
 
-          queryEngine.addPartition(tableNameIcmp, partitions.get("icmp"));
+          queryEngine.addPartition("icmp", tableNameIcmp, partitions.get("icmp"));
 
           log.info("Delete work location: {}", location);
           fmInput.rmdir(location);

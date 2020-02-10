@@ -32,6 +32,12 @@ public abstract class AbstractQueryEngine implements QueryEngine {
   @Value("${entrada.database.name}")
   private String database;
 
+  @Value("${entrada.database.table.dns}")
+  protected String tableDns;
+
+  @Value("${entrada.database.table.icmp}")
+  protected String tableIcmp;
+
   protected JdbcTemplate jdbcTemplate;
   protected FileManager fileManager;
   private String scriptPrefix;
@@ -113,7 +119,14 @@ public abstract class AbstractQueryEngine implements QueryEngine {
   private Map<String, Object> createValueMap(TablePartition p) {
     Map<String, Object> values = new HashMap<>();
     values.put("DATABASE_NAME", database);
-    values.put("TABLE_NAME", p.getTable());
+    switch(p.getTable()) {
+      case "dns":
+        values.put("TABLE_NAME", tableDns);
+        break;
+      case "icmp":
+        values.put("TABLE_NAME", tableIcmp);
+        break;
+    }
     values.put("TABLE_LOC", tableLocation(p));
     values.put("YEAR", p.getYear());
     values.put("MONTH", p.getMonth());
@@ -182,7 +195,7 @@ public abstract class AbstractQueryEngine implements QueryEngine {
 
 
   @Override
-  public boolean addPartition(String table, Set<Partition> partitions) {
+  public boolean addPartition(String type, String table, Set<Partition> partitions) {
 
     Map<String, Object> values = new HashMap<>();
     values.put("DATABASE_NAME", database);
@@ -197,7 +210,7 @@ public abstract class AbstractQueryEngine implements QueryEngine {
       values.put("SERVER", p.getServer());
 
       String sql = TemplateUtil
-          .template(new ClassPathResource("/sql/create-partition-" + table + ".sql", getClass()),
+          .template(new ClassPathResource("/sql/create-partition-" + type + ".sql", getClass()),
               values);
 
       log.info("Create partition, sql: {}", sql);

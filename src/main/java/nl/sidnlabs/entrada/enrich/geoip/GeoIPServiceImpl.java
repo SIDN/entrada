@@ -89,6 +89,7 @@ public class GeoIPServiceImpl implements GeoIPService {
   private DatabaseReader asnReader;
 
   private boolean usePaidVersion;
+  private boolean geoDbInitialised;
 
   @PostConstruct
   public void initialize() {
@@ -117,6 +118,7 @@ public class GeoIPServiceImpl implements GeoIPService {
         url = urlCountryDbPaid + licenseKeyPaid;
       }
       download(countryFile, url, 30);
+      geoDbInitialised = false;
     }
 
 
@@ -128,15 +130,19 @@ public class GeoIPServiceImpl implements GeoIPService {
         url = urlAsnDbPaid + licenseKeyPaid;
       }
       download(asnFile, url, 30);
+      geoDbInitialised = false;
     }
 
     try {
       // geo
-      File database = new File(FileUtil.appendPath(location, countryFile));
-      geoReader = new DatabaseReader.Builder(database).withCache(new CHMCache()).build();
-      // asn
-      database = new File(FileUtil.appendPath(location, asnFile));
-      asnReader = new DatabaseReader.Builder(database).withCache(new CHMCache()).build();
+      if (!geoDbInitialised) {
+        File database = new File(FileUtil.appendPath(location, countryFile));
+        geoReader = new DatabaseReader.Builder(database).withCache(new CHMCache()).build();
+        // asn
+        database = new File(FileUtil.appendPath(location, asnFile));
+        asnReader = new DatabaseReader.Builder(database).withCache(new CHMCache()).build();
+        geoDbInitialised = true;
+      }
     } catch (IOException e) {
       throw new RuntimeException("Error initializing Maxmind GEO/ASN database", e);
     }

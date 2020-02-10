@@ -25,7 +25,7 @@ public class StateManager {
   private Output output = null;
   private Input input = null;
 
-  @Value("${entrada.location.work}")
+  @Value("${entrada.location.persistence}")
   private String workLocation;
 
   private ServerContext settings;

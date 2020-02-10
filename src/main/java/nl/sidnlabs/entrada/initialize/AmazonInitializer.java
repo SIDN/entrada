@@ -45,10 +45,11 @@ public class AmazonInitializer extends AbstractInitializer {
   @Value("${entrada.archive.files.max.age}")
   private int archiveExpiration;
 
-
   @Value("${aws.bucket.rules.url}")
   private String bucketRules;
 
+  @Value("${aws.bucket.manage}")
+  private boolean manageBucket;
 
   private AmazonS3 amazonS3;
   private FileManager fileManager;
@@ -78,6 +79,11 @@ public class AmazonInitializer extends AbstractInitializer {
       throw new ApplicationException("\"" + bucket
           + "\" is not a valid S3 bucket name, for bucket restrictions and limitations, see: "
           + bucketRules);
+    }
+
+    // only create bucket and lifecycle rules if we are managing the bucket
+    if (!manageBucket) {
+      return true;
     }
 
     if (!amazonS3.doesBucketExistV2(bucket)) {

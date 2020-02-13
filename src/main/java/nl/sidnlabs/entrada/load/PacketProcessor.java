@@ -502,6 +502,10 @@ public class PacketProcessor {
       // always send historical stats to monitoring
       if (metrics) {
         metricManager.persistState(stateManager);
+      } else {
+        // TODO: don't collect metrics if graphite is disabled, use micrometer abstraction directly perhaps, to make it compatible with other metric backends?
+        //  for now clear stats collection if graphite export is disabled, otherwise app goes OOM after a while
+        metricManager.clear();
       }
 
     } catch (Exception e) {

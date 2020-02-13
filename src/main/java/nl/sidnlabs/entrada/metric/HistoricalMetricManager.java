@@ -175,6 +175,10 @@ public class HistoricalMetricManager {
     return true;
   }
 
+  public void clear() {
+    metricCache.clear();
+  }
+
   private void trunc(TreeMap<Long, Metric> metricValues) {
     int max = metricValues.size() - FLUSH_TIMESTAMP_WAIT;
     if (max < 1) {

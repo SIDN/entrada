@@ -33,6 +33,7 @@
     { "name": "qclass", "type": ["null","int"], "default": null},
     { "name": "country", "type": ["null","string"], "default": null},
     { "name": "asn", "type": ["null","string"], "default": null},
+    { "name": "asn_organisation", "type": ["null","string"], "default": null},
     { "name": "edns_udp", "type": ["null","int"], "default": null},
     { "name": "edns_version", "type": ["null","int"], "default": null},
     { "name": "edns_do", "type": ["null","boolean"], "default": null},

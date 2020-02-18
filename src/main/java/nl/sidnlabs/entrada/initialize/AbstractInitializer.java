@@ -28,6 +28,9 @@ public abstract class AbstractInitializer implements Initializer {
   @Value("${entrada.location.work}")
   protected String work;
 
+  @Value("${entrada.location.persistence}")
+  protected String persistence;
+
   @Value("${entrada.location.input}")
   protected String input;
 
@@ -77,9 +80,10 @@ public abstract class AbstractInitializer implements Initializer {
   public boolean initializeStorage() {
     log.info("Provision local storage");
 
-    if (createLocation("work", work) && createLocation("input", input)
-        && createLocation("output", output) && createLocation("archive", archive)
-        && createLocation("log", logLocation) && createLocation("conf", confLocationf)) {
+    if (createLocation("work", work) && createLocation("persistence", persistence)
+        && createLocation("input", input) && createLocation("output", output)
+        && createLocation("archive", archive) && createLocation("log", logLocation)
+        && createLocation("conf", confLocationf)) {
 
       return true;
     }

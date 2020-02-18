@@ -46,7 +46,7 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   // TODO: make sure the map does not get too big and causes OOM
   private Map<String, Boolean> results = new HashMap<>();
 
-  @Value("${entrada.location.work}")
+  @Value("${entrada.location.persistence}")
   private String workDir;
 
   @PostConstruct

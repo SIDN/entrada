@@ -2,8 +2,6 @@ package nl.sidnlabs.entrada;
 
 import java.util.Arrays;
 import java.util.List;
-
-import nl.sidnlabs.entrada.enrich.geoip.GeoIPService;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,6 +11,7 @@ import org.springframework.stereotype.Component;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.log4j.Log4j2;
+import nl.sidnlabs.entrada.enrich.geoip.GeoIPService;
 import nl.sidnlabs.entrada.enrich.resolver.DnsResolverCheck;
 import nl.sidnlabs.entrada.load.PacketProcessor;
 
@@ -48,7 +47,6 @@ public class ScheduledExecution {
     log.info("Checking if maxmind DB is up to date");
     geoIPService.initialize();
     log.info("Start loading data for name servers: {}", servers);
-
 
     if (!sharedContext.isEnabled()) {
       // processing not enabled

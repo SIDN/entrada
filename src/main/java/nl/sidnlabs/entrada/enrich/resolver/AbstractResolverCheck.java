@@ -67,6 +67,8 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     // load new subnets from source
     List<String> subnets = fetch();
     if (!subnets.isEmpty()) {
+      matchers4.clear();
+      matchers6.clear();
       // create internal bitsubnets for camparissions
       subnets
           .stream()
@@ -125,6 +127,8 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
       log.error("Error while reading file: {}", file, e);
       return false;
     }
+    matchers4.clear();
+    matchers6.clear();
 
     lines
         .stream()

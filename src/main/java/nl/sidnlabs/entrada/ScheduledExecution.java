@@ -2,7 +2,10 @@ package nl.sidnlabs.entrada;
 
 import java.util.Arrays;
 import java.util.List;
+
+import nl.sidnlabs.entrada.enrich.geoip.GeoIPService;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -25,6 +28,9 @@ public class ScheduledExecution {
   @Value("${entrada.nameservers}")
   private String servers;
 
+  @Autowired
+  GeoIPService geoIPService;
+
   private Timer processTimer;
 
   public ScheduledExecution(ServerContext serverCtx, ApplicationContext applicationContext,
@@ -39,7 +45,9 @@ public class ScheduledExecution {
 
   @Scheduled(fixedDelayString = "#{${entrada.execution.delay}*1000}")
   public void run() {
-    log.info("Start loading data forname servers: {}", servers);
+    log.info("Checking if maxmind DB is up to date");
+    geoIPService.initialize();
+    log.info("Start loading data for name servers: {}", servers);
 
 
     if (!sharedContext.isEnabled()) {

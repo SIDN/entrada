@@ -8,7 +8,7 @@ public interface QueryEngine {
 
   boolean execute(String sql);
 
-  boolean addPartition(String table, Set<Partition> partitions);
+  boolean addPartition(String type, String table, Set<Partition> partitions);
 
   boolean postAddPartition(String table, Partition p);
 

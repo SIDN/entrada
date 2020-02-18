@@ -11,7 +11,7 @@ import nl.sidnlabs.entrada.model.jpa.TablePartition;
 public class LocalQueryEngine implements QueryEngine {
 
   @Override
-  public boolean addPartition(String table, Set<Partition> partitions) {
+  public boolean addPartition(String type, String table, Set<Partition> partitions) {
     // do nothing
     return true;
   }

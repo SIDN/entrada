@@ -80,8 +80,18 @@ public abstract class AbstractQueryEngine implements QueryEngine {
 
     String sql = TemplateUtil.template(getCompactionScript(p.getTable()), values);
 
+    String tableName = null;
+    switch(p.getTable()) {
+      case "dns":
+        tableName = tableDns;
+        break;
+      case "icmp":
+        tableName = tableIcmp;
+        break;
+    }
+
     List<String> sourceFiles =
-        listSourceParquetData(FileUtil.appendPath(outputLocation, p.getTable(), p.getPath()));
+        listSourceParquetData(FileUtil.appendPath(outputLocation, tableName, p.getPath()));
 
     // create tmp table and select all data into this table, this will compacted all the data in new
     // larger parquet files
@@ -174,9 +184,19 @@ public abstract class AbstractQueryEngine implements QueryEngine {
 
     for (String f : files) {
 
+      String tableName = null;
+      switch(p.getTable()) {
+        case "dns":
+          tableName=tableDns;
+          break;
+        case "icmp":
+          tableName=tableIcmp;
+          break;
+      }
+
       // create a new filename and encode the date and server name in the filename
       String newName = FileUtil
-          .appendPath(outputLocation, p.getTable(), p.getPath(),
+          .appendPath(outputLocation, tableName, p.getPath(),
               StringUtils
                   .join(p.getYear(), StringUtils.leftPad(String.valueOf(p.getMonth()), 2, "0"),
                       StringUtils.leftPad(String.valueOf(p.getDay()), 2, "0"))

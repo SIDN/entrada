@@ -653,7 +653,7 @@ public class PacketProcessor {
   /**
    * The same src/dst and dst/src combinations must be sent to the same decoder because decoders are
    * stateful
-   * 
+   *
    * @param p
    * @return
    */
@@ -922,7 +922,7 @@ public class PacketProcessor {
             System.getProperty("file.separator"));
 
     // order and skip the newest file if skipfirst is true
-    List<String> files = fm.files(inputDir, false, ".pcap", ".pcap.gz", ".pcap.xz");
+    List<String> files = fm.files(inputDir, false, ".pcap", ".pcap.gz", ".pcap.xz", ".pcap.bz2");
 
     files = files
         .stream()

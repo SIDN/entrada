@@ -3,6 +3,7 @@ package nl.sidnlabs.entrada.util;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import org.apache.commons.compress.compressors.bzip2.BZip2CompressorInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.lang3.StringUtils;
 import org.tukaani.xz.XZInputStream;
@@ -32,6 +33,8 @@ public class CompressionUtil {
       return new GzipCompressorInputStream(in);
     } else if (StringUtils.endsWithIgnoreCase(filename, ".xz")) {
       return new XZInputStream(wrap(in, bufSize));
+    } else if (StringUtils.endsWithIgnoreCase(filename, ".bz2")) {
+      return new BZip2CompressorInputStream(wrap(in, bufSize), true);
     }
 
     // unkown file type

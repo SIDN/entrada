@@ -23,19 +23,21 @@ import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import java.io.File;
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import javax.annotation.PostConstruct;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.jboss.netty.handler.ipfilter.IpSubnet;
 import org.springframework.beans.factory.annotation.Value;
+import com.google.common.net.InetAddresses;
 import lombok.extern.log4j.Log4j2;
 
 @Log4j2
@@ -43,11 +45,17 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
   private List<IpSubnet> matchers4 = new ArrayList<>();
   private List<IpSubnet> matchers6 = new ArrayList<>();
-  // TODO: make sure the map does not get too big and causes OOM
-  private Map<String, Boolean> results = new HashMap<>();
 
   @Value("${entrada.location.persistence}")
   private String workDir;
+
+  @Value("${public-resolver.match.cache.size:5000}")
+  private int maxMatchCacheSize;
+
+  // only cache the matches (hits) the non-matches are too numerous
+  // to efficiently cache in memory, doing the subnet check would be faster
+  // than checking 100k cached elements
+  private Set<String> hitCache = new HashSet<>();
 
   @PostConstruct
   public void init() {
@@ -60,7 +68,7 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
       update(file);
     }
 
-    results.clear();
+    hitCache.clear();
   }
 
   private void update(File file) {
@@ -69,7 +77,7 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     if (!subnets.isEmpty()) {
       matchers4.clear();
       matchers6.clear();
-      // create internal bitsubnets for camparissions
+      // create subnets for matching
       subnets
           .stream()
           .filter(s -> s.contains("."))
@@ -161,48 +169,63 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
   @Override
   public boolean match(String address) {
-    // use map to do faster check for addresses that have been seen before
 
-    Boolean result = results.get(address);
-    if (result == null) {
-      // ip address has not been seen before, do subnet matching
+    if (hitCache.contains(address)) {
+      return true;
+    }
 
-      // matchers are split into a v4 and v6 group
-      // to allow us to quickly skip the version we don't need to check
-
-      if (StringUtils.contains(address, ".")) {
-        // do v4 check
-        if (matchers4.stream().anyMatch(m -> subnetContains(m, address))) {
-          results.put(address, Boolean.TRUE);
-          return true;
-        }
-      }
-      // do v6 check
-      else if (matchers6.stream().anyMatch(m -> subnetContains(m, address))) {
-        results.put(address, Boolean.TRUE);
-        return true;
-      }
-
-      // address not a known resolver
-      results.put(address, Boolean.FALSE);
+    InetAddress ip = ip(address);
+    if (ip == null) {
+      // not a valid ip
+      // addToCache(hash, false);
       return false;
     }
 
-    // address has been seen before, return cached result
-    return result.booleanValue();
-  }
+    // do subnet matching
+    // matchers are split into a v4 and v6 group
+    // to allow us to quickly skip the version we don't need to check
 
-  private boolean subnetContains(IpSubnet subnet, String address) {
-    try {
-      return subnet.contains(address);
-    } catch (UnknownHostException e) {
-      // ignore
-      if (log.isDebugEnabled()) {
-        log.debug("Subnet {} contains check for {} failed", subnet, address);
+    if (StringUtils.contains(address, ".")) {
+      // do v4 check only
+      for (IpSubnet sn : matchers4) {
+        if (sn.contains(ip)) {
+          addToCache(address);
+          return true;
+        }
+      }
+    } else {
+      // do v6 check only
+      for (IpSubnet sn : matchers6) {
+        if (sn.contains(ip)) {
+          addToCache(address);
+          return true;
+        }
       }
     }
 
+    // address not a known resolver
     return false;
+  }
+
+  private InetAddress ip(String address) {
+    try {
+      return InetAddresses.forString(address);
+    } catch (Exception e) {
+      // ignore
+      if (log.isDebugEnabled()) {
+        log.debug("Invalid IP address {}", address);
+      }
+    }
+
+    return null;
+  }
+
+  private void addToCache(String address) {
+    if (hitCache.size() >= maxMatchCacheSize) {
+      log.info("{} resolver match cache limit reached", getName(), maxMatchCacheSize);
+      hitCache.clear();
+    }
+    hitCache.add(address);
   }
 
   @Override
@@ -212,8 +235,10 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
   @Override
   public void done() {
-    log.info("{} resolver cache contains {} IP addresses", getName(), results.size());
-    results.clear();
+    if (log.isDebugEnabled()) {
+      log.debug("{} Clear match cache, size={}", getName(), hitCache.size());
+    }
+    hitCache.clear();
   }
 
 }

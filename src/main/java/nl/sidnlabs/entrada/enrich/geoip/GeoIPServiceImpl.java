@@ -198,9 +198,7 @@ public class GeoIPServiceImpl implements GeoIPService {
     try {
       inetAddr = InetAddresses.forString(ip);
     } catch (Exception e) {
-      if (log.isDebugEnabled()) {
-        log.debug("Invalid IP address: " + ip);
-      }
+      log.debug("Invalid IP address: ", ip);
       return Optional.empty();
     }
     return lookupCountry(inetAddr);
@@ -216,13 +214,9 @@ public class GeoIPServiceImpl implements GeoIPService {
     try {
       return Optional.ofNullable(geoReader.country(ip).getCountry().getIsoCode());
     } catch (AddressNotFoundException e) {
-      if (log.isDebugEnabled()) {
-        log.debug("Maxmind error, IP not in database: " + ip);
-      }
+      log.trace("Maxmind error, IP not in database: {}", ip);
     } catch (Exception e) {
-      if (log.isDebugEnabled()) {
-        log.debug("No country found for: " + ip);
-      }
+      log.trace("No country found for: {}", ip);
     }
     return Optional.empty();
   }
@@ -244,22 +238,16 @@ public class GeoIPServiceImpl implements GeoIPService {
       AsnResponse r = asnReader.asn(ip);
       return asn(r.getAutonomousSystemNumber(), r.getAutonomousSystemOrganization(), ip);
     } catch (AddressNotFoundException e) {
-      if (log.isDebugEnabled()) {
-        log.debug("Maxmind error, IP not in database: " + ip);
-      }
+      log.trace("Maxmind error, IP not in database: {}", ip);
     } catch (Exception e) {
-      if (log.isDebugEnabled()) {
-        log.debug("Error while doing ASN lookup for: " + ip);
-      }
+      log.error("Error while doing ASN lookup for: " + ip);
     }
     return Optional.empty();
   }
 
   public Optional<Pair<Integer, String>> asn(Integer asn, String org, InetAddress ip) {
     if (asn == null) {
-      if (log.isDebugEnabled()) {
-        log.debug("No asn found for: " + ip);
-      }
+      log.trace("No asn found for: {}", ip);
       return Optional.empty();
     }
     return Optional.ofNullable(Pair.of(asn, org));
@@ -276,9 +264,7 @@ public class GeoIPServiceImpl implements GeoIPService {
     try {
       inetAddr = InetAddresses.forString(ip);
     } catch (Exception e) {
-      if (log.isDebugEnabled()) {
-        log.debug("Invalid IP address: " + ip);
-      }
+      log.debug("Invalid IP address: {}", ip);
       return Optional.empty();
     }
     return lookupASN(inetAddr);

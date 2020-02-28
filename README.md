@@ -42,7 +42,7 @@ Start the container using the `docker-compose` command:
 ```
 
 
-For more more details about deployment and available onfiguration options see the [ENTRADA website](https://entrada.sidnlabs.nl/).  
+For more more detailed deployment instructions and available onfiguration options see the [ENTRADA website](https://entrada.sidnlabs.nl/about/installation/).  
 
 ## License
 

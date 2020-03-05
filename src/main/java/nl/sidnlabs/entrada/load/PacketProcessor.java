@@ -590,7 +590,7 @@ public class PacketProcessor {
         RequestCacheValue cacheValue = requestCache.get(key);
         iter.remove();
 
-        if (cacheValue.getMessage() != null
+        if (cacheValue.getMessage() != null && !cacheValue.getMessage().getQuestions().isEmpty()
             && cacheValue.getMessage().getHeader().getQr() == MessageType.QUERY) {
 
           pushRow(new RowData(cacheValue.getPacket(), cacheValue.getMessage(), null, null, true,

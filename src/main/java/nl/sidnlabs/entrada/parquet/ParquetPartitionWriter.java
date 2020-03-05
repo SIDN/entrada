@@ -52,7 +52,13 @@ public class ParquetPartitionWriter {
     if (log.isDebugEnabled()) {
       log.debug("close {} partitions ", partitions.size());
     }
+
+    // close writers, let them write all data to disk
     partitions.entrySet().stream().forEach(entry -> entry.getValue().close());
+
+    // make sure to clear the partitions map, otherwise the parquetwriters will remain in memory and
+    // gc will not be able to free the memory
+    partitions.clear();
   }
 
 }

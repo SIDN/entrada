@@ -49,9 +49,7 @@ public class ParquetPartitionWriter {
   }
 
   public void close() {
-    if (log.isDebugEnabled()) {
-      log.debug("close {} partitions ", partitions.size());
-    }
+    log.info("close {} partitions ", partitions.size());
 
     // close writers, let them write all data to disk
     partitions.entrySet().stream().forEach(entry -> entry.getValue().close());

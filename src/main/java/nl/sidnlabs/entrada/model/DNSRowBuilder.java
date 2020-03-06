@@ -111,13 +111,13 @@ public class DNSRowBuilder extends AbstractRowBuilder {
               (int) reqTransport.getTcpHandshake().rtt(), time, false);
     }
 
-    if (rspTransport != null && rspTransport.hasPacketRtt()) {
-      // found tcp handshake info
-      row.addColumn(column("tcp_pk_rtt", rspTransport.getTcpPacketRtt()));
-      metricManager
-          .record(HistoricalMetricManager.METRIC_IMPORT_TCP_PACKET_RTT,
-              (int) rspTransport.getTcpPacketRtt(), time, false);
-    }
+    // if (rspTransport != null && rspTransport.hasPacketRtt()) {
+    // // found tcp handshake info
+    // row.addColumn(column("tcp_pk_rtt", rspTransport.getTcpPacketRtt()));
+    // metricManager
+    // .record(HistoricalMetricManager.METRIC_IMPORT_TCP_PACKET_RTT,
+    // (int) rspTransport.getTcpPacketRtt(), time, false);
+    // }
 
 
     // these are the values that are retrieved from the response

@@ -67,7 +67,6 @@ AS SELECT
   	req_len,
   	res_len,
   	tcp_hs_rtt,
-    tcp_pk_rtt,
     query_ts,
   	year,
   	month,

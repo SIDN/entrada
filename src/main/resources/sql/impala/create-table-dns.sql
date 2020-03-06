@@ -56,7 +56,6 @@ create external table if not exists ${DATABASE_NAME}.${TABLE_NAME} (
 	 req_len int,
 	 res_len int,
 	 tcp_hs_rtt int,
-     tcp_pk_rtt int,
      query_ts TIMESTAMP
 ) partitioned by (year INT, month INT, day INT, server string)
   STORED AS PARQUETFILE

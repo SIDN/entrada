@@ -60,7 +60,6 @@
     { "name": "pub_resolver", "type": ["null","string"], "default": null},   
     { "name": "req_len", "type": ["null","int"], "default": null},
     { "name": "res_len", "type": ["null","int"], "default": null},
-    { "name": "tcp_hs_rtt", "type": ["null","int"], "default": null},
-    { "name": "tcp_pk_rtt", "type": ["null","int"], "default": null}
+    { "name": "tcp_hs_rtt", "type": ["null","int"], "default": null}
   ]
 }

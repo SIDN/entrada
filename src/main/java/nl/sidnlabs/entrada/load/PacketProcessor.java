@@ -542,6 +542,9 @@ public class PacketProcessor {
 
       // read persisted TCP sessions
       flows = (Map<TCPFlow, FlowData>) stateManager.read();
+      if (flows == null) {
+        flows = new HashMap<>();
+      }
 
       // read persisted IP datagrams
       HashMap<Datagram, Collection<DatagramPayload>> inMap =

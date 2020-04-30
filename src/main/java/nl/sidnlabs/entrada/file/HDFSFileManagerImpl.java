@@ -280,8 +280,7 @@ public class HDFSFileManagerImpl implements FileManager {
   public boolean move(String src, String dst, boolean archive) {
     log.info("Move HDFS file: {} to: {} ", src, dst);
 
-    FileSystem fs = createFS();
-    try {
+    try (FileSystem fs = createFS()) {
       Path dstPath = new Path(dst);
       if (!fs.exists(dstPath.getParent())) {
         fs.mkdirs(dstPath.getParent());

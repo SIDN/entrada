@@ -8,6 +8,7 @@ import org.apache.avro.Schema;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.security.UserGroupInformation;
 import org.apache.parquet.avro.AvroParquetWriter;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.hadoop.ParquetWriter;
@@ -17,6 +18,7 @@ import lombok.Setter;
 import lombok.experimental.NonFinal;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.exception.ApplicationException;
+import org.springframework.beans.factory.annotation.Value;
 
 @Log4j2
 @Getter
@@ -25,6 +27,9 @@ public class ParquetPartition<T> {
 
   private static Configuration conf = new Configuration();
 
+  @Value("${hadoop.login.user}")
+  private String loginUser;
+
   private ParquetWriter<T> writer;
   private String filename;
   @NonFinal
@@ -32,6 +37,10 @@ public class ParquetPartition<T> {
   private Path currentFile;
 
   public ParquetPartition(String partition, Schema schema, int rowgroupsize, int pageRowLimit) {
+
+    if (loginUser != null) {
+      UserGroupInformation.setLoginUser(UserGroupInformation.createRemoteUser(loginUser));
+    }
 
     long start = System.currentTimeMillis();
 

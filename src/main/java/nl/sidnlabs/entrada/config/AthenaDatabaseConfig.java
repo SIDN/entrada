@@ -32,6 +32,9 @@ public class AthenaDatabaseConfig {
     ds.setCustomProperty("S3OutputLocation", env.getProperty("athena.output.location"));
     ds.setCustomProperty("AwsCredentialsProviderClass", AWS_CREDENTIALS_PROVIDER_CLASS);
     ds.setCustomProperty("Workgroup", env.getProperty("athena.workgroup"));
+    ds.setCustomProperty("MinQueryExecutionPollingInterval", env.getProperty("athena.polling.min"));
+    ds.setCustomProperty("MaxQueryExecutionPollingInterval", env.getProperty("athena.polling.max"));
+    ds.setCustomProperty("QueryExecutionPollingIntervalMultiplier", env.getProperty("athena.polling.multiplier"));
     ds.setURL(env.getProperty("athena.url"));
     return ds;
   }

@@ -20,6 +20,8 @@
 package nl.sidnlabs.entrada.parquet.stream;
 
 import java.util.Calendar;
+
+import io.micrometer.core.instrument.MeterRegistry;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang3.StringUtils;
@@ -37,12 +39,14 @@ public class ICMPParquetPacketWriterImpl extends AbstractParquetRowWriter {
 
   private static final String ICMP_AVRO_SCHEMA = "/avro/icmp-packet.avsc";
   private Schema schema = schema(ICMP_AVRO_SCHEMA);
+  private final MeterRegistry registry;
 
   public ICMPParquetPacketWriterImpl(
-      @Value("#{${entrada.parquet.filesize.max:128}*1024*1024}") int maxfilesize,
-      @Value("#{${entrada.parquet.rowgroup.size:128}*1024*1024}") int rowgroupsize,
-      @Value("${entrada.parquet.page-row.limit:20000}") int pageRowLimit, ServerContext ctx) {
+          @Value("#{${entrada.parquet.filesize.max:128}*1024*1024}") int maxfilesize,
+          @Value("#{${entrada.parquet.rowgroup.size:128}*1024*1024}") int rowgroupsize,
+          @Value("${entrada.parquet.page-row.limit:20000}") int pageRowLimit, ServerContext ctx, MeterRegistry registry) {
     super(maxfilesize, rowgroupsize, pageRowLimit, ctx);
+    this.registry = registry;
   }
 
   @Override
@@ -78,6 +82,7 @@ public class ICMPParquetPacketWriterImpl extends AbstractParquetRowWriter {
     }
 
     writer.write(record, schema, partition);
+    registry.counter("entrada.icmp.packets.processed").increment();
   }
 
   @Override

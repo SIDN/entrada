@@ -95,7 +95,7 @@ public class ScheduledPrivacyPurge {
 
       }
     } catch (Exception e) {
-      log.error("Purging failed for table: {} and partition: {}", p.getTable(), p.getPath());
+      log.error("Purging failed for table: {} and partition: {}", p.getTable(), p.getPath(), e);
     }
 
     // mark the partition to indicate the purge process failed.

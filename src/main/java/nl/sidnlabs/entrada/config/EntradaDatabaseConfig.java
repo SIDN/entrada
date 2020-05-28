@@ -1,11 +1,12 @@
 package nl.sidnlabs.entrada.config;
 
-import org.springframework.beans.factory.annotation.Value;
+import java.sql.SQLException;
+import javax.sql.DataSource;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import lombok.extern.log4j.Log4j2;
 
@@ -18,22 +19,21 @@ import lombok.extern.log4j.Log4j2;
 @Configuration
 public class EntradaDatabaseConfig {
 
+
+  public EntradaDatabaseConfig() {}
+
+
+  @Bean
+  @ConfigurationProperties(prefix = "spring.datasource.hikari")
+  public HikariConfig hikariConfig() {
+    return new HikariConfig();
+  }
+
   @Primary
   @Bean(name = "dataSource")
-  @ConfigurationProperties(prefix = "spring.datasource")
-  public HikariDataSource dataSource(@Value("${spring.datasource.driver-class-name}") String driver,
-      @Value("${spring.datasource.url}") String url,
-      @Value("${spring.datasource.username}") String username,
-      @Value("${spring.datasource.password}") String password) {
+  public DataSource dataSource() throws SQLException {
     log.info("Create ENTRADA datasource");
-
-    return DataSourceBuilder
-        .create()
-        .type(HikariDataSource.class)
-        .driverClassName(driver)
-        .url(url)
-        .username(username)
-        .password(password)
-        .build();
+    return new HikariDataSource(hikariConfig());
   }
+
 }

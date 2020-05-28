@@ -12,11 +12,9 @@ services:
       # PostgreSQL config options, make sure the the database is created before
       # starting the container
       # replace <host_or_ip> with the actual host of ip, do not use localhost
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://<host_or_ip>:5432/entrada
-      - SPRING_DATASOURCE_DRIVER_CLASS_NAME=org.postgresql.Driver
-      - SPRING_DATASOURCE_USERNAME=
-      - SPRING_DATASOURCE_PASSWORD=
-      - SPRING_JPA_DATABASE_PLATFORM=org.hibernate.dialect.PostgreSQLDialect
+      - SPRING_DATASOURCE_HIKARI_JDBCURL=jdbc:postgresql://<host_or_ip>:5432/entrada
+      - SPRING_DATASOURCE_HIKARI_USERNAME=
+      - SPRING_DATASOURCE_HIKARI_PASSWORD=
       
       # Hadoop ( copy core-site.xml and hdfs-site.xml to the conf dir)
       - HDFS_NAMESERVICE_HOST=namenode.example.com

@@ -59,12 +59,30 @@ public class HDFSFileManagerImpl implements FileManager {
     return HDFS_SCHEME;
   }
 
+  private void close(FileSystem fs) {
+    try {
+      fs.close();
+    } catch (Exception e) {
+      log.error("Error while closing filesystem", e);
+    }
+
+    try {
+      FileSystem.closeAll();
+    } catch (Exception e) {
+      log.error("Error while closing filesystem cache entries", e);
+    }
+  }
+
   @Override
   public boolean exists(String path) {
-    try (FileSystem fs = createFS()) {
+    FileSystem fs = null;
+    try {
+      fs = createFS();
       return exists(fs, new Path(path));
     } catch (Exception e) {
       throw new ApplicationException("Error checking if file exists", e);
+    } finally {
+      close(fs);
     }
   }
 
@@ -84,8 +102,9 @@ public class HDFSFileManagerImpl implements FileManager {
       log.error("Location {} does not exist, cannot continue", dir);
       return Collections.emptyList();
     }
-
-    try (FileSystem fs = createFS()) {
+    FileSystem fs = null;
+    try {
+      fs = createFS();
       return Arrays
           .stream(fs.listStatus(new Path(dir)))
           .map(s -> s.getPath().toString())
@@ -93,6 +112,8 @@ public class HDFSFileManagerImpl implements FileManager {
           .collect(Collectors.toList());
     } catch (Exception e) {
       throw new ApplicationException("Error while checking for files in dir: " + dir, e);
+    } finally {
+      close(fs);
     }
   }
 
@@ -111,11 +132,14 @@ public class HDFSFileManagerImpl implements FileManager {
       log.error("Location {} does not exist, cannot continue");
       return Optional.empty();
     }
-
-    try (FileSystem fs = createFS()) {
+    FileSystem fs = null;
+    try {
+      fs = createFS();
       return Optional.of(fs.open(new Path(location)));
     } catch (Exception e) {
       throw new ApplicationException("Cannot open: " + location, e);
+    } finally {
+      close(fs);
     }
   }
 
@@ -129,8 +153,9 @@ public class HDFSFileManagerImpl implements FileManager {
       log.error("Location {} does not exist, cannot continue with upload");
       return false;
     }
-
-    try (FileSystem fs = createFS()) {
+    FileSystem fs = null;
+    try {
+      fs = createFS();
       Path pathSrc = new Path(src);
       Path pathDst = new Path(dst);
 
@@ -146,6 +171,8 @@ public class HDFSFileManagerImpl implements FileManager {
       return true;
     } catch (Exception e) {
       throw new ApplicationException("Cannot upload, src: " + src + " dst: " + dst, e);
+    } finally {
+      close(fs);
     }
   }
 
@@ -244,9 +271,9 @@ public class HDFSFileManagerImpl implements FileManager {
   public boolean delete(String location) {
     log.info("Delete HDFS file: " + location);
 
-
-    try (FileSystem fs = createFS()) {
-
+    FileSystem fs = null;
+    try {
+      fs = createFS();
       Path path = new Path(location);
       // do not try to delete non-existing path, just return true
       if (fs.exists(path)) {
@@ -256,6 +283,8 @@ public class HDFSFileManagerImpl implements FileManager {
       return true;
     } catch (IllegalArgumentException | IOException e) {
       throw new ApplicationException("Cannot delete location: " + location, e);
+    } finally {
+      close(fs);
     }
   }
 
@@ -263,7 +292,9 @@ public class HDFSFileManagerImpl implements FileManager {
   public boolean rmdir(String location) {
     log.info("Delete HDFS directory: " + location);
 
-    try (FileSystem fs = createFS()) {
+    FileSystem fs = null;
+    try {
+      fs = createFS();
       Path path = new Path(location);
       // do not try to delete non-existing path, just return true
       if (fs.exists(path)) {
@@ -273,6 +304,8 @@ public class HDFSFileManagerImpl implements FileManager {
       return true;
     } catch (IllegalArgumentException | IOException e) {
       throw new ApplicationException("Cannot delete location: " + location, e);
+    } finally {
+      close(fs);
     }
   }
 
@@ -280,7 +313,9 @@ public class HDFSFileManagerImpl implements FileManager {
   public boolean move(String src, String dst, boolean archive) {
     log.info("Move HDFS file: {} to: {} ", src, dst);
 
-    try (FileSystem fs = createFS()) {
+    FileSystem fs = null;
+    try {
+      fs = createFS();
       Path dstPath = new Path(dst);
       if (!fs.exists(dstPath.getParent())) {
         fs.mkdirs(dstPath.getParent());
@@ -288,6 +323,8 @@ public class HDFSFileManagerImpl implements FileManager {
       return fs.rename(new Path(src), dstPath);
     } catch (Exception e) {
       throw new ApplicationException("Cannot rename, src: " + src + " dst: " + dst, e);
+    } finally {
+      close(fs);
     }
   }
 
@@ -358,10 +395,14 @@ public class HDFSFileManagerImpl implements FileManager {
 
   @Override
   public boolean mkdir(String path) {
-    try (FileSystem fs = createFS()) {
+    FileSystem fs = null;
+    try {
+      fs = createFS();
       return mkdir(fs, new Path(path));
     } catch (Exception e) {
       return false;
+    } finally {
+      close(fs);
     }
 
   }
@@ -378,11 +419,14 @@ public class HDFSFileManagerImpl implements FileManager {
   }
 
   public boolean chown(String path, String owner, String group) {
-
-    try (FileSystem fs = createFS()) {
+    FileSystem fs = null;
+    try {
+      fs = createFS();
       return chown(fs, path, owner, group);
     } catch (Exception e) {
       throw new ApplicationException("Cannot chown, path: " + path, e);
+    } finally {
+      close(fs);
     }
   }
 
@@ -426,9 +470,10 @@ public class HDFSFileManagerImpl implements FileManager {
       return Collections.emptyList();
     }
     List<String> files = new ArrayList<>();
+    FileSystem fs = null;
 
-    try (FileSystem fs = createFS()) {
-
+    try {
+      fs = createFS();
       RemoteIterator<LocatedFileStatus> fileStatusListIterator =
           fs.listFiles(new Path(location), true);
 
@@ -438,6 +483,8 @@ public class HDFSFileManagerImpl implements FileManager {
       }
     } catch (Exception e) {
       throw new ApplicationException("Error while getting files", e);
+    } finally {
+      close(fs);
     }
     // retrun found files, can be partial list in case of an exception
     return files

@@ -71,6 +71,7 @@ public class HDFSFileManagerImpl implements FileManager {
 
     try {
       fs.close();
+      fs = null;
     } catch (Exception e) {
       log.error("Error while closing filesystem", e);
     }

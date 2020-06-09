@@ -191,4 +191,9 @@ public class LocalFileManagerImpl implements FileManager {
     return ft.toMillis() < max;
   }
 
+  @Override
+  public void close() {
+    // do nothing
+  }
+
 }

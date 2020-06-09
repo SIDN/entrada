@@ -66,4 +66,6 @@ public interface FileManager {
    */
   List<String> expired(String location, int maxAge, String... filter);
 
+  void close();
+
 }

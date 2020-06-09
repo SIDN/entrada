@@ -54,18 +54,27 @@ public class HDFSFileManagerImpl implements FileManager {
   @Value("${hdfs.data.group}")
   private String group;
 
+  private FileSystem fs;
+
   @Override
   public String schema() {
     return HDFS_SCHEME;
   }
 
-  private void close(FileSystem fs) {
+  @Override
+  public void close() {
+    // close filesystem
+    if (fs == null) {
+      // do nothing, not using hdfs fs
+      return;
+    }
+
     try {
       fs.close();
     } catch (Exception e) {
       log.error("Error while closing filesystem", e);
     }
-
+    // close filesystem internal cache
     try {
       FileSystem.closeAll();
     } catch (Exception e) {
@@ -81,8 +90,6 @@ public class HDFSFileManagerImpl implements FileManager {
       return exists(fs, new Path(path));
     } catch (Exception e) {
       throw new ApplicationException("Error checking if file exists", e);
-    } finally {
-      close(fs);
     }
   }
 
@@ -112,8 +119,6 @@ public class HDFSFileManagerImpl implements FileManager {
           .collect(Collectors.toList());
     } catch (Exception e) {
       throw new ApplicationException("Error while checking for files in dir: " + dir, e);
-    } finally {
-      close(fs);
     }
   }
 
@@ -138,8 +143,6 @@ public class HDFSFileManagerImpl implements FileManager {
       return Optional.of(fs.open(new Path(location)));
     } catch (Exception e) {
       throw new ApplicationException("Cannot open: " + location, e);
-    } finally {
-      close(fs);
     }
   }
 
@@ -171,8 +174,6 @@ public class HDFSFileManagerImpl implements FileManager {
       return true;
     } catch (Exception e) {
       throw new ApplicationException("Cannot upload, src: " + src + " dst: " + dst, e);
-    } finally {
-      close(fs);
     }
   }
 
@@ -283,8 +284,6 @@ public class HDFSFileManagerImpl implements FileManager {
       return true;
     } catch (IllegalArgumentException | IOException e) {
       throw new ApplicationException("Cannot delete location: " + location, e);
-    } finally {
-      close(fs);
     }
   }
 
@@ -304,8 +303,6 @@ public class HDFSFileManagerImpl implements FileManager {
       return true;
     } catch (IllegalArgumentException | IOException e) {
       throw new ApplicationException("Cannot delete location: " + location, e);
-    } finally {
-      close(fs);
     }
   }
 
@@ -323,8 +320,6 @@ public class HDFSFileManagerImpl implements FileManager {
       return fs.rename(new Path(src), dstPath);
     } catch (Exception e) {
       throw new ApplicationException("Cannot rename, src: " + src + " dst: " + dst, e);
-    } finally {
-      close(fs);
     }
   }
 
@@ -384,13 +379,20 @@ public class HDFSFileManagerImpl implements FileManager {
   }
 
   private FileSystem createFS() {
+
+    if (fs != null) {
+      return fs;
+    }
+
     if (StringUtils.isNotBlank(krbKeyTab)) {
       // user using krb user/pass
-      return createSecureFS();
+      fs = createSecureFS();
     } else {
       // use on-secure
-      return createNonSecureFS();
+      fs = createNonSecureFS();
     }
+
+    return fs;
   }
 
   @Override
@@ -401,10 +403,7 @@ public class HDFSFileManagerImpl implements FileManager {
       return mkdir(fs, new Path(path));
     } catch (Exception e) {
       return false;
-    } finally {
-      close(fs);
     }
-
   }
 
   private boolean mkdir(FileSystem fs, Path path) {
@@ -425,8 +424,6 @@ public class HDFSFileManagerImpl implements FileManager {
       return chown(fs, path, owner, group);
     } catch (Exception e) {
       throw new ApplicationException("Cannot chown, path: " + path, e);
-    } finally {
-      close(fs);
     }
   }
 
@@ -483,9 +480,8 @@ public class HDFSFileManagerImpl implements FileManager {
       }
     } catch (Exception e) {
       throw new ApplicationException("Error while getting files", e);
-    } finally {
-      close(fs);
     }
+
     // retrun found files, can be partial list in case of an exception
     return files
         .stream()

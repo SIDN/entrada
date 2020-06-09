@@ -13,6 +13,7 @@ import io.micrometer.core.instrument.Timer;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.enrich.geoip.GeoIPService;
 import nl.sidnlabs.entrada.enrich.resolver.DnsResolverCheck;
+import nl.sidnlabs.entrada.file.FileManager;
 import nl.sidnlabs.entrada.load.PacketProcessor;
 
 @Log4j2
@@ -23,6 +24,7 @@ public class ScheduledExecution {
   private ApplicationContext applicationContext;
   private SharedContext sharedContext;
   private List<DnsResolverCheck> resolverChecks;
+  private List<FileManager> fileManagers;
 
   @Value("${entrada.nameservers}")
   private String servers;
@@ -33,12 +35,14 @@ public class ScheduledExecution {
   private Timer processTimer;
 
   public ScheduledExecution(ServerContext serverCtx, ApplicationContext applicationContext,
-      List<DnsResolverCheck> resolverChecks, MeterRegistry registry, SharedContext sharedContext) {
+      List<DnsResolverCheck> resolverChecks, MeterRegistry registry, SharedContext sharedContext,
+      List<FileManager> fileManagers) {
 
     this.serverCtx = serverCtx;
     this.applicationContext = applicationContext;
     this.resolverChecks = resolverChecks;
     this.sharedContext = sharedContext;
+    this.fileManagers = fileManagers;
     processTimer = registry.timer("processor.execution.time");
   }
 
@@ -70,6 +74,9 @@ public class ScheduledExecution {
       // individual servers configured, process each server directory
       Arrays.stream(StringUtils.split(servers, ",")).forEach(s -> runForServer(s, processor));
     }
+
+    // cleanup filesystems, make sure all cached data and locked files are cleanup up
+    fileManagers.stream().forEach(FileManager::close);
 
     sharedContext.setExecutionStatus(false);
 

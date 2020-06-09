@@ -373,4 +373,9 @@ public class S3FileManagerImpl implements FileManager {
     return Collections.emptyList();
   }
 
+  @Override
+  public void close() {
+    // do nothing
+  }
+
 }

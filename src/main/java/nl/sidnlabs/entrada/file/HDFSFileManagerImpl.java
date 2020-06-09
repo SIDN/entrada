@@ -64,17 +64,15 @@ public class HDFSFileManagerImpl implements FileManager {
   @Override
   public void close() {
     // close filesystem
-    if (fs == null) {
-      // do nothing, not using hdfs fs
-      return;
+    if (fs != null) {
+      try {
+        fs.close();
+        fs = null;
+      } catch (Exception e) {
+        log.error("Error while closing filesystem", e);
+      }
     }
 
-    try {
-      fs.close();
-      fs = null;
-    } catch (Exception e) {
-      log.error("Error while closing filesystem", e);
-    }
     // close filesystem internal cache
     try {
       FileSystem.closeAll();

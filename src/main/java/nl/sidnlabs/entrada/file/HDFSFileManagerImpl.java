@@ -88,7 +88,8 @@ public class HDFSFileManagerImpl implements FileManager {
       fs = createFS();
       return exists(fs, new Path(path));
     } catch (Exception e) {
-      throw new ApplicationException("Error checking if file exists", e);
+      log.error("Error checking if file exists", e);
+      return false;
     }
   }
 
@@ -97,9 +98,8 @@ public class HDFSFileManagerImpl implements FileManager {
       return fs.exists(path);
     } catch (Exception e) {
       log.error("Error while checking existence of path: {}", path, e);
+      return false;
     }
-
-    return false;
   }
 
   @Override
@@ -117,8 +117,10 @@ public class HDFSFileManagerImpl implements FileManager {
           .filter(p -> checkFilter(p, Arrays.asList(filter)))
           .collect(Collectors.toList());
     } catch (Exception e) {
-      throw new ApplicationException("Error while checking for files in dir: " + dir, e);
+      log.error("Error while checking for files in dir: " + dir, e);
     }
+
+    return Collections.emptyList();
   }
 
   private boolean checkFilter(String file, List<String> filters) {
@@ -141,8 +143,10 @@ public class HDFSFileManagerImpl implements FileManager {
       fs = createFS();
       return Optional.of(fs.open(new Path(location)));
     } catch (Exception e) {
-      throw new ApplicationException("Cannot open: " + location, e);
+      log.error("Cannot open: " + location, e);
     }
+
+    return Optional.empty();
   }
 
   @Override
@@ -172,7 +176,8 @@ public class HDFSFileManagerImpl implements FileManager {
       }
       return true;
     } catch (Exception e) {
-      throw new ApplicationException("Cannot upload, src: " + src + " dst: " + dst, e);
+      log.error("Cannot upload, src: " + src + " dst: " + dst, e);
+      return false;
     }
   }
 
@@ -248,12 +253,12 @@ public class HDFSFileManagerImpl implements FileManager {
         chown(fs, dst.toString(), owner, group);
       }
 
-      return true;
     } catch (IOException e) {
       log.error("Error while uploading {} to {}", src, dst, e);
+      return false;
     }
 
-    return false;
+    return true;
   }
 
   @Override
@@ -282,7 +287,8 @@ public class HDFSFileManagerImpl implements FileManager {
 
       return true;
     } catch (IllegalArgumentException | IOException e) {
-      throw new ApplicationException("Cannot delete location: " + location, e);
+      log.error("Cannot delete location: " + location, e);
+      return false;
     }
   }
 
@@ -301,7 +307,8 @@ public class HDFSFileManagerImpl implements FileManager {
 
       return true;
     } catch (IllegalArgumentException | IOException e) {
-      throw new ApplicationException("Cannot delete location: " + location, e);
+      log.error("Cannot delete location: " + location, e);
+      return false;
     }
   }
 
@@ -318,7 +325,8 @@ public class HDFSFileManagerImpl implements FileManager {
       }
       return fs.rename(new Path(src), dstPath);
     } catch (Exception e) {
-      throw new ApplicationException("Cannot rename, src: " + src + " dst: " + dst, e);
+      log.error("Cannot rename, src: " + src + " dst: " + dst, e);
+      return false;
     }
   }
 
@@ -422,7 +430,8 @@ public class HDFSFileManagerImpl implements FileManager {
       fs = createFS();
       return chown(fs, path, owner, group);
     } catch (Exception e) {
-      throw new ApplicationException("Cannot chown, path: " + path, e);
+      log.error("Cannot chown, path: " + path, e);
+      return false;
     }
   }
 
@@ -478,7 +487,8 @@ public class HDFSFileManagerImpl implements FileManager {
         files.add(fileStatus.getPath().toString());
       }
     } catch (Exception e) {
-      throw new ApplicationException("Error while getting files", e);
+      log.error("Error while getting files", e);
+      return Collections.emptyList();
     }
 
     // retrun found files, can be partial list in case of an exception

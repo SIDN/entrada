@@ -94,7 +94,7 @@ public class ScheduledCompaction {
 
       }
     } catch (Exception e) {
-      log.error("Compacting failed for: {}", p);
+      log.error("Compacting failed for: {}", p, e);
     }
 
     // mark the partition tgo indicate the compaction process failed.

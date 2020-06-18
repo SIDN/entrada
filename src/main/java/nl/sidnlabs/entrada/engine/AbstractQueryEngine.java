@@ -100,7 +100,9 @@ public abstract class AbstractQueryEngine implements QueryEngine {
       // rollback moving data files, by deleting parquet files that have already been moved to the
       // new location, ignore any error from deleteFiles method, because some of the files might not
       // exist
-      deleteFiles(newFilesToDelete(p, outputLocation, filesToMove));
+      if (deleteFiles(newFilesToDelete(p, outputLocation, filesToMove)) > 0) {
+        log.error("Rollback failed, not all newly created Parquet files could be deleted");
+      }
       return false;
     }
 
@@ -119,7 +121,7 @@ public abstract class AbstractQueryEngine implements QueryEngine {
   private Map<String, Object> createValueMap(TablePartition p) {
     Map<String, Object> values = new HashMap<>();
     values.put("DATABASE_NAME", database);
-    switch(p.getTable()) {
+    switch (p.getTable()) {
       case "dns":
         values.put("TABLE_NAME", tableDns);
         break;

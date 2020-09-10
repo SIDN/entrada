@@ -60,6 +60,8 @@ public class UploadService {
     FileManager fmInput = fileManagerFactory.getFor(location);
 
     if (partitions.get("dns") != null && new File(location).exists()) {
+      int uploaded = 0;
+      int filesToUploadCount = 0;
       String dstLocation = FileUtil.appendPath(outputLocation, tableNameDns);
 
       for (Partition partition : partitions.get("dns")) {
@@ -67,10 +69,14 @@ public class UploadService {
         List<String> filesToUpload =
             fmInput.files(FileUtil.appendPath(location, partition.toPath()), true, ".parquet");
 
+        filesToUploadCount = filesToUploadCount + filesToUpload.size();
+
         for (String fileToUpload : filesToUpload) {
 
           if (fmOutput
               .upload(fileToUpload, FileUtil.appendPath(dstLocation, partition.toPath()), false)) {
+
+            uploaded++;
 
             // delete uploaded files
             fmInput.delete(fileToUpload);
@@ -80,14 +86,16 @@ public class UploadService {
              */
           }
         }
-        queryEngine.addPartition("dns", tableNameDns, partition);
 
-        // only delete work loc when upload was ok, if upload failed
-        // it will be retried next time
-        if (clean) {
-          log.info("Delete work location: {}", location);
-          fmInput.rmdir(location);
+        if (filesToUpload.size() > 0) {
+          queryEngine.addPartition("dns", tableNameDns, partition);
         }
+      }
+
+      // only clean the src location when all files have been uploaded.
+      if (clean && filesToUploadCount == uploaded) {
+        log.info("Delete work location: {}", location);
+        fmInput.rmdir(location);
       }
     }
 
@@ -95,7 +103,8 @@ public class UploadService {
     if (icmpEnabled && partitions.get("icmp") != null) {
       // move icmp data
       location = locationForICMP();
-
+      int uploaded = 0;
+      int filesToUploadCount = 0;
       if (new File(location).exists()) {
         String dstLocation = FileUtil.appendPath(outputLocation, tableNameIcmp);
 
@@ -104,12 +113,15 @@ public class UploadService {
           List<String> filesToUpload =
               fmInput.files(FileUtil.appendPath(location, partition.toPath()), true, ".parquet");
 
+          filesToUploadCount = filesToUploadCount + filesToUpload.size();
+
           for (String fileToUpload : filesToUpload) {
 
             if (fmOutput
                 .upload(fileToUpload, FileUtil.appendPath(dstLocation, partition.toPath()),
                     false)) {
 
+              uploaded++;
               // delete uploaded files
               fmInput.delete(fileToUpload);
               /*
@@ -118,14 +130,16 @@ public class UploadService {
                */
             }
           }
-          queryEngine.addPartition("dns", tableNameDns, partition);
 
-          // only delete work loc when upload was ok, if upload failed
-          // it will be retried next time
-          if (clean) {
-            log.info("Delete work location: {}", location);
-            fmInput.rmdir(location);
+          if (filesToUpload.size() > 0) {
+            queryEngine.addPartition("icmp", tableNameIcmp, partition);
           }
+        }
+
+        // only clean the src location when all files have been uploaded.
+        if (clean && filesToUploadCount == uploaded) {
+          log.info("Delete work location: {}", location);
+          fmInput.rmdir(location);
         }
       }
     }

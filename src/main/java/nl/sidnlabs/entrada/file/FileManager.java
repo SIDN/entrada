@@ -20,7 +20,7 @@ public interface FileManager {
    */
   boolean supported(String location);
 
-  List<String> files(String location, String... filter);
+  List<String> files(String location, boolean recursive, String... filter);
 
   Optional<InputStream> open(String location);
 

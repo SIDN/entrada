@@ -38,7 +38,7 @@ public class ParquetPartitionWriter {
     if (parquetPartition.getRows() >= maxRows) {
       log
           .info(
-              "Max DNS packets reached for this Parquet parition {}, close current file and create new",
+              "Max DNS packets reached for this Parquet partition {}, close current file and create new",
               partitionStr);
 
       parquetPartition.close();

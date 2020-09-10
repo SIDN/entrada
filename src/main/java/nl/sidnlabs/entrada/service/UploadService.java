@@ -1,6 +1,7 @@
 package nl.sidnlabs.entrada.service;
 
 import java.io.File;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,68 +45,90 @@ public class UploadService {
   }
 
 
-
   /**
    * Move created data from the work location to the output location. The original data will be
    * deleted.
+   * 
+   * @param partitions the partitions to upload
+   * @param clean if true delete all the work location contents when done ( removes .crc files)
    */
-  public void upload(Map<String, Set<Partition>> partitions) {
+  public void upload(Map<String, Set<Partition>> partitions, boolean clean) {
     FileManager fmOutput = fileManagerFactory.getFor(outputLocation);
 
-    // move dns data to the database location on local or remote fs
+    // move data to the database location on local or remote fs
     String location = locationForDNS();
     FileManager fmInput = fileManagerFactory.getFor(location);
+
     if (partitions.get("dns") != null && new File(location).exists()) {
-      // delete .crc files
-      cleanup(fmInput, location, partitions.get("dns"));
-
       String dstLocation = FileUtil.appendPath(outputLocation, tableNameDns);
-      if (fmOutput.upload(location, dstLocation, false)) {
-        /*
-         * make sure the database table contains all the required partitions. If not create the
-         * missing database partition(s)
-         */
 
-        queryEngine.addPartition("dns", tableNameDns, partitions.get("dns"));
+      for (Partition partition : partitions.get("dns")) {
+
+        List<String> filesToUpload =
+            fmInput.files(FileUtil.appendPath(location, partition.toPath()), true, ".parquet");
+
+        for (String fileToUpload : filesToUpload) {
+
+          if (fmOutput
+              .upload(fileToUpload, FileUtil.appendPath(dstLocation, partition.toPath()), false)) {
+
+            // delete uploaded files
+            fmInput.delete(fileToUpload);
+            /*
+             * make sure the database table contains all the required partitions. If not create the
+             * missing database partition(s)
+             */
+          }
+        }
+        queryEngine.addPartition("dns", tableNameDns, partition);
 
         // only delete work loc when upload was ok, if upload failed
         // it will be retried next time
-        log.info("Delete work location: {}", location);
-        fmInput.rmdir(location);
-      }
-    }
-
-    if (icmpEnabled && partitions.get("icmp") != null) {
-      // move icmp data
-      location = locationForICMP();
-      if (new File(location).exists()) {
-        // delete .crc files
-        cleanup(fmInput, location, partitions.get("icmp"));
-
-        String dstLocation = FileUtil.appendPath(outputLocation, tableNameIcmp);
-        if (fmOutput.upload(location, dstLocation, false)) {
-
-          queryEngine.addPartition("icmp", tableNameIcmp, partitions.get("icmp"));
-
+        if (clean) {
           log.info("Delete work location: {}", location);
           fmInput.rmdir(location);
         }
       }
     }
-  }
 
-  /**
-   * Cleanup generated data, parquet-mr generates .crc files, these files should not be uploaded.
-   * 
-   * @param fm filemanager to use
-   * @param location location of the generated data
-   * @param partitions created partitions
-   */
-  private void cleanup(FileManager fm, String location, Set<Partition> partitions) {
-    partitions
-        .stream()
-        .forEach(
-            p -> fm.files(FileUtil.appendPath(location, p.toPath()), ".crc").forEach(fm::delete));
+
+    if (icmpEnabled && partitions.get("icmp") != null) {
+      // move icmp data
+      location = locationForICMP();
+
+      if (new File(location).exists()) {
+        String dstLocation = FileUtil.appendPath(outputLocation, tableNameIcmp);
+
+        for (Partition partition : partitions.get("icmp")) {
+
+          List<String> filesToUpload =
+              fmInput.files(FileUtil.appendPath(location, partition.toPath()), true, ".parquet");
+
+          for (String fileToUpload : filesToUpload) {
+
+            if (fmOutput
+                .upload(fileToUpload, FileUtil.appendPath(dstLocation, partition.toPath()),
+                    false)) {
+
+              // delete uploaded files
+              fmInput.delete(fileToUpload);
+              /*
+               * make sure the database table contains all the required partitions. If not create
+               * the missing database partition(s)
+               */
+            }
+          }
+          queryEngine.addPartition("dns", tableNameDns, partition);
+
+          // only delete work loc when upload was ok, if upload failed
+          // it will be retried next time
+          if (clean) {
+            log.info("Delete work location: {}", location);
+            fmInput.rmdir(location);
+          }
+        }
+      }
+    }
   }
 
 

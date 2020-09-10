@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -164,7 +163,7 @@ public abstract class AbstractQueryEngine implements QueryEngine {
   }
 
   private List<String> listSourceParquetData(String location) {
-    return fileManager.files(location).stream().collect(Collectors.toList());
+    return fileManager.files(location, false).stream().collect(Collectors.toList());
   }
 
   private boolean move(TablePartition p, List<String> files) {
@@ -197,30 +196,29 @@ public abstract class AbstractQueryEngine implements QueryEngine {
 
 
   @Override
-  public boolean addPartition(String type, String table, Set<Partition> partitions) {
+  public boolean addPartition(String type, String table, Partition partition) {
 
     Map<String, Object> values = new HashMap<>();
     values.put("DATABASE_NAME", database);
     values.put("TABLE_NAME", table);
 
-    for (Partition p : partitions) {
-      log.info("Add partition: {} to table: {}", p, table);
 
-      values.put("YEAR", Integer.valueOf(p.getYear()));
-      values.put("MONTH", Integer.valueOf(p.getMonth()));
-      values.put("DAY", Integer.valueOf(p.getDay()));
-      values.put("SERVER", p.getServer());
+    log.info("Add partition: {} to table: {}", partition, table);
 
-      String sql = TemplateUtil
-          .template(new ClassPathResource("/sql/create-partition-" + type + ".sql", getClass()),
-              values);
+    values.put("YEAR", Integer.valueOf(partition.getYear()));
+    values.put("MONTH", Integer.valueOf(partition.getMonth()));
+    values.put("DAY", Integer.valueOf(partition.getDay()));
+    values.put("SERVER", partition.getServer());
 
-      log.info("Create partition, sql: {}", sql);
+    String sql = TemplateUtil
+        .template(new ClassPathResource("/sql/create-partition-" + type + ".sql", getClass()),
+            values);
 
-      if (!execute(sql) || !postAddPartition(table, p)) {
-        log.error("Create partition failed for: {}", p);
-        return false;
-      }
+    log.info("Create partition, sql: {}", sql);
+
+    if (!execute(sql) || !postAddPartition(table, partition)) {
+      log.error("Create partition failed for: {}", partition);
+      return false;
     }
 
     return true;

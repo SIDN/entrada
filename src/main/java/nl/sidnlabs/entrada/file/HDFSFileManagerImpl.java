@@ -5,17 +5,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -28,7 +23,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.exception.ApplicationException;
-import nl.sidnlabs.entrada.util.FileUtil;
 
 @Log4j2
 @Component("hdfs")
@@ -103,7 +97,7 @@ public class HDFSFileManagerImpl implements FileManager {
   }
 
   @Override
-  public List<String> files(String dir, String... filter) {
+  public List<String> files(String dir, boolean recursive, String... filter) {
     if (!exists(dir)) {
       log.error("Location {} does not exist, cannot continue", dir);
       return Collections.emptyList();
@@ -168,74 +162,68 @@ public class HDFSFileManagerImpl implements FileManager {
       if (!exists(fs, pathDst)) {
         mkdir(fs, pathDst);
       }
-
-      if (f.isDirectory()) {
-        uploadDir(fs, src, pathDst, archive);
-      } else {
-        upload(fs, pathSrc, pathDst, archive);
-      }
-      return true;
+      return upload(fs, pathSrc, pathDst, archive);
     } catch (Exception e) {
       log.error("Cannot upload, src: " + src + " dst: " + dst, e);
       return false;
     }
   }
 
-  private boolean uploadDir(FileSystem fs, String src, Path dst, boolean archive) {
-    // uploading a (sub)directory will fail if the dir already exists
-    // at the destination, therefore upload each file individual and make
-    // sure the directories exist.
-
-    if (log.isDebugEnabled()) {
-      log.debug("Upload dir {} to {}", src, dst);
-    }
-
-    Set<Path> dirs = new HashSet<>();
-    try (Stream<java.nio.file.Path> walk =
-        Files.walk(Paths.get(src)).filter(p -> p.toFile().isFile())) {
-
-      walk.forEach(p -> {
-        if (log.isDebugEnabled()) {
-          log.debug("Check if {} needs to be uploaded {}", p);
-        }
-
-        Path srcPath = new Path(p.toString());
-        Path dir = new Path(FileUtil
-            .appendPath(dst.toString(),
-                StringUtils.substringAfter(srcPath.getParent().toString(), src)));
-        if (!dirs.contains(dir)) {
-          // new dir, try op create
-          if (log.isDebugEnabled()) {
-            log.debug("Create HDFS directory {}", dir);
-          }
-
-          mkdir(fs, dir);
-          dirs.add(dir);
-        }
-
-        if (log.isDebugEnabled()) {
-          log.debug("Upload file {}", srcPath);
-        }
-
-        upload(fs, srcPath, new Path(FileUtil.appendPath(dir.toString(), srcPath.getName())),
-            archive);
-
-        if (log.isDebugEnabled()) {
-          log.debug("Completed uploading file {}", srcPath);
-        }
-      });
-
-      if (log.isDebugEnabled()) {
-        log.debug("Completed upload");
-      }
-
-      return true;
-    } catch (Exception e) {
-      log.error("Error while uploading {} to {}", src, dst, e);
-    }
-
-    return false;
-  }
+  // private boolean uploadDir(FileSystem fs, String src, Path dst, boolean archive) {
+  // // uploading a (sub)directory will fail if the dir already exists
+  // // at the destination, therefore upload each file individual and make
+  // // sure the directories exist.
+  //
+  // if (log.isDebugEnabled()) {
+  // log.debug("Upload dir {} to {}", src, dst);
+  // }
+  //
+  // Set<Path> dirs = new HashSet<>();
+  // try (Stream<java.nio.file.Path> walk =
+  // Files.walk(Paths.get(src)).filter(p -> p.toFile().isFile())) {
+  //
+  // walk.forEach(p -> {
+  // if (log.isDebugEnabled()) {
+  // log.debug("Check if {} needs to be uploaded {}", p);
+  // }
+  //
+  // Path srcPath = new Path(p.toString());
+  // Path dir = new Path(FileUtil
+  // .appendPath(dst.toString(),
+  // StringUtils.substringAfter(srcPath.getParent().toString(), src)));
+  // if (!dirs.contains(dir)) {
+  // // new dir, try op create
+  // if (log.isDebugEnabled()) {
+  // log.debug("Create HDFS directory {}", dir);
+  // }
+  //
+  // mkdir(fs, dir);
+  // dirs.add(dir);
+  // }
+  //
+  // if (log.isDebugEnabled()) {
+  // log.debug("Upload file {}", srcPath);
+  // }
+  //
+  // upload(fs, srcPath, new Path(FileUtil.appendPath(dir.toString(), srcPath.getName())),
+  // archive);
+  //
+  // if (log.isDebugEnabled()) {
+  // log.debug("Completed uploading file {}", srcPath);
+  // }
+  // });
+  //
+  // if (log.isDebugEnabled()) {
+  // log.debug("Completed upload");
+  // }
+  //
+  // return true;
+  // } catch (Exception e) {
+  // log.error("Error while uploading {} to {}", src, dst, e);
+  // }
+  //
+  // return false;
+  // }
 
   private boolean upload(FileSystem fs, Path src, Path dst, boolean archive) {
     if (log.isDebugEnabled()) {
@@ -248,7 +236,7 @@ public class HDFSFileManagerImpl implements FileManager {
       if (!archive) {
         // when uploading non-pcap data files set the correct hdfs permissions
         if (log.isDebugEnabled()) {
-          log.debug("Setting correct file permissions to uploaded files");
+          log.debug("Setting correct file permissions to uploaded file");
         }
         chown(fs, dst.toString(), owner, group);
       }

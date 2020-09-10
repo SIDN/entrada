@@ -19,6 +19,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.util.FileSystemUtils;
 import lombok.extern.log4j.Log4j2;
+import nl.sidnlabs.entrada.util.FileUtil;
 
 @Log4j2
 @Component("local")
@@ -38,7 +39,9 @@ public class LocalFileManagerImpl implements FileManager {
   }
 
   @Override
-  public List<String> files(String dir, String... filter) {
+  public List<String> files(String dir, boolean recursive, String... filter) {
+
+    List<String> filters = Arrays.asList(filter);
 
     File fDir = new File(dir);
     if (!fDir.isDirectory()) {
@@ -46,11 +49,24 @@ public class LocalFileManagerImpl implements FileManager {
       return Collections.emptyList();
     }
 
+    if (recursive) {
+      try (Stream<Path> walk = Files.walk(Paths.get(dir))) {
+        return walk
+            .map(x -> x.toString())
+            .filter(f -> checkFilter(f, filters))
+            .collect(Collectors.toList());
+
+      } catch (IOException e) {
+        log.error("Error while listing files for path: {}", dir, e);
+        return Collections.emptyList();
+      }
+    }
+
     return Arrays
         .stream(fDir.listFiles())
         .filter(File::isFile)
         .map(File::getAbsolutePath)
-        .filter(f -> checkFilter(f, Arrays.asList(filter)))
+        .filter(f -> checkFilter(f, filters))
         .collect(Collectors.toList());
   }
 
@@ -77,13 +93,22 @@ public class LocalFileManagerImpl implements FileManager {
 
   @Override
   public boolean upload(String src, String dst, boolean archive) {
+
     log.info("Upload work location: {} to target location: {}", src, dst);
 
+    File srcLocation = new File(src);
+    File dstLocation = new File(dst);
+
     try {
-      FileUtils.copyDirectory(new File(src), new File(dst), true);
+      // make sure dest path exists
+      dstLocation.mkdirs();
+
+      FileUtils
+          .copyFile(srcLocation,
+              new File(FileUtil.appendPath(dst, srcLocation.toPath().getFileName().toString())));
       return true;
     } catch (Exception ex) {
-      log.error("Cannot upload directory: {} to {}", src, dst, ex);
+      log.error("Cannot copy data from: {} to {}", src, dst, ex);
     }
 
     return false;
@@ -117,7 +142,6 @@ public class LocalFileManagerImpl implements FileManager {
 
     return false;
   }
-
 
   @Override
   public boolean move(String src, String dst, boolean archive) {

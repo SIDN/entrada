@@ -5,6 +5,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.UUID;
 import org.apache.avro.Schema;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.avro.AvroParquetWriter;
@@ -26,13 +27,14 @@ public class ParquetPartition<T> {
   private String filename;
   @NonFinal
   private int rows = 0;
+  private Path currentFile;
 
   public ParquetPartition(String partition, Schema schema) {
 
     Configuration conf = new Configuration();
-    Path file =
-        new Path(partition + System.getProperty("file.separator") + UUID.randomUUID() + ".parquet");
-    filename = file.toString();
+    currentFile = new Path(
+        partition + System.getProperty("file.separator") + UUID.randomUUID() + ".parquet.active");
+    filename = currentFile.toString();
 
     log.info("Create new parquet file: {}", filename);
 
@@ -40,7 +42,7 @@ public class ParquetPartition<T> {
       Files.createDirectories(Paths.get(partition));
 
       writer = AvroParquetWriter
-          .<T>builder(file)
+          .<T>builder(currentFile)
           .enableDictionaryEncoding()
           .withCompressionCodec(CompressionCodecName.SNAPPY)
           .withConf(conf)
@@ -74,6 +76,20 @@ public class ParquetPartition<T> {
       // cannot close this writer, log error and continue
       // do not stop the writer
       log.error("Cannot close file: " + filename, e);
+    }
+
+    if (StringUtils.endsWith(currentFile.toString(), ".active")) {
+      // rename files ending with .parquet.active to .parquet
+      // to indicate that they are no longer being written to
+      java.nio.file.Path source = Paths.get(currentFile.toString());
+      java.nio.file.Path target =
+          Paths.get(StringUtils.removeEnd(currentFile.toString(), ".active"));
+
+      try {
+        Files.move(source, target);
+      } catch (Exception e) {
+        log.error("Cannot move file: {} to: {}" + source, target, e);
+      }
     }
   }
 }

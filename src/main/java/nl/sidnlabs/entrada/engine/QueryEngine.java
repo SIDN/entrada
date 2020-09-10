@@ -1,6 +1,5 @@
 package nl.sidnlabs.entrada.engine;
 
-import java.util.Set;
 import nl.sidnlabs.entrada.model.Partition;
 import nl.sidnlabs.entrada.model.jpa.TablePartition;
 
@@ -8,7 +7,7 @@ public interface QueryEngine {
 
   boolean execute(String sql);
 
-  boolean addPartition(String type, String table, Set<Partition> partitions);
+  boolean addPartition(String type, String table, Partition partition);
 
   boolean postAddPartition(String table, Partition p);
 

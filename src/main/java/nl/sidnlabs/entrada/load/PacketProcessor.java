@@ -106,6 +106,9 @@ public class PacketProcessor {
   @Value("#{${entrada.partition.activity.ping:5}*60*1000}")
   private int maxPartitionPingMs;
 
+  @Value("${entrada.parquet.upload.batch}")
+  private boolean uploadBatch;
+
   private PcapReader pcapReader;
   protected Map<RequestCacheKey, RequestCacheValue> requestCache;
 
@@ -190,6 +193,14 @@ public class PacketProcessor {
       purgeCache();
       // move the pcap file to archive location or delete
       fileArchiveService.archive(file, start, totalPacketCounter);
+
+      // check if we need to upload using batch (when all input files have been processed) or
+      // upload all files that are not active anymore before all inout data has been processed
+      if (!uploadBatch) {
+        // upload parquet files that are not active anymore (no longer written to)
+        uploadService.upload(outputWriter.activePartitions(), false);
+      }
+
       // make sure the active partitions are not compacted during bulk loading
       if (pingPartitions(procStart)) {
         // reset timer
@@ -215,7 +226,7 @@ public class PacketProcessor {
       Map<String, Set<Partition>> partitions = waitForWriter(outputFuture);
       log.info("Output writer(s) have finished, continue with uploading the output data");
       // upload newly created data to fs
-      uploadService.upload(partitions);
+      uploadService.upload(partitions, true);
       createPartitions(partitions);
       // save unmatched packet state to file
       // the next pcap might have the missing responses
@@ -663,7 +674,7 @@ public class PacketProcessor {
 
     // order and skip the newest file if skipfirst is true
     List<String> files = fm
-        .files(inputDir, ".pcap", ".pcap.gz", ".pcap.xz")
+        .files(inputDir, false, ".pcap", ".pcap.gz", ".pcap.xz")
         .stream()
         .sorted()
         .skip(skipFirst ? 1 : 0)

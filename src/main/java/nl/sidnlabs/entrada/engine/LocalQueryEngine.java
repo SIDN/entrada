@@ -1,6 +1,5 @@
 package nl.sidnlabs.entrada.engine;
 
-import java.util.Set;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import nl.sidnlabs.entrada.model.Partition;
@@ -11,7 +10,7 @@ import nl.sidnlabs.entrada.model.jpa.TablePartition;
 public class LocalQueryEngine implements QueryEngine {
 
   @Override
-  public boolean addPartition(String type, String table, Set<Partition> partitions) {
+  public boolean addPartition(String type, String table, Partition partition) {
     // do nothing
     return true;
   }

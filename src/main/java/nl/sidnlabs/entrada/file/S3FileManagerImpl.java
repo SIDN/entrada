@@ -10,13 +10,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import com.amazonaws.AmazonServiceException;
-import com.amazonaws.event.ProgressListener;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.Headers;
 import com.amazonaws.services.s3.model.CopyObjectRequest;
@@ -27,10 +25,6 @@ import com.amazonaws.services.s3.model.ListObjectsV2Result;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.amazonaws.services.s3.model.StorageClass;
-import com.amazonaws.services.s3.transfer.MultipleFileUpload;
-import com.amazonaws.services.s3.transfer.ObjectMetadataProvider;
-import com.amazonaws.services.s3.transfer.TransferManager;
-import com.amazonaws.services.s3.transfer.TransferManagerBuilder;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.util.FileUtil;
 
@@ -49,18 +43,18 @@ public class S3FileManagerImpl implements FileManager {
   @Value("${aws.upload.archive.storage-class}")
   private String archiveStorageClass;
 
-  private TransferManager transferManager;
+  // private TransferManager transferManager;
 
   public S3FileManagerImpl(AmazonS3 amazonS3, @Value("${aws.upload.parallelism}") int parallelism,
       @Value("${aws.upload.multipart.mb.size:5}") int multipartSize) {
     this.amazonS3 = amazonS3;
 
-    this.transferManager = TransferManagerBuilder
-        .standard()
-        .withS3Client(amazonS3)
-        .withMultipartUploadThreshold(multipartSize * 1024L * 1024L)
-        .withExecutorFactory(() -> Executors.newFixedThreadPool(parallelism))
-        .build();
+    // this.transferManager = TransferManagerBuilder
+    // .standard()
+    // .withS3Client(amazonS3)
+    // .withMultipartUploadThreshold(multipartSize * 1024L * 1024L)
+    // .withExecutorFactory(() -> Executors.newFixedThreadPool(parallelism))
+    // .build();
   }
 
   @Override
@@ -85,7 +79,7 @@ public class S3FileManagerImpl implements FileManager {
   }
 
   @Override
-  public List<String> files(String location, String... filter) {
+  public List<String> files(String location, boolean recursive, String... filter) {
     List<String> files = new ArrayList<>();
 
     Optional<S3Details> details = S3Details.from(location);
@@ -158,7 +152,7 @@ public class S3FileManagerImpl implements FileManager {
 
     File src = new File(location);
     if (!src.exists()) {
-      log.error("Location {} does not exist, cannot continue with upload");
+      log.error("Location {} does not exist, cannot continue with upload", location);
       return false;
     }
 
@@ -166,10 +160,7 @@ public class S3FileManagerImpl implements FileManager {
 
     if (dstDetails.isPresent()) {
       // network issues can cause upload to fail, do a simple 2nd retry if 1st try fails
-      if (src.isDirectory()) {
-        return uploadDirectory(src, dstDetails.get(), archive)
-            || uploadDirectory(src, dstDetails.get(), archive);
-      } else {
+      if (src.isFile()) {
         return uploadFile(src, dstDetails.get(), archive)
             || uploadFile(src, dstDetails.get(), archive);
       }
@@ -207,41 +198,42 @@ public class S3FileManagerImpl implements FileManager {
     return false;
   }
 
-  private boolean uploadDirectory(File location, S3Details dstDetails, boolean archive) {
 
-    ObjectMetadataProvider metaDataProvider = (file, meta) -> {
-
-      if (archive) {
-        meta
-            .setHeader(Headers.STORAGE_CLASS,
-                StorageClass.fromValue(StringUtils.upperCase(archiveStorageClass)));
-      }
-
-      if (encrypt) {
-        meta.setSSEAlgorithm(ObjectMetadata.AES_256_SERVER_SIDE_ENCRYPTION);
-      }
-    };
-
-    MultipleFileUpload upload = transferManager
-        .uploadDirectory(dstDetails.getBucket(), dstDetails.getKey(), location, true,
-            metaDataProvider);
-
-
-    if (log.isDebugEnabled()) {
-      ProgressListener progressListener = progressEvent -> log
-          .debug("S3 Transferred bytes: " + progressEvent.getBytesTransferred());
-      upload.addProgressListener(progressListener);
-    }
-
-    try {
-      upload.waitForCompletion();
-      return true;
-    } catch (Exception e) {
-      log.error("Error while uploading directory: {}", location, e);
-    }
-
-    return false;
-  }
+  // private boolean uploadDirectory(File location, S3Details dstDetails, boolean archive) {
+  //
+  // ObjectMetadataProvider metaDataProvider = (file, meta) -> {
+  //
+  // if (archive) {
+  // meta
+  // .setHeader(Headers.STORAGE_CLASS,
+  // StorageClass.fromValue(StringUtils.upperCase(archiveStorageClass)));
+  // }
+  //
+  // if (encrypt) {
+  // meta.setSSEAlgorithm(ObjectMetadata.AES_256_SERVER_SIDE_ENCRYPTION);
+  // }
+  // };
+  //
+  // MultipleFileUpload upload = transferManager
+  // .uploadDirectory(dstDetails.getBucket(), dstDetails.getKey(), location, true,
+  // metaDataProvider);
+  //
+  //
+  // if (log.isDebugEnabled()) {
+  // ProgressListener progressListener = progressEvent -> log
+  // .debug("S3 Transferred bytes: " + progressEvent.getBytesTransferred());
+  // upload.addProgressListener(progressListener);
+  // }
+  //
+  // try {
+  // upload.waitForCompletion();
+  // return true;
+  // } catch (Exception e) {
+  // log.error("Error while uploading directory: {}", location, e);
+  // }
+  //
+  // return false;
+  // }
 
   @Override
   public boolean move(String src, String dst, boolean archive) {
@@ -286,7 +278,7 @@ public class S3FileManagerImpl implements FileManager {
     if (details.isPresent()) {
 
       // delete all objects with "location" prefix
-      List<String> objects = files(location);
+      List<String> objects = files(location, false);
       objects.stream().forEach(o -> {
         Optional<S3Details> childDetails = S3Details.from(o);
         deleteObject(childDetails.get());

@@ -22,6 +22,7 @@ import nl.sidnlabs.entrada.exception.ApplicationException;
 public class ParquetPartition<T> {
 
   private static final int ROWGROUP_SIZE = 512 * 1024 * 1024;
+  private static Configuration conf = new Configuration();
 
   private ParquetWriter<T> writer;
   private String filename;
@@ -31,7 +32,6 @@ public class ParquetPartition<T> {
 
   public ParquetPartition(String partition, Schema schema) {
 
-    Configuration conf = new Configuration();
     currentFile = new Path(
         partition + System.getProperty("file.separator") + UUID.randomUUID() + ".parquet.active");
     filename = currentFile.toString();

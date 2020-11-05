@@ -48,17 +48,17 @@ public abstract class AbstractUpgrade implements Upgrade {
 
   private void runSql(String sql) {
     if (log.isDebugEnabled()) {
-      log.debug("Execute SQL: {}", sql);
+      log.info("Execute SQL: {}", sql);
     }
 
     try {
       jdbcTemplate.execute(sql);
-      log.info("SQL execution OK ");
+      log.info("SQL execution OK");
     } catch (Exception e) {
       // Athena does not support "IF EXISTS" for adding columns
       // this will cause a duplicate column name exception
       // if the column already exists
-      log.error("SQL DDL statement failed, possible duplicate column name");
+      log.error("Database upgrade SQL DDL statement failed, possible duplicate column name");
       log.debug("Database exception: {}", e);
     }
   }

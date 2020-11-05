@@ -2,6 +2,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS ${DATABASE_NAME}.${TABLE_NAME}(
 	icmp_type SMALLINT,
 	icmp_code SMALLINT,
 	icmp_echo_client_type SMALLINT,
+	icmp_ip_mtu INT,
 	ip_ttl SMALLINT,
 	ip_v TINYINT,
 	ip_src STRING,

@@ -17,6 +17,7 @@ AS SELECT
 	icmp_type,
 	icmp_code,
 	icmp_echo_client_type,
+	icmp_ip_mtu,
 	ip_ttl,
     ip_v,
     ip_src,

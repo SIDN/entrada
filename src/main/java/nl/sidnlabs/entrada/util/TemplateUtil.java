@@ -37,7 +37,7 @@ public class TemplateUtil {
     return sql;
   }
 
-  private static String readTemplate(ClassPathResource template) {
+  public static String readTemplate(ClassPathResource template) {
     try (InputStream is = template.getInputStream()) {
       return IOUtils.toString(template.getInputStream(), StandardCharsets.UTF_8.name());
     } catch (IOException e) {

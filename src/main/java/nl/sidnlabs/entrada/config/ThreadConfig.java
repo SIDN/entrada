@@ -14,11 +14,16 @@ public class ThreadConfig {
    * @return ThreadPoolTaskScheduler to be used by Spring for @Scheduled tasks
    */
   @Bean(destroyMethod = "shutdown")
-  public ThreadPoolTaskScheduler taskScheduler() {
+  public ThreadPoolTaskScheduler taskExecutor() {
     ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
     taskScheduler.setPoolSize(5);
     taskScheduler.initialize();
     return taskScheduler;
   }
+
+  // @Bean(destroyMethod = "shutdown")
+  // public Executor taskExecutor() {
+  // return Executors.newScheduledThreadPool(5);
+  // }
 
 }

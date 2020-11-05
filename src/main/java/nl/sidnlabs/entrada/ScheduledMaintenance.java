@@ -1,5 +1,6 @@
 package nl.sidnlabs.entrada;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import lombok.extern.log4j.Log4j2;
@@ -11,6 +12,11 @@ public class ScheduledMaintenance {
 
   private ArchiveService archiveService;
   private SharedContext sharedContext;
+
+  // use entrada.parquet.compaction.enabled as as semi master node config option
+  // we need option so only 1 instance act as master instance to prevent
+  @Value("${entrada.node.master:true}")
+  private boolean enabled;
 
   public ScheduledMaintenance(ArchiveService archiveService, SharedContext sharedContext) {
     this.archiveService = archiveService;
@@ -25,7 +31,7 @@ public class ScheduledMaintenance {
   public void run() {
     log.info("Start maintenance");
 
-    if (!sharedContext.isEnabled()) {
+    if (!enabled || !sharedContext.isEnabled()) {
       // processing not enabled
       log.info("Maintenance is currently not enabled");
       return;

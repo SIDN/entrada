@@ -103,42 +103,53 @@ public class DNSRowBuilder extends AbstractRowBuilder {
     String addressToCheck = reqTransport != null ? reqTransport.getSrc() : rspTransport.getDst();
     enrich(addressToCheck, "", row);
 
-    if (reqTransport != null && reqTransport.getTcpHandshake() != null) {
-      // found tcp handshake info
-      row.addColumn(column("tcp_hs_rtt", reqTransport.getTcpHandshake().rtt()));
-      metricManager
-          .record(HistoricalMetricManager.METRIC_IMPORT_TCP_HANDSHAKE_RTT,
-              (int) reqTransport.getTcpHandshake().rtt(), time, false);
-    }
+    if (reqTransport != null) {
+      // only add IP DF flag for server response packet
+      row.addColumn(column("req_ip_df", reqTransport.isDoNotFragment()));
 
-    // these are the values that are retrieved from the response
-    if (rspTransport != null && rspMessage != null && responseHeader != null) {
-      // use rcode from response
-      rcode = responseHeader.getRawRcode();
-
-      row
-          .addColumn(column("id", responseHeader.getId()))
-          .addColumn(column("opcode", responseHeader.getRawOpcode()))
-          .addColumn(column("aa", responseHeader.isAa()))
-          .addColumn(column("tc", responseHeader.isTc()))
-          .addColumn(column("ra", responseHeader.isRa()))
-          .addColumn(column("ad", responseHeader.isAd()))
-          .addColumn(column("ancount", (int) responseHeader.getAnCount()))
-          .addColumn(column("arcount", (int) responseHeader.getArCount()))
-          .addColumn(column("nscount", (int) responseHeader.getNsCount()))
-          .addColumn(column("qdcount", (int) responseHeader.getQdCount()));
-
-      // ip fragments in the response
-      if (rspTransport.isFragmented()) {
-        int frags = rspTransport.getReassembledFragments();
-        row.addColumn(column("resp_frag", frags));
+      if (reqTransport.getTcpHandshake() != null) {
+        // found tcp handshake info
+        row.addColumn(column("tcp_hs_rtt", reqTransport.getTcpHandshake().rtt()));
+        metricManager
+            .record(HistoricalMetricManager.METRIC_IMPORT_TCP_HANDSHAKE_RTT,
+                (int) reqTransport.getTcpHandshake().rtt(), time, false);
       }
 
-      // EDNS0 for response
-      writeResponseOptions(rspMessage, row);
+    }
 
-      metricManager.record(HistoricalMetricManager.METRIC_IMPORT_DNS_RESPONSE_COUNT, 1, time);
-    } // end of response only section
+    if (rspTransport != null) {
+      // only add IP DF flag for server response packet
+      row.addColumn(column("res_ip_df", rspTransport.isDoNotFragment()));
+
+      // these are the values that are retrieved from the response
+      if (rspMessage != null && responseHeader != null) {
+        // use rcode from response
+        rcode = responseHeader.getRawRcode();
+
+        row
+            .addColumn(column("id", responseHeader.getId()))
+            .addColumn(column("opcode", responseHeader.getRawOpcode()))
+            .addColumn(column("aa", responseHeader.isAa()))
+            .addColumn(column("tc", responseHeader.isTc()))
+            .addColumn(column("ra", responseHeader.isRa()))
+            .addColumn(column("ad", responseHeader.isAd()))
+            .addColumn(column("ancount", (int) responseHeader.getAnCount()))
+            .addColumn(column("arcount", (int) responseHeader.getArCount()))
+            .addColumn(column("nscount", (int) responseHeader.getNsCount()))
+            .addColumn(column("qdcount", (int) responseHeader.getQdCount()));
+
+        // ip fragments in the response
+        if (rspTransport.isFragmented()) {
+          int frags = rspTransport.getReassembledFragments();
+          row.addColumn(column("resp_frag", frags));
+        }
+
+        // EDNS0 for response
+        writeResponseOptions(rspMessage, row);
+
+        metricManager.record(HistoricalMetricManager.METRIC_IMPORT_DNS_RESPONSE_COUNT, 1, time);
+      } // end of response only section
+    }
 
     // values from request OR response now
     // if no request found in the request then use values from the response.

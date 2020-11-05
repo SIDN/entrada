@@ -97,6 +97,10 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
         // size of ip packet incl headers
         .addColumn(column("ip_len", icmpPacket.getTotalLength()));
 
+    if (icmpPacket.getMtu() > 0) {
+      row.addColumn(column("icmp_ip_mtu", icmpPacket.getMtu()));
+    }
+
     if (!privacy) {
       row.addColumn(column("ip_src", icmpPacket.getSrc()));
     }

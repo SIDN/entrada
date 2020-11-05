@@ -59,4 +59,24 @@ public class IcmpTest extends AbstractTest {
     assertEquals(0, nestedIcmp.getCode());
   }
 
+  @Test
+  public void testIcmpFragmentationNeededOk() {
+    // this pcap contains a single icmp packet where the payload is also an (partial) icmp packet
+    PcapReader reader = createReaderFor("pcap/sidnlabs-test-icmp-frag-needed.pcap");
+    List<Packet> pckts = reader.stream().collect(Collectors.toList());
+    assertEquals(1, pckts.size());
+
+    Packet p = pckts.get(0);
+    assertNotEquals(Packet.NULL, p);
+
+    assertTrue(p instanceof ICMPPacket);
+    ICMPPacket icmp = (ICMPPacket) p;
+    assertEquals(3, icmp.getType());
+    assertEquals(4, icmp.getCode());
+    assertEquals(1500, icmp.getMtu());
+
+  }
+
+
+
 }

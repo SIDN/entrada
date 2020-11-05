@@ -60,6 +60,8 @@ AS SELECT
 	  req_len,
 	  res_len,
 	  tcp_hs_rtt,
+	  req_ip_df,
+	  res_ip_df,
 	  year,
 	  month,
 	  day,

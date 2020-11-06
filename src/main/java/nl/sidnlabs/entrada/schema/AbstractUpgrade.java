@@ -47,9 +47,7 @@ public abstract class AbstractUpgrade implements Upgrade {
   }
 
   private void runSql(String sql) {
-    if (log.isDebugEnabled()) {
-      log.info("Execute SQL: {}", sql);
-    }
+    log.info("Execute SQL: {}", sql);
 
     try {
       jdbcTemplate.execute(sql);
@@ -64,8 +62,6 @@ public abstract class AbstractUpgrade implements Upgrade {
   }
 
   protected List<String> readStatements(Map<String, Object> values, String table) {
-    // TODO: for now only icmp is supported, add support for dns when required
-
 
     String stmts = TemplateUtil
         .readTemplate(

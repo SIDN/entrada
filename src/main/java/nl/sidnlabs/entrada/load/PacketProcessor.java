@@ -673,18 +673,35 @@ public class PacketProcessor {
             System.getProperty("file.separator"));
 
     // order and skip the newest file if skipfirst is true
-    List<String> files = fm
-        .files(inputDir, false, ".pcap", ".pcap.gz", ".pcap.xz")
+    List<String> files = fm.files(inputDir, false, ".pcap", ".pcap.gz", ".pcap.xz");
+
+    files = files
         .stream()
+        // sort asc by filename, name must include timestamp
         .sorted()
-        .skip(skipFirst ? 1 : 0)
+        // optionaly skip the newest file
+        .limit(maxFiles(files))
         .collect(Collectors.toList());
 
     log.info("Found {} file to process", files.size());
+
     if (log.isDebugEnabled()) {
       files.stream().forEach(file -> log.debug("Found file: {}", file));
     }
     return files;
+  }
+
+  private int maxFiles(List<String> files) {
+    if (skipFirst) {
+      if (files.size() > 0) {
+        // skip newest file (sorted asc, newest file is the last in the list)
+        return files.size() - 1;
+      }
+      // no files found
+      return 0;
+    }
+    // return all files
+    return files.size();
   }
 
 }

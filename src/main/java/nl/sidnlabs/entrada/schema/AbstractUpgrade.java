@@ -13,6 +13,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.util.TemplateUtil;
 
+/**
+ * Implementation of a very basic database update mechanism.
+ *
+ */
 @Log4j2
 public abstract class AbstractUpgrade implements Upgrade {
 

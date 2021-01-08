@@ -21,15 +21,19 @@ package nl.sidnlabs.entrada.enrich.resolver;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
+import org.apache.http.HttpEntity;
 import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.util.EntityUtils;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
 
 /**
@@ -41,13 +45,12 @@ import lombok.extern.log4j.Log4j2;
  */
 @Log4j2
 @Component
+@Setter
 public final class OpenDNSResolverCheck extends AbstractResolverCheck {
 
   private static final String RESOLVER_STATE_FILENAME = "opendns-resolvers";
   private static final String RESOLVER_NAME = "OpenDNS";
 
-
-  private static final ObjectMapper objectMapper = new ObjectMapper();
 
   @Value("${opendns.resolver.url}")
   private String url;
@@ -71,26 +74,37 @@ public final class OpenDNSResolverCheck extends AbstractResolverCheck {
     try {
       HttpGet get = new HttpGet(url);
       CloseableHttpResponse response = client.execute(get);
+      HttpEntity entity = response.getEntity();
+      String html = EntityUtils.toString(entity);
 
-      @SuppressWarnings("unchecked")
-      List<Map<String, String>> locations =
-          objectMapper.readValue(response.getEntity().getContent(), List.class);
+      Document doc = Jsoup.parse(html);
+      Elements tableRows = doc.select("table#networks tr");
 
-      for (Map<String, String> location : locations) {
-        String v4 = location.get("subnetV4");
-        String v6 = location.get("subnetV6");
+      if (tableRows.size() > 0) {
 
-        if (log.isDebugEnabled()) {
-          log.debug("Add OpenDNS resolver IP ranges, subnetV4: " + v4 + " subnetV6: " + v6);
-        }
+        // skip table header row
+        tableRows.stream().skip(1).forEach(r -> {
+          Elements columns = r.getElementsByTag("td");
 
-        subnets.add(v4);
-        subnets.add(v6);
+          String v4 = columns.get(3).text();
+          String v6 = columns.get(4).text();
+
+          if (log.isDebugEnabled()) {
+            log
+                .debug("Add OpenDNS resolver IP ranges -> location: " + columns.get(0).text()
+                    + " subnetV4: " + v4 + " subnetV6: " + v6);
+          }
+
+          subnets.add(v4);
+          subnets.add(v6);
+
+        });
+
       }
 
     } catch (Exception e) {
       // ignore any problems when fetching resolver list
-      log.error("Problem while adding OpenDns resolvers.");
+      log.error("Problem while adding OpenDns resolvers.", e);
     }
     return subnets;
   }

@@ -23,7 +23,6 @@ AS SELECT
     ip_country,
     ip_asn,
     ip_len,
-    ip_mtu,
     l4_prot,
     l4_srcp,
     l4_dstp,

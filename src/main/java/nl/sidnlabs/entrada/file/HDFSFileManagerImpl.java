@@ -467,6 +467,7 @@ public class HDFSFileManagerImpl implements FileManager {
     }
     List<String> files = new ArrayList<>();
     FileSystem fs = null;
+    long max = System.currentTimeMillis() - (maxAge * 24 * 60 * 60 * 1000);
 
     try {
       fs = createFS();
@@ -475,7 +476,10 @@ public class HDFSFileManagerImpl implements FileManager {
 
       while (fileStatusListIterator.hasNext()) {
         LocatedFileStatus fileStatus = fileStatusListIterator.next();
-        files.add(fileStatus.getPath().toString());
+
+        if (fileStatus.getModificationTime() < max) {
+          files.add(fileStatus.getPath().toString());
+        }
       }
     } catch (Exception e) {
       log.error("Error while getting files", e);

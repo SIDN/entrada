@@ -189,7 +189,7 @@ public class LocalFileManagerImpl implements FileManager {
 
   @Override
   public List<String> expired(String location, int maxAge, String... filter) {
-    long max = System.currentTimeMillis() - (maxAge * 60 * 60 * 1000);
+    long max = System.currentTimeMillis() - (maxAge * 24 * 60 * 60 * 1000);
 
     try (Stream<Path> stream = Files.walk(Paths.get(location))) {
       return stream

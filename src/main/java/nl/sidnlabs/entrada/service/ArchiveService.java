@@ -139,7 +139,9 @@ public class ArchiveService {
     FileManager fm = fileManagerFactory.getFor(archiveLocation);
     List<String> expired = fm.expired(archiveLocation, fileMaxAge, ".pcap", ".pcap.gz", ".pcap.xz");
 
-    log.info("{} archived file(s) older than {} day(s) will be deleted", expired.size());
+    log
+        .info("{} archived file(s) older than {} day(s) will be deleted", expired.size(),
+            fileMaxAge);
     expired.stream().forEach(fm::delete);
   }
 

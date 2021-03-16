@@ -67,12 +67,10 @@ public class HDFSFileManagerImpl implements FileManager {
       }
     }
 
-    // close filesystem internal cache
-    try {
-      FileSystem.closeAll();
-    } catch (Exception e) {
-      log.error("Error while closing filesystem cache entries", e);
-    }
+    // do not close Hadoop FileSystem class internal cached instances
+    // other threads might still be using cached instances
+    // and get "connection closed" IOException
+
   }
 
   @Override
@@ -350,7 +348,10 @@ public class HDFSFileManagerImpl implements FileManager {
     System.setProperty("HADOOP_USER_NAME", hdfsUsername);
 
     try {
-      return FileSystem.get(conf);
+      // always create new fs object to prevent closing shared object in another thread
+      // see:
+      // https://stackoverflow.com/questions/20057881/hadoop-filesystem-closed-exception-when-doing-bufferedreader-close/20061797#20061797
+      return FileSystem.newInstance(conf);
     } catch (IOException e) {
       throw new ApplicationException("Cannot create non-secure HDFS filesystem", e);
     }
@@ -366,8 +367,10 @@ public class HDFSFileManagerImpl implements FileManager {
       if (StringUtils.isNotBlank(krbKeyTab)) {
         UserGroupInformation.loginUserFromKeytab(hdfsUsername, krbKeyTab);
       }
-
-      return FileSystem.get(new URI(hdfsNameservice), conf);
+      // always create new fs object to prevent closing shared object in another thread
+      // see:
+      // https://stackoverflow.com/questions/20057881/hadoop-filesystem-closed-exception-when-doing-bufferedreader-close/20061797#20061797
+      return FileSystem.newInstance(new URI(hdfsNameservice), conf);
     } catch (Exception e) {
       throw new ApplicationException("Cannot create secure HDFS filesystem", e);
     }

@@ -266,7 +266,7 @@ public abstract class AbstractQueryEngine implements QueryEngine {
     // and delete the old files.
     List<String> filesToMove = listSourceParquetData(FileUtil.appendPath(location, p.getPath()));
     if (!move(p, filesToMove)) {
-      log.error("Compaction for table: {} failed, could not move new parquet data", p.getTable());
+      log.error("Purging for table: {} failed, could not move new parquet data", p.getTable());
       // rollback moving data files, by deleting parquet files that have already been moved to the
       // new location, ignore any error from deleteFiles method, because some of the files might not
       // exist
@@ -278,7 +278,7 @@ public abstract class AbstractQueryEngine implements QueryEngine {
     if (deleteErrors > 0) {
       log
           .error("Purging for table: {} failed, could not delete {} source parquet file(s)",
-              deleteErrors, p.getTable());
+              p.getTable(), deleteErrors);
       return false;
     }
 

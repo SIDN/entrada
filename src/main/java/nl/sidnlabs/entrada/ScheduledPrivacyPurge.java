@@ -10,6 +10,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.engine.QueryEngine;
+import nl.sidnlabs.entrada.file.FileManager;
 import nl.sidnlabs.entrada.model.jpa.TablePartition;
 import nl.sidnlabs.entrada.service.PartitionService;
 
@@ -27,13 +28,15 @@ public class ScheduledPrivacyPurge {
   private PartitionService partitionService;
   private QueryEngine queryEngine;
   private SharedContext sharedContext;
+  private List<FileManager> fileManagers;
 
 
   public ScheduledPrivacyPurge(PartitionService partitionService, QueryEngine queryEngine,
-      SharedContext sharedContext) {
+      SharedContext sharedContext, List<FileManager> fileManagers) {
     this.partitionService = partitionService;
     this.queryEngine = queryEngine;
     this.sharedContext = sharedContext;
+    this.fileManagers = fileManagers;
   }
 
 
@@ -79,6 +82,9 @@ public class ScheduledPrivacyPurge {
     } finally {
       sharedContext.setPrivacyPurgeStatus(false);
       sharedContext.getTableUpdater().release();
+
+      // cleanup filesystems, make sure all cached data and locked files are cleanup up
+      fileManagers.stream().forEach(FileManager::close);
     }
 
     log.info("Finished partition privacy purge, processed {} partitions", purged);

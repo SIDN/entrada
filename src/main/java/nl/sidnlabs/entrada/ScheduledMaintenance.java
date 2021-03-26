@@ -31,7 +31,7 @@ public class ScheduledMaintenance {
   /**
    * Execute maintenance every x minutes but wait 1 minute before enabling the schedule
    */
-  @Scheduled(fixedDelayString = "#{${entrada.maintenance.interval:3600}*60*1000}",
+  @Scheduled(fixedDelayString = "#{${entrada.maintenance.interval:15}*60*1000}",
       initialDelay = 60 * 1000)
   public void run() {
     log.info("Start maintenance");

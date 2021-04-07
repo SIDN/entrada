@@ -71,7 +71,7 @@
 		<dependency>
 			<groupId>com.google.guava</groupId>
 			<artifactId>guava</artifactId>
-			<version>28.0-jre</version>
+			<version>30.1.1-jre</version>
 		</dependency>
 
 		<dependency>
@@ -241,7 +241,9 @@
 		</dependency>
 
 		<!-- Athena is not in central repo, added it to local repo -->
-		<!-- generated via mvn -Dfile=AthenaJDBC42_2.0.9.jar -DgroupId=com.amazon.aws -DartifactId=athena -Dpackaging=jar -Dversion=2.0.9 -DlocalRepositoryPath=lib install:install-file -->
+		<!-- generated via mvn -Dfile=AthenaJDBC42_2.0.9.jar -DgroupId=com.amazon.aws 
+			-DartifactId=athena -Dpackaging=jar -Dversion=2.0.9 -DlocalRepositoryPath=lib 
+			install:install-file -->
 		<dependency>
 			<groupId>com.amazon.aws</groupId>
 			<artifactId>athena</artifactId>
@@ -276,6 +278,12 @@
 			<groupId>io.netty</groupId>
 			<artifactId>netty</artifactId>
 			<version>3.10.6.Final</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.zaxxer</groupId>
+			<artifactId>HikariCP</artifactId>
+			<version>4.0.3</version>
 		</dependency>
 
 		<!-- need this otherwise generating javadoc fails. https://stackoverflow.com/questions/27808734/jdk8-error-class-file-for-javax-interceptor-interceptorbinding-not-found-whe -->

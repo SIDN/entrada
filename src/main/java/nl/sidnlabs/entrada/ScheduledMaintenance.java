@@ -16,10 +16,9 @@ public class ScheduledMaintenance {
   private SharedContext sharedContext;
   private List<FileManager> fileManagers;
 
-  // use entrada.parquet.compaction.enabled as as semi master node config option
-  // we need option so only 1 instance act as master instance to prevent
+  // we need this option so only 1 instance act as master instance to prevent
   @Value("${entrada.node.master:true}")
-  private boolean enabled;
+  private boolean master;
 
   public ScheduledMaintenance(ArchiveService archiveService, SharedContext sharedContext,
       List<FileManager> fileManagers) {
@@ -34,13 +33,13 @@ public class ScheduledMaintenance {
   @Scheduled(fixedDelayString = "#{${entrada.maintenance.interval:15}*60*1000}",
       initialDelay = 60 * 1000)
   public void run() {
-    log.info("Start maintenance");
-
-    if (!enabled || !sharedContext.isEnabled()) {
+    if (!master || !sharedContext.isEnabled()) {
       // processing not enabled
-      log.info("Maintenance is currently not enabled");
+      log.debug("Maintenance is currently not enabled");
       return;
     }
+
+    log.info("Start maintenance");
 
     sharedContext.setMaintenanceStatus(true);
 

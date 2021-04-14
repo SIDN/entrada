@@ -22,8 +22,13 @@ public class ScheduledPrivacyPurge {
   @Value("${entrada.privacy.enabled:false}")
   private boolean privacy;
 
-  @Value("${entrada.privacy.purge.age:100}")
+  // default=0 means no PII purge
+  @Value("${entrada.privacy.purge.age:0}")
   private int maxDays;
+
+  // we need this option so only 1 instance act as master instance to prevent
+  @Value("${entrada.node.master:true}")
+  private boolean master;
 
   private PartitionService partitionService;
   private QueryEngine queryEngine;
@@ -48,23 +53,27 @@ public class ScheduledPrivacyPurge {
       initialDelay = 60 * 1000)
   public void run() {
 
-    if (privacy || maxDays == 0 || !sharedContext.isEnabled()) {
+    if (!master || privacy || maxDays == 0 || !sharedContext.isEnabled()) {
+      // Only master node can start PII purge
+      // OR
       // not purging PII because, privacy is already enabled and then no PII is present in the data
       // OR
       // the purge is disable by setting maxDays to 0
       // OR
       // entrada is currently disabled
-      log.debug("Do nothing: privacy purge not enabled or running with privacy enabled ");
+      log
+          .debug("Do not start, state ivalid: master:{}, privacy:{}, maxdays:{}, enabled:{}",
+              master, privacy, maxDays, sharedContext.isEnabled());
       return;
     }
 
+    log.info("Start privacy purge");
     int purged = 0;
 
     try {
       // make sure not running at the same time as the compaction task
       sharedContext.getTableUpdater().acquire();
       sharedContext.setPrivacyPurgeStatus(true);
-      log.info("Start partition privacy purge");
 
       LocalDate dateToPurge = LocalDate.now().minusDays(maxDays);
       List<TablePartition> partitions = partitionService.unPurgedPartitions(dateToPurge);

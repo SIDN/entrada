@@ -25,6 +25,10 @@ public class ScheduledCompaction {
   @Value("${entrada.parquet.compaction.enabled}")
   private boolean enabled;
 
+  // we need this option so only 1 instance act as master instance to prevent
+  @Value("${entrada.node.master:true}")
+  private boolean master;
+
   private PartitionService partitionService;
   private QueryEngine queryEngine;
   private SharedContext sharedContext;
@@ -48,21 +52,25 @@ public class ScheduledCompaction {
       initialDelay = 60 * 1000)
   public void run() {
 
-    if (!enabled || !sharedContext.isEnabled()) {
+    if (!master || !enabled || !sharedContext.isEnabled()) {
+      // this node is not the master node
+      // OR
       // compaction not enabled
       // OR
       // entrada is not enabled
-      log.debug("Do nothing: compaction is not enabled or a privacy purge is currently running.");
+      log
+          .debug("Do not start, state ivalid: master:{}, compaction-enabled:{}, age:{}, enabled:{}",
+              master, enabled, age, sharedContext.isEnabled());
       return;
     }
 
+    log.info("Start table compaction");
     int compacted = 0;
 
     try {
       // make sure not running at the same time as the purge task
       sharedContext.getTableUpdater().acquire();
       sharedContext.setCompactionStatus(true);
-      log.info("Start partition compaction");
 
       List<TablePartition> partitions = partitionService.uncompactedPartitions();
 

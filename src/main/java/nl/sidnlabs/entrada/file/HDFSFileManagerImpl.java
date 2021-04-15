@@ -11,6 +11,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import javax.annotation.PostConstruct;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FileStatus;
@@ -20,12 +21,18 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.exception.ApplicationException;
 
 @Log4j2
 @Component("hdfs")
+// use prototype scope, create new bean each time hdfs fs is required
+// this to avoid problems with using fs from different threads
+// and closing fs by thread X while thread Y is still using it.
+@Scope(value = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class HDFSFileManagerImpl implements FileManager {
 
   private static final String HDFS_SCHEME = "hdfs://";
@@ -55,6 +62,16 @@ public class HDFSFileManagerImpl implements FileManager {
     return HDFS_SCHEME;
   }
 
+  @PostConstruct
+  public void postConstruct() {
+    log.debug("Created HDFS FS manager, this instance: {}", this.hashCode());
+  }
+
+  /**
+   * Close FS, Hadoop FileSystem class has internal cache for all connections used by this
+   * application. make sure this method only closes the current connection used by this class
+   * instance. this is why this class uses scope: SCOPE_PROTOTYPE
+   */
   @Override
   public void close() {
     // close filesystem

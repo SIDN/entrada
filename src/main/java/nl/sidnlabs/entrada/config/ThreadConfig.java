@@ -21,9 +21,4 @@ public class ThreadConfig {
     return taskScheduler;
   }
 
-  // @Bean(destroyMethod = "shutdown")
-  // public Executor taskExecutor() {
-  // return Executors.newScheduledThreadPool(5);
-  // }
-
 }

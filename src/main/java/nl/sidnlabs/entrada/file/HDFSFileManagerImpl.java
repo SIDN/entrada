@@ -21,18 +21,12 @@ import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.beans.factory.config.ConfigurableBeanFactory;
-import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.exception.ApplicationException;
 
 @Log4j2
 @Component("hdfs")
-// use prototype scope, create new bean each time hdfs fs is required
-// this to avoid problems with using fs from different threads
-// and closing fs by thread X while thread Y is still using it.
-@Scope(value = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class HDFSFileManagerImpl implements FileManager {
 
   private static final String HDFS_SCHEME = "hdfs://";
@@ -55,12 +49,16 @@ public class HDFSFileManagerImpl implements FileManager {
   @Value("${hdfs.data.group}")
   private String group;
 
-  private FileSystem fs;
-
   @Override
   public String schema() {
     return HDFS_SCHEME;
   }
+
+  /*
+   * keep 1 FileSystem per thread, a fs cannot be shared between threads when thrad is done the FS
+   * needs to be closed, this is not possible when other threads are suing the same FS obj.
+   */
+  private ThreadLocal<FileSystem> threadLocalValue = new ThreadLocal<>();
 
   @PostConstruct
   public void postConstruct() {
@@ -75,7 +73,10 @@ public class HDFSFileManagerImpl implements FileManager {
   @Override
   public void close() {
     // close filesystem
+    FileSystem fs = threadLocalValue.get();
     if (fs != null) {
+      // make sure next code running on this thread cannot use this FS obj
+      threadLocalValue.remove();
       try {
         fs.close();
         fs = null;
@@ -183,62 +184,6 @@ public class HDFSFileManagerImpl implements FileManager {
       return false;
     }
   }
-
-  // private boolean uploadDir(FileSystem fs, String src, Path dst, boolean archive) {
-  // // uploading a (sub)directory will fail if the dir already exists
-  // // at the destination, therefore upload each file individual and make
-  // // sure the directories exist.
-  //
-  // if (log.isDebugEnabled()) {
-  // log.debug("Upload dir {} to {}", src, dst);
-  // }
-  //
-  // Set<Path> dirs = new HashSet<>();
-  // try (Stream<java.nio.file.Path> walk =
-  // Files.walk(Paths.get(src)).filter(p -> p.toFile().isFile())) {
-  //
-  // walk.forEach(p -> {
-  // if (log.isDebugEnabled()) {
-  // log.debug("Check if {} needs to be uploaded {}", p);
-  // }
-  //
-  // Path srcPath = new Path(p.toString());
-  // Path dir = new Path(FileUtil
-  // .appendPath(dst.toString(),
-  // StringUtils.substringAfter(srcPath.getParent().toString(), src)));
-  // if (!dirs.contains(dir)) {
-  // // new dir, try op create
-  // if (log.isDebugEnabled()) {
-  // log.debug("Create HDFS directory {}", dir);
-  // }
-  //
-  // mkdir(fs, dir);
-  // dirs.add(dir);
-  // }
-  //
-  // if (log.isDebugEnabled()) {
-  // log.debug("Upload file {}", srcPath);
-  // }
-  //
-  // upload(fs, srcPath, new Path(FileUtil.appendPath(dir.toString(), srcPath.getName())),
-  // archive);
-  //
-  // if (log.isDebugEnabled()) {
-  // log.debug("Completed uploading file {}", srcPath);
-  // }
-  // });
-  //
-  // if (log.isDebugEnabled()) {
-  // log.debug("Completed upload");
-  // }
-  //
-  // return true;
-  // } catch (Exception e) {
-  // log.error("Error while uploading {} to {}", src, dst, e);
-  // }
-  //
-  // return false;
-  // }
 
   private boolean upload(FileSystem fs, Path src, Path dst, boolean archive) {
     if (log.isDebugEnabled()) {
@@ -394,7 +339,7 @@ public class HDFSFileManagerImpl implements FileManager {
   }
 
   private FileSystem createFS() {
-
+    FileSystem fs = threadLocalValue.get();
     if (fs != null) {
       return fs;
     }
@@ -406,6 +351,9 @@ public class HDFSFileManagerImpl implements FileManager {
       // use on-secure
       fs = createNonSecureFS();
     }
+
+    // link FS to current thread
+    threadLocalValue.set(fs);
 
     return fs;
   }

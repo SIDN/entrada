@@ -247,7 +247,7 @@
 		<dependency>
 			<groupId>com.amazon.aws</groupId>
 			<artifactId>athena</artifactId>
-			<version>2.0.9</version>
+			<version>2.0.21</version>
 		</dependency>
 
 		<!-- Cloudera Impala JDBC is not in cetral repo, added it to local repo -->

@@ -77,7 +77,8 @@ import nl.sidnlabs.pcap.packet.TCPFlow;
 @Scope(value = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class PacketProcessor {
 
-  private static final int MAX_QUEUE_SIZE = 100000;
+  @Value("${entrada.row.queue.max.size:200000}")
+  private int maxRowQueuSize;
 
   @Value("${entrada.cache.timeout}")
   private int cacheTimeoutConfig;
@@ -149,13 +150,13 @@ public class PacketProcessor {
     this.fileManagerFactory = fileManagerFactory;
     this.partitionService = partitionService;
     this.uploadService = uploadService;
-    // convert minutes to milliseconds
-    this.cacheTimeout = 1000 * 60 * cacheTimeoutConfig;
     this.metricManager = historicalMetricManager;
     this.sharedContext = sharedContext;
   }
 
   public void execute() {
+    // convert minutes to milliseconds
+    this.cacheTimeout = 1000 * 60 * cacheTimeoutConfig;
     // reset all counters and reused data structures
     reset();
 
@@ -282,7 +283,7 @@ public class PacketProcessor {
     requestCache = new HashMap<>();
     activeZoneTransfers = new HashMap<>();
     outputFuture = null;
-    rowQueue = new LinkedBlockingQueue<>(MAX_QUEUE_SIZE);
+    rowQueue = new LinkedBlockingQueue<>(maxRowQueuSize);
   }
 
   private void logStats() {
@@ -290,6 +291,7 @@ public class PacketProcessor {
     log.info("{} total DNS messages", totalPacketCounter);
     log.info("{} request", requestPacketCounter);
     log.info("{} response", responsePacketCounter);
+    log.info("{} request cache", requestCache.size());
     log.info("-----------------------------------------");
   }
 
@@ -438,8 +440,9 @@ public class PacketProcessor {
         activeZoneTransfers.put(key, 1);
       }
     }
+    String qname = qname(msg);
 
-    key = new RequestCacheKey(msg.getHeader().getId(), qname(msg), dnsPacket.getDst(),
+    key = new RequestCacheKey(msg.getHeader().getId(), qname, dnsPacket.getDst(),
         dnsPacket.getDstPort());
     RequestCacheValue request = requestCache.remove(key);
     // check to see if the request msg exists, at the start of the pcap there may be
@@ -454,11 +457,14 @@ public class PacketProcessor {
       // no request found, this could happen if the query was in previous pcap
       // and was not correctly decoded, or the request timed out before server
       // could send a response.
+
       if (log.isDebugEnabled()) {
-        log.debug("Found no request for response");
+        log.debug("Found no request for response, dst: " + dnsPacket.getDst() + " qname: " + qname);
       }
 
-      pushRow(new RowData(null, null, dnsPacket, msg, false, fileName));
+      if (qname != null) {
+        pushRow(new RowData(null, null, dnsPacket, msg, false, fileName));
+      }
     }
   }
 

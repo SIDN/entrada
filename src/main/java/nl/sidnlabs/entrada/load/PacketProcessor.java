@@ -77,6 +77,9 @@ import nl.sidnlabs.pcap.packet.TCPFlow;
 @Scope(value = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class PacketProcessor {
 
+  @Value("${entrada.tcp.enable:true}")
+  private boolean tcpEnabled;
+
   @Value("${entrada.row.queue.max.size:200000}")
   private int maxRowQueuSize;
 
@@ -326,8 +329,7 @@ public class PacketProcessor {
       log.error("Got exception from PCAP reader", e);
     } finally {
       // clear expired cache entries
-      pcapReader
-          .clearCache(cacheTimeoutTCPConfig * 60 * 1000, cacheTimeoutIPFragConfig * 60 * 1000);
+      pcapReader.clearCache(cacheTimeoutTCPConfig * 1000, cacheTimeoutIPFragConfig * 60 * 1000);
       // make sure the pcap reader is always closed to avoid leaks
       pcapReader.close();
     }
@@ -644,7 +646,7 @@ public class PacketProcessor {
     try {
       InputStream decompressor =
           CompressionUtil.getDecompressorStreamWrapper(ois.get(), bufferSizeConfig * 1024, file);
-      this.pcapReader = new PcapReader(new DataInputStream(decompressor));
+      this.pcapReader = new PcapReader(new DataInputStream(decompressor), tcpEnabled);
     } catch (IOException e) {
       log.error("Error creating pcap reader for: " + file, e);
       try {

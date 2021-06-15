@@ -47,13 +47,13 @@
 		<dependency>
 			<groupId>nl.sidnlabs</groupId>
 			<artifactId>dnslib</artifactId>
-			<version>0.2.10</version>
+			<version>0.2.11-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>
 			<groupId>nl.sidnlabs</groupId>
 			<artifactId>pcap-lib</artifactId>
-			<version>0.2.15</version>
+			<version>0.2.16-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>
@@ -120,31 +120,31 @@
 		<dependency>
 			<groupId>org.apache.parquet</groupId>
 			<artifactId>parquet-common</artifactId>
-			<version>1.10.1</version>
+			<version>1.12.0</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.apache.parquet</groupId>
 			<artifactId>parquet-encoding</artifactId>
-			<version>1.10.1</version>
+			<version>1.12.0</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.apache.parquet</groupId>
 			<artifactId>parquet-column</artifactId>
-			<version>1.10.1</version>
+			<version>1.12.0</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.apache.parquet</groupId>
 			<artifactId>parquet-hadoop</artifactId>
-			<version>1.10.1</version>
+			<version>1.12.0</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.apache.parquet</groupId>
 			<artifactId>parquet-avro</artifactId>
-			<version>1.10.1</version>
+			<version>1.12.0</version>
 		</dependency>
 
 		<dependency>

@@ -27,7 +27,7 @@ public class TcpTest extends AbstractTest {
     assertEquals(5, pckts.size());
 
     long dnsMessages = pckts.stream().flatMap(p -> ((DNSPacket) p).getMessages().stream()).count();
-    assertEquals(5, dnsMessages);
+    assertEquals(6, dnsMessages);
   }
 
   @Test

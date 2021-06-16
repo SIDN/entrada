@@ -21,11 +21,13 @@ package nl.sidnlabs.entrada.support;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import nl.sidnlabs.dnslib.message.Message;
 import nl.sidnlabs.pcap.packet.Packet;
 
 @Data
 @AllArgsConstructor
+@NoArgsConstructor
 public class RequestCacheValue {
 
   private Message message;

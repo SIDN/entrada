@@ -83,7 +83,7 @@ public class PacketProcessor {
   @Value("${entrada.row.queue.max.size:200000}")
   private int maxRowQueuSize;
 
-  @Value("${entrada.cache.timeout}")
+  @Value("${entrada.cache.timeout:3}")
   private int cacheTimeoutConfig;
 
   @Value("${entrada.cache.timeout.tcp.flows}")
@@ -114,7 +114,7 @@ public class PacketProcessor {
   private boolean uploadBatch;
 
   private PcapReader pcapReader;
-  protected Map<RequestCacheKey, RequestCacheValue> requestCache;
+  private Map<RequestCacheKey, RequestCacheValue> requestCache;
 
   private StateManager stateManager;
   private OutputWriter outputWriter;
@@ -126,6 +126,8 @@ public class PacketProcessor {
   private int totalPacketCounter;
   private int requestPacketCounter;
   private int responsePacketCounter;
+
+  private long lastPacketTs = 0;
 
   // keep list of active zone transfers
   private Map<RequestCacheKey, Integer> activeZoneTransfers;
@@ -158,8 +160,9 @@ public class PacketProcessor {
   }
 
   public void execute() {
-    // convert minutes to milliseconds
-    this.cacheTimeout = 1000 * 60 * cacheTimeoutConfig;
+    // convert seconds to milliseconds
+    this.cacheTimeout = cacheTimeoutConfig * 1000;
+
     // reset all counters and reused data structures
     reset();
 
@@ -358,6 +361,8 @@ public class PacketProcessor {
     } else {
       // must be dnspacket
       DNSPacket dnsPacket = (DNSPacket) currentPacket;
+      lastPacketTs = currentPacket.getTsMilli();
+
       if (dnsPacket.getMessages().isEmpty()) {
         // skip malformed packets
         log.debug("Packet contains no dns message, skipping...");
@@ -411,7 +416,7 @@ public class PacketProcessor {
     }
 
     RequestCacheKey key = new RequestCacheKey(msg.getHeader().getId(), qname(msg),
-        dnsPacket.getSrc(), dnsPacket.getSrcPort(), System.currentTimeMillis());
+        dnsPacket.getSrc(), dnsPacket.getSrcPort(), dnsPacket.getTsMilli());
 
     // put the query in the cache until we get a matching response
     requestCache.put(key, new RequestCacheValue(msg, dnsPacket, fileName));
@@ -600,14 +605,15 @@ public class PacketProcessor {
   private void purgeCache() {
     // remove expired entries from _requestCache
     Iterator<RequestCacheKey> iter = requestCache.keySet().iterator();
-    long now = System.currentTimeMillis();
+    // use time from pcap to calc max age of cached packets
+    long max = lastPacketTs - cacheTimeout;
     int purgeCounter = 0;
 
     while (iter.hasNext()) {
       RequestCacheKey key = iter.next();
       // add the expiration time to the key and see if this leads to a time which is after the
       // current time.
-      if ((key.getTime() + cacheTimeout) <= now) {
+      if (key.getTime() < max) {
         // remove expired request
         RequestCacheValue cacheValue = requestCache.get(key);
         iter.remove();

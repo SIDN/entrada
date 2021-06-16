@@ -34,6 +34,7 @@ public class RequestCacheKey {
   private String src;
   private int srcPort;
   // do not match request/response on time, this will never match
+  // time is only use to allow setting a timeout on cached items
   @EqualsAndHashCode.Exclude
   private long time;
 

@@ -1,5 +1,7 @@
 package nl.sidnlabs.entrada.config;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
@@ -21,4 +23,8 @@ public class ThreadConfig {
     return taskScheduler;
   }
 
+  @Bean(name = "executorService", destroyMethod = "shutdown")
+  public ExecutorService executorService() {
+    return Executors.newFixedThreadPool(2);
+  }
 }

@@ -1,10 +1,10 @@
 package nl.sidnlabs.entrada.model;
 
+import java.net.InetAddress;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import nl.sidnlabs.dnslib.message.Header;
@@ -84,8 +84,8 @@ public class DNSRowBuilder extends AbstractRowBuilder {
 
     // get the qname domain name details
     String normalizedQname = question == null ? "" : filter(question.getQName());
-    normalizedQname = StringUtils.lowerCase(normalizedQname);
-    Domaininfo domaininfo = NameUtil.getDomain(normalizedQname);
+    // normalizedQname = StringUtils.lowerCase(normalizedQname);
+    Domaininfo domaininfo = NameUtil.getDomain(normalizedQname, true);
 
     // check to see it a response was found, if not then use -1 value for rcode
     // otherwise use the rcode returned by the server in the response.
@@ -100,8 +100,11 @@ public class DNSRowBuilder extends AbstractRowBuilder {
     row.addColumn(column("pcap_file", combo.getPcapFilename()));
 
     // add meta data for the client IP
-    String addressToCheck = reqTransport != null ? reqTransport.getSrc() : rspTransport.getDst();
-    enrich(addressToCheck, "", row);
+    InetAddress addressToCheck =
+        reqTransport != null ? reqTransport.getSrcAddr() : rspTransport.getDstAddr();
+    if (addressToCheck != null) {
+      enrich(addressToCheck, "", row);
+    }
 
     if (reqTransport != null) {
       // only add IP DF flag for server response packet
@@ -374,7 +377,7 @@ public class DNSRowBuilder extends AbstractRowBuilder {
           // get client country and asn
 
           if (scOption.getAddress() != null) {
-            enrich(scOption.getAddress(), "edns_client_subnet_", row);
+            enrich(scOption.getInetAddress(), "edns_client_subnet_", row);
           }
           if (!privacy) {
             row.addColumn(column("edns_client_subnet", scOption.export()));

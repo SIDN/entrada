@@ -33,8 +33,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
@@ -80,7 +81,7 @@ public class PacketProcessor {
   @Value("${entrada.tcp.enable:true}")
   private boolean tcpEnabled;
 
-  @Value("${entrada.row.queue.max.size:200000}")
+  @Value("${entrada.row.queue.max.size:100000}")
   private int maxRowQueuSize;
 
   @Value("${entrada.cache.timeout:3}")
@@ -120,12 +121,14 @@ public class PacketProcessor {
   private OutputWriter outputWriter;
   private ArchiveService fileArchiveService;
   private SharedContext sharedContext;
+  private ExecutorService executorService;
 
   // max lifetime for cached packets, in milliseconds (configured in minutes)
   private int cacheTimeout;
   private int totalPacketCounter;
   private int requestPacketCounter;
   private int responsePacketCounter;
+  private int packetsAddedToQueueCounter;
 
   private long lastPacketTs = 0;
 
@@ -135,7 +138,7 @@ public class PacketProcessor {
   private PartitionService partitionService;
   private ServerContext serverCtx;
   private Future<Map<String, Set<Partition>>> outputFuture;
-  private LinkedBlockingQueue<RowData> rowQueue;
+  private ArrayBlockingQueue<RowData> rowQueue;
   private HistoricalMetricManager metricManager;
   private UploadService uploadService;
   // maps with state, loaded at start and persisted at end
@@ -146,7 +149,7 @@ public class PacketProcessor {
       OutputWriter outputWriter, ArchiveService fileArchiveService,
       FileManagerFactory fileManagerFactory, PartitionService partitionService,
       HistoricalMetricManager historicalMetricManager, UploadService uploadService,
-      SharedContext sharedContext) {
+      SharedContext sharedContext, ExecutorService executorService) {
 
     this.serverCtx = serverCtx;
     this.stateManager = persistenceManager;
@@ -157,6 +160,7 @@ public class PacketProcessor {
     this.uploadService = uploadService;
     this.metricManager = historicalMetricManager;
     this.sharedContext = sharedContext;
+    this.executorService = executorService;
   }
 
   public void execute() {
@@ -173,33 +177,44 @@ public class PacketProcessor {
       return;
     }
 
-    long procStart = System.currentTimeMillis();
-
+    long partitionCheckTs = System.currentTimeMillis();
+    long startAll = System.currentTimeMillis();
     // get the state from the previous run
     loadState();
     int fileCounter = 0;
+
     for (String file : inputFiles) {
-      Date start = new Date();
+      Date startDate = new Date();
 
       if (fileArchiveService.exists(file, serverCtx.getServerInfo().getName())) {
         if (log.isDebugEnabled()) {
           log.debug("file {} already processed!, continue with next file", file);
         }
         // move the pcap file to archive location or delete
-        fileArchiveService.archive(file, start, 0);
+        fileArchiveService.archive(file, startDate, 0);
         continue;
       }
 
       fileCounter++;
       if (outputFuture == null) {
         // open the output file writer
-        outputFuture = outputWriter.start(true, icmpEnabled, rowQueue);
+        outputWriter.init(true, icmpEnabled, rowQueue);
+        // start on seperate thread
+        outputFuture = executorService.submit(outputWriter);
+        // outputFuture = outputWriter.start(true, icmpEnabled, rowQueue);
       }
+
+      long startTs = System.currentTimeMillis();
       read(file);
+      log.info("File processing time: " + (System.currentTimeMillis() - startTs) + "ms");
+
       // flush expired packets after every file, to avoid a large cache eating up the heap
+      startTs = System.currentTimeMillis();
       purgeCache();
+      log.info("Cache purge time: " + (System.currentTimeMillis() - startTs) + "ms");
+
       // move the pcap file to archive location or delete
-      fileArchiveService.archive(file, start, totalPacketCounter);
+      fileArchiveService.archive(file, startDate, totalPacketCounter);
 
       // check if we need to upload using batch (when all input files have been processed) or
       // upload all files that are not active anymore before all inout data has been processed
@@ -209,9 +224,9 @@ public class PacketProcessor {
       }
 
       // make sure the active partitions are not compacted during bulk loading
-      if (pingPartitions(procStart)) {
+      if (pingPartitions(partitionCheckTs)) {
         // reset timer
-        procStart = System.currentTimeMillis();
+        partitionCheckTs = System.currentTimeMillis();
       }
 
       logStats();
@@ -223,7 +238,7 @@ public class PacketProcessor {
       }
     }
 
-    // check if any file have been processed if so, send "end" packet to writer and wait foor writer
+    // check if any file have been processed if so, send "end" packet to writer and wait for writer
     // to finish
     if (Objects.nonNull(outputFuture)) {
       // mark all data procssed
@@ -231,7 +246,11 @@ public class PacketProcessor {
       // wait until writer is done
       log.info("Wait until output writer(s) have finished");
       Map<String, Set<Partition>> partitions = waitForWriter(outputFuture);
-      log.info("Output writer(s) have finished, continue with uploading the output data");
+
+      log
+          .info("Processed " + inputFiles.size() + " files, time: "
+              + (System.currentTimeMillis() - startAll) + "ms");
+
       // upload newly created data to fs
       uploadService.upload(partitions, true);
       createPartitions(partitions);
@@ -289,7 +308,9 @@ public class PacketProcessor {
     requestCache = new HashMap<>();
     activeZoneTransfers = new HashMap<>();
     outputFuture = null;
-    rowQueue = new LinkedBlockingQueue<>(maxRowQueuSize);
+    rowQueue = new ArrayBlockingQueue<>(maxRowQueuSize);
+
+    log.info("Created request with size: {}", maxRowQueuSize);
   }
 
   private void logStats() {
@@ -314,7 +335,7 @@ public class PacketProcessor {
       return;
     }
 
-    long readStart = System.currentTimeMillis();
+
     // get filename only to map parquet row to pcap file for possible
     // later detailed analysis
     String fileName = FileUtil.filename(file);
@@ -323,9 +344,8 @@ public class PacketProcessor {
     try {
       pcapReader.stream().forEach(p -> process(p, fileName));
 
-      log.info("Processing time: " + (System.currentTimeMillis() - readStart) + "ms");
       if (log.isDebugEnabled()) {
-        log.debug("Done with decoding, start cleanup");
+        log.debug("Done with pcap decoding");
       }
     } catch (Exception e) {
       // log all exception, should not happen
@@ -361,7 +381,6 @@ public class PacketProcessor {
     } else {
       // must be dnspacket
       DNSPacket dnsPacket = (DNSPacket) currentPacket;
-      lastPacketTs = currentPacket.getTsMilli();
 
       if (dnsPacket.getMessages().isEmpty()) {
         // skip malformed packets
@@ -369,11 +388,13 @@ public class PacketProcessor {
         return;
       }
 
+      lastPacketTs = currentPacket.getTsMilli();
+
       for (Message msg : dnsPacket.getMessages()) {
         // put request into map until we find matching response, with a key based on: query id,
         // qname, ip src, tcp/udp port add time for possible timeout eviction
         if (msg.getHeader().getQr() == MessageType.QUERY) {
-          handDnsQuery(dnsPacket, msg, fileName);
+          handDnsRequest(dnsPacket, msg, fileName);
         } else {
           handDnsResponse(dnsPacket, msg, fileName);
         }
@@ -398,7 +419,7 @@ public class PacketProcessor {
     return qname;
   }
 
-  private void handDnsQuery(DNSPacket dnsPacket, Message msg, String fileName) {
+  private void handDnsRequest(DNSPacket dnsPacket, Message msg, String fileName) {
     requestPacketCounter++;
     // check for ixfr/axfr request
     if (!msg.getQuestions().isEmpty()
@@ -412,11 +433,15 @@ public class PacketProcessor {
       // packets for an ixfr/axfr.
       activeZoneTransfers
           .put(new RequestCacheKey(msg.getHeader().getId(), null, dnsPacket.getSrc(),
-              dnsPacket.getSrcPort()), 0);
+              dnsPacket.getSrcPort(), 0), 0);
     }
 
     RequestCacheKey key = new RequestCacheKey(msg.getHeader().getId(), qname(msg),
         dnsPacket.getSrc(), dnsPacket.getSrcPort(), dnsPacket.getTsMilli());
+
+    if (log.isDebugEnabled()) {
+      log.info("Insert into cache key: " + key);
+    }
 
     // put the query in the cache until we get a matching response
     requestCache.put(key, new RequestCacheValue(msg, dnsPacket, fileName));
@@ -429,7 +454,7 @@ public class PacketProcessor {
     // check for ixfr/axfr response, the query might be missing from the response
     // so we cannot use the qname for matching.
     RequestCacheKey key = new RequestCacheKey(msg.getHeader().getId(), null, dnsPacket.getDst(),
-        dnsPacket.getDstPort());
+        dnsPacket.getDstPort(), 0);
     if (activeZoneTransfers.containsKey(key)) {
       if (log.isDebugEnabled()) {
         log.debug("Ignore {} zone transfer response(s)", msg.getAnswer().size());
@@ -450,10 +475,19 @@ public class PacketProcessor {
     String qname = qname(msg);
 
     key = new RequestCacheKey(msg.getHeader().getId(), qname, dnsPacket.getDst(),
-        dnsPacket.getDstPort());
+        dnsPacket.getDstPort(), 0);
+
+    if (log.isDebugEnabled()) {
+      log.debug("Get from cache key: " + key);
+      log.debug("request cache size before: " + requestCache.size());
+    }
+
     RequestCacheValue request = requestCache.remove(key);
     // check to see if the request msg exists, at the start of the pcap there may be
     // missing queries
+    if (log.isDebugEnabled()) {
+      log.debug("request cache size after: " + requestCache.size());
+    }
 
     if (request != null && request.getPacket() != null && request.getMessage() != null) {
 
@@ -476,6 +510,13 @@ public class PacketProcessor {
   }
 
   private void pushRow(RowData pc) {
+    packetsAddedToQueueCounter++;
+
+    if (packetsAddedToQueueCounter % 100000 == 0) {
+      log.info("Inserted {} rows into queue", packetsAddedToQueueCounter);
+      log.info("Queue size: {}", rowQueue.size());
+    }
+
     try {
       // the put() method will block until enough space is available in the queue
       // to prevent having large amount of rows in memory when the writer cannot keep up.
@@ -494,6 +535,7 @@ public class PacketProcessor {
 
     int datagramCount = 0;
     int cacheCount = 0;
+    long startTs = System.currentTimeMillis();
 
     try {
       // persist tcp state
@@ -544,9 +586,8 @@ public class PacketProcessor {
       stateManager.close();
     }
 
-
-
     log.info("------------- State persistence stats --------------");
+    log.info("Persist state to disk time {}", System.currentTimeMillis() - startTs);
     log.info("Persist {} TCP flows", flows.size());
     log.info("Persist {} Datagrams", datagramCount);
     log.info("Persist {} DNS requests from cache", cacheCount);
@@ -603,11 +644,17 @@ public class PacketProcessor {
 
 
   private void purgeCache() {
-    // remove expired entries from _requestCache
+    // remove expired entries from requestCache
     Iterator<RequestCacheKey> iter = requestCache.keySet().iterator();
     // use time from pcap to calc max age of cached packets
     long max = lastPacketTs - cacheTimeout;
     int purgeCounter = 0;
+
+    log.info("Cache purge TTL: {}", cacheTimeout);
+    log.info("Cache purge lastPacketTs: {}", lastPacketTs);
+    log.info("Cache purge max: {}", max);
+
+    log.info("Start request cache purge, size: {}", requestCache.size());
 
     while (iter.hasNext()) {
       RequestCacheKey key = iter.next();
@@ -637,6 +684,8 @@ public class PacketProcessor {
     log
         .info("Marked " + purgeCounter
             + " expired queries from request cache to output file with rcode no response");
+
+    log.info("Completed request cache purge, size: {}", requestCache.size());
   }
 
   private boolean createReader(String file) {

@@ -2,19 +2,20 @@ package nl.sidnlabs.entrada.enrich.geoip;
 
 import java.net.InetAddress;
 import java.util.Optional;
-import org.apache.commons.lang3.tuple.Pair;
+import com.maxmind.geoip2.model.AsnResponse;
+import com.maxmind.geoip2.model.CountryResponse;
 
 
 public interface GeoIPService {
 
   void initialize();
 
-  Optional<String> lookupCountry(String ip);
+  // Optional<CountryResponse> lookupCountry(String ip);
 
-  Optional<String> lookupCountry(InetAddress addr);
+  Optional<CountryResponse> lookupCountry(InetAddress addr);
 
-  Optional<Pair<Integer, String>> lookupASN(InetAddress ip);
+  Optional<? extends AsnResponse> lookupASN(InetAddress ip);
 
-  Optional<Pair<Integer, String>> lookupASN(String ip);
+  // Optional<? extends AsnResponse> lookupASN(String ip);
 
 }

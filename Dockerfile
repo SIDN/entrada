@@ -1,4 +1,4 @@
-FROM openjdk:8-jre
+FROM openjdk:11
 # Cannot use Alpine Linux because we need libc for Snappy.
 
 LABEL maintainer="entrada@sidn.nl"

@@ -20,11 +20,10 @@
 package nl.sidnlabs.entrada.support;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-@Data
+@Getter
 @AllArgsConstructor
 @NoArgsConstructor
 public class RequestCacheKey {
@@ -35,11 +34,54 @@ public class RequestCacheKey {
   private int srcPort;
   // do not match request/response on time, this will never match
   // time is only use to allow setting a timeout on cached items
-  @EqualsAndHashCode.Exclude
+  // @EqualsAndHashCode.Exclude
   private long time;
 
-  public RequestCacheKey(int id, String qname, String src, int srcPort) {
-    this(id, qname, src, srcPort, 0);
+  // public RequestCacheKey(int id, String qname, String src, int srcPort) {
+  // this(id, qname, src, srcPort, 0);
+  // }
+
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + id;
+    result = prime * result + ((qname == null) ? 0 : qname.hashCode());
+    result = prime * result + ((src == null) ? 0 : src.hashCode());
+    result = prime * result + srcPort;
+    return result;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    RequestCacheKey other = (RequestCacheKey) obj;
+    if (id != other.id)
+      return false;
+    if (qname == null) {
+      if (other.qname != null)
+        return false;
+    } else if (!qname.equals(other.qname))
+      return false;
+    if (src == null) {
+      if (other.src != null)
+        return false;
+    } else if (!src.equals(other.src))
+      return false;
+    if (srcPort != other.srcPort)
+      return false;
+    return true;
+  }
+
+  @Override
+  public String toString() {
+    return "RequestCacheKey [id=" + id + ", qname=" + qname + ", src=" + src + ", srcPort="
+        + srcPort + ", time=" + time + "]";
   }
 
 }

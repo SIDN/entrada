@@ -5,8 +5,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-import org.apache.commons.lang.text.StrSubstitutor;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.text.StringSubstitutor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -72,7 +72,7 @@ public abstract class AbstractUpgrade implements Upgrade {
             new ClassPathResource("/sql/" + prefix + "/upgrade-" + table + ".sql", getClass()));
 
     return Arrays
-        .stream(StrSubstitutor.replace(stmts, values).split("\\n"))
+        .stream(StringSubstitutor.replace(stmts, values).split("\\n"))
         .map(StringUtils::trimToEmpty)
         .filter(StringUtils::isNotBlank)
         .filter(s -> !s.startsWith("#"))

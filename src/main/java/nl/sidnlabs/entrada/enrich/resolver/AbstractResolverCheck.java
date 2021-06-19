@@ -23,8 +23,10 @@ import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import java.io.File;
 import java.io.IOException;
+import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Date;
@@ -35,27 +37,35 @@ import java.util.Set;
 import javax.annotation.PostConstruct;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.time.DateUtils;
-import org.jboss.netty.handler.ipfilter.IpSubnet;
+import org.apache.commons.net.util.SubnetUtils;
 import org.springframework.beans.factory.annotation.Value;
-import com.google.common.net.InetAddresses;
+import com.google.common.base.Charsets;
+import com.google.common.hash.BloomFilter;
+import com.google.common.hash.Funnels;
 import lombok.extern.log4j.Log4j2;
 
 @Log4j2
 public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
-  private List<IpSubnet> matchers4 = new ArrayList<>();
-  private List<IpSubnet> matchers6 = new ArrayList<>();
+  private static final int BLOOMFILTER_IPV6_MAX = 50000;
+
+  private List<FastIpSubnet> matchers4 = new ArrayList<>();
+  private List<FastIpSubnet> matchers6 = new ArrayList<>();
 
   @Value("${entrada.location.persistence}")
   private String workDir;
 
-  @Value("${public-resolver.match.cache.size:5000}")
+  @Value("${public-resolver.match.cache.size:10000}")
   private int maxMatchCacheSize;
 
   // only cache the matches (hits) the non-matches are too numerous
   // to efficiently cache in memory, doing the subnet check would be faster
   // than checking 100k cached elements
-  private Set<String> hitCache = new HashSet<>();
+  private Set<InetAddress> hitCache = new HashSet<>();
+
+  private BloomFilter<Integer> ipv4Filter;
+  private BloomFilter<String> ipv6SeenFilter;
+  private BloomFilter<String> ipv6NegativeFilter;
 
   @PostConstruct
   public void init() {
@@ -68,13 +78,61 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
       update(file);
     }
 
+    ipv6SeenFilter =
+        BloomFilter.create(Funnels.stringFunnel(Charsets.US_ASCII), BLOOMFILTER_IPV6_MAX, 0.01);
+
+    ipv6NegativeFilter =
+        BloomFilter.create(Funnels.stringFunnel(Charsets.US_ASCII), BLOOMFILTER_IPV6_MAX, 0.01);
+
     hitCache.clear();
+  }
+
+  private void createIpV4BloomFilter(List<String> subnets) {
+    Set<Integer> ipv4Set = new HashSet<>();
+    if (!subnets.isEmpty()) {
+
+      for (String sn : subnets) {
+        if (sn.contains(".")) {
+          SubnetUtils utils = new SubnetUtils(sn);
+          for (String ip : utils.getInfo().getAllAddresses()) {
+            try {
+              ipv4Set.add(Integer.valueOf(ipv4ToInt(ip)));
+            } catch (Exception e) {
+              log.error("Error while converting IP to int: {}", ip);
+            }
+          }
+        }
+      }
+
+      ipv4Filter = BloomFilter.create(Funnels.integerFunnel(), ipv4Set.size(), 0.01);
+
+      for (Integer addr : ipv4Set) {
+        ipv4Filter.put(addr);
+      }
+
+      log.info("Created IPv4 filter table with size: {}", ipv4Set.size());
+    }
+  }
+
+
+  private int ipv4ToInt(String ip) {
+    int addr = 0;
+    String[] parts = StringUtils.split(ip, '.');
+    for (int i = 0; i < 4; ++i) {
+      int n = Integer.parseInt(parts[i]);
+      addr |= ((n & 0xff) << 8 * (4 - i));
+    }
+    return addr;
   }
 
   private void update(File file) {
     // load new subnets from source
     List<String> subnets = fetch();
+
+    createIpV4BloomFilter(subnets);
+
     if (!subnets.isEmpty()) {
+
       matchers4.clear();
       matchers6.clear();
       // create subnets for matching
@@ -98,9 +156,11 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     log.info("Loaded {} resolver addresses from file: {}", getMatchers(), file);
   }
 
-  private IpSubnet subnetFor(String address) {
+
+
+  private FastIpSubnet subnetFor(String address) {
     try {
-      return new IpSubnet(address);
+      return new FastIpSubnet(address);
     } catch (UnknownHostException e) {
       log.error("Cannot create subnet for: {}", address, e);
     }
@@ -135,6 +195,9 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
       log.error("Error while reading file: {}", file, e);
       return false;
     }
+
+    createIpV4BloomFilter(lines);
+
     matchers4.clear();
     matchers6.clear();
 
@@ -168,59 +231,67 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   protected abstract String getFilename();
 
   @Override
-  public boolean match(String address) {
+  public boolean match(InetAddress address) {
 
     if (hitCache.contains(address)) {
       return true;
     }
 
-    InetAddress ip = ip(address);
-    if (ip == null) {
-      // not a valid ip
-      // addToCache(hash, false);
+    if (address instanceof Inet4Address) {
+      // do v4 check only
+
+      int addr = ByteBuffer.wrap(address.getAddress()).getInt();
+      if (ipv4Filter.mightContain(Integer.valueOf(addr))) {
+        return checkv4(address);
+      }
+
+      return false;
+
+    }
+
+    // do v6 check only
+    String addr = address.getHostAddress();
+    // System.out.println("check ip: " + addr);
+    if (!ipv6SeenFilter.mightContain(addr)) {
+      // System.out.println("not seen before ip: " + addr);
+      // ip not seen before, do check
+      ipv6SeenFilter.put(addr);
+      boolean isInRange = checkv6(address);
+      // System.out.println("check ip: " + addr + " result: " + isInRange);
+      if (isInRange) {
+        ipv6NegativeFilter.put(addr);
+      }
+      return isInRange;
+    } else if (!ipv6NegativeFilter.mightContain(addr)) {
+      // ip MUST have been seen before and MUST not be in ipv6NegativeFilter
       return false;
     }
 
-    // do subnet matching
-    // matchers are split into a v4 and v6 group
-    // to allow us to quickly skip the version we don't need to check
+    // IP has been seen before and the check result MUST have been: True
+    return true;
+  }
 
-    if (StringUtils.contains(address, ".")) {
-      // do v4 check only
-      for (IpSubnet sn : matchers4) {
-        if (sn.contains(ip)) {
-          addToCache(address);
-          return true;
-        }
-      }
-    } else {
-      // do v6 check only
-      for (IpSubnet sn : matchers6) {
-        if (sn.contains(ip)) {
-          addToCache(address);
-          return true;
-        }
+  private boolean checkv4(InetAddress address) {
+    for (FastIpSubnet sn : matchers4) {
+      if (sn.contains(address)) {
+        addToCache(address);
+        return true;
       }
     }
-
-    // address not a known resolver
     return false;
   }
 
-  private InetAddress ip(String address) {
-    try {
-      return InetAddresses.forString(address);
-    } catch (Exception e) {
-      // ignore
-      if (log.isDebugEnabled()) {
-        log.debug("Invalid IP address {}", address);
+  private boolean checkv6(InetAddress address) {
+    for (FastIpSubnet sn : matchers6) {
+      if (sn.contains(address)) {
+        addToCache(address);
+        return true;
       }
     }
-
-    return null;
+    return false;
   }
 
-  private void addToCache(String address) {
+  private void addToCache(InetAddress address) {
     if (hitCache.size() >= maxMatchCacheSize) {
       log.info("{} resolver match cache limit reached", getName(), maxMatchCacheSize);
       hitCache.clear();

@@ -5,7 +5,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import org.apache.commons.io.IOUtils;
-import org.apache.commons.lang.text.StrSubstitutor;
+import org.apache.commons.text.StringSubstitutor;
 import org.springframework.core.io.ClassPathResource;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.exception.ApplicationException;
@@ -17,7 +17,7 @@ public class TemplateUtil {
 
   public static String template(ClassPathResource template, Map<String, Object> values) {
 
-    String sql = StrSubstitutor.replace(readTemplate(template), values);
+    String sql = StringSubstitutor.replace(readTemplate(template), values);
 
     if (log.isDebugEnabled()) {
       log.debug("Template result: {}", sql);
@@ -28,7 +28,7 @@ public class TemplateUtil {
 
   public static String template(String template, Map<String, Object> values) {
 
-    String sql = StrSubstitutor.replace(template, values);
+    String sql = StringSubstitutor.replace(template, values);
 
     if (log.isDebugEnabled()) {
       log.debug("Template result: {}", sql);

@@ -25,12 +25,9 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Future;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ArrayBlockingQueue;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
-import org.springframework.scheduling.annotation.AsyncResult;
 import org.springframework.stereotype.Component;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.log4j.Log4j2;
@@ -38,9 +35,7 @@ import nl.sidnlabs.entrada.ServerContext;
 import nl.sidnlabs.entrada.model.Partition;
 import nl.sidnlabs.entrada.model.Row;
 import nl.sidnlabs.entrada.model.RowBuilder;
-import nl.sidnlabs.entrada.support.RequestCacheKey;
 import nl.sidnlabs.entrada.support.RowData;
-import nl.sidnlabs.pcap.packet.Packet;
 import nl.sidnlabs.pcap.packet.PacketFactory;
 
 /**
@@ -54,8 +49,6 @@ public class OutputWriterImpl implements OutputWriter {
 
   private static final int ROW_BATCH_SIZE = 10000;
 
-  protected final Map<RequestCacheKey, Packet> requestCache = new HashMap<>();
-
   @Value("${entrada.location.work}")
   private String workLocation;
 
@@ -63,12 +56,14 @@ public class OutputWriterImpl implements OutputWriter {
   private int queueEmptyWait;
 
   // metric counters
+  private int rowCounter;
   private int dnsCounter;
   private int icmpCounter;
 
   private boolean dns;
   private boolean icmp;
   private boolean open;
+  private ArrayBlockingQueue<RowData> queue;
   private RowWriter dnsWriter;
   private RowWriter icmpWriter;
   private RowBuilder dnsRowBuilder;
@@ -77,6 +72,8 @@ public class OutputWriterImpl implements OutputWriter {
 
   private Set<Partition> dnsPartitions = new HashSet<>();
   private Set<Partition> icmpPartitions = new HashSet<>();
+
+  private List<RowData> batch = new ArrayList<>();
 
   public OutputWriterImpl(ServerContext serverCtx, @Qualifier("parquet-dns") RowWriter dnsWriter,
       @Qualifier("parquet-icmp") RowWriter icmpWriter,
@@ -164,26 +161,13 @@ public class OutputWriterImpl implements OutputWriter {
    * method uses @Async so it will be executed on a separate thread.
    */
   @Override
-  @Async
-  public Future<Map<String, Set<Partition>>> start(boolean dns, boolean icmp,
-      LinkedBlockingQueue<RowData> input) {
-
+  public void init(boolean dns, boolean icmp, ArrayBlockingQueue<RowData> input) {
     this.dns = dns;
     this.icmp = icmp;
-    try {
-      open();
-      // read data from queue
-      read(input);
-    } catch (Exception e) {
-      log.error("Writer thread exception", e);
-    }
-
-    // return future with the created partitions
-    return new AsyncResult<>(close());
+    this.queue = input;
   }
 
-  private void read(LinkedBlockingQueue<RowData> input) {
-    List<RowData> batch = new ArrayList<>();
+  private void read(ArrayBlockingQueue<RowData> input) throws InterruptedException {
     while (true) {
       batch.clear();
       if (input.drainTo(batch, ROW_BATCH_SIZE) > 0) {
@@ -191,12 +175,15 @@ public class OutputWriterImpl implements OutputWriter {
           log.info("Received final packet, close output");
           log.info("processed " + dnsCounter + " DNS packets.");
           log.info("processed " + icmpCounter + " ICMP packets.");
-
           return;
         }
-      } else {
-        // no data from queue, sleep for a while
-        sleep();
+        // more packets left in the queue, continue
+        if (log.isDebugEnabled() && rowCounter % 10000 == 0) {
+          log.info("processed " + rowCounter + " rowss.");
+          log.info("processed " + dnsCounter + " DNS packets.");
+          log.info("processed " + icmpCounter + " ICMP packets.");
+          log.info("Queue size: {}", input.size());
+        }
       }
     }
   }
@@ -208,13 +195,15 @@ public class OutputWriterImpl implements OutputWriter {
    * @return true if the final PacketCombination.NULL packet has been received.
    */
   private boolean process(List<RowData> batch) {
-    for (RowData pc : batch) {
-      if (pc == RowData.NULL) {
+
+    for (RowData rd : batch) {
+      rowCounter++;
+      if (rd == RowData.NULL) {
         // stop
         return true;
       }
       try {
-        write(pc);
+        write(rd);
       } catch (Exception e) {
         // error while writing to parquet, log and continue
         log.error("Error while writing row data to parquet", e);
@@ -246,12 +235,17 @@ public class OutputWriterImpl implements OutputWriter {
     icmpCounter++;
   }
 
-  private void sleep() {
+  @Override
+  public Map<String, Set<Partition>> call() throws Exception {
     try {
-      Thread.sleep(queueEmptyWait);
-    } catch (InterruptedException e) {
-      // ignore this error
-      log.error("Thread interrupted during sleep");
+      open();
+      // read data from queue
+      read(queue);
+    } catch (Exception e) {
+      log.error("Writer thread exception", e);
     }
+
+    // return future with the created partitions
+    return close();
   }
 }

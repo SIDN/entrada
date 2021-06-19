@@ -2,7 +2,6 @@ package nl.sidnlabs.entrada.model;
 
 import java.sql.Timestamp;
 import java.util.List;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import nl.sidnlabs.dnslib.message.Header;
@@ -63,7 +62,7 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
     // get the time in milliseconds
     Row row = new Row(new Timestamp(icmpPacket.getTsMilli()));
 
-    enrich(icmpPacket.getSrc(), "ip_", row);
+    enrich(icmpPacket.getSrcAddr(), "ip_", row);
 
     // icmp payload
     Question q = null;
@@ -78,8 +77,8 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
       }
       dnsResponseHdr = dnsResponseMessage.getHeader();
       normalizedQname = q == null ? "" : filter(q.getQName());
-      normalizedQname = StringUtils.lowerCase(normalizedQname);
-      domaininfo = NameUtil.getDomain(normalizedQname);
+      // normalizedQname = StringUtils.lowerCase(normalizedQname);
+      domaininfo = NameUtil.getDomain(normalizedQname, true);
     }
 
     // values from query now.

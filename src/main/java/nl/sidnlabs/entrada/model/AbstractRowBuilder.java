@@ -1,5 +1,6 @@
 package nl.sidnlabs.entrada.model;
 
+import java.net.InetAddress;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import lombok.extern.log4j.Log4j2;
@@ -38,12 +39,13 @@ public abstract class AbstractRowBuilder implements RowBuilder {
     return new Column<>(name, Long.valueOf(value));
   }
 
-  protected void enrich(String address, String prefix, Row row) {
+  protected void enrich(InetAddress address, String prefix, Row row) {
 
-    String cleanPrefix = StringUtils.trimToEmpty(prefix);
-
-    // execute all enrichments and if a match is found add value to row
-    enrichments.stream().filter(e -> e.match(address)).forEach(e -> addColumn(row, cleanPrefix, e));
+    for (AddressEnrichment e : enrichments) {
+      if (e.match(address)) {
+        addColumn(row, prefix, e);
+      }
+    }
   }
 
   private void addColumn(Row row, String prefix, AddressEnrichment e) {
@@ -64,6 +66,7 @@ public abstract class AbstractRowBuilder implements RowBuilder {
    * @return filtered version of input string
    */
   protected String filter(String str) {
+
     StringBuilder filtered = new StringBuilder(str.length());
     for (int i = 0; i < str.length(); i++) {
       char current = str.charAt(i);
@@ -78,7 +81,7 @@ public abstract class AbstractRowBuilder implements RowBuilder {
   }
 
   protected void showStatus() {
-    log.info(packetCounter + " packets written to parquet file.");
+    log.info(packetCounter + " rows written to parquet file.");
   }
 
   @Override

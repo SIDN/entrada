@@ -32,8 +32,9 @@ public class StateManager {
 
   public StateManager(ServerContext settings) {
     this.settings = settings;
-  }
 
+    KRYO.setRegistrationRequired(false);
+  }
 
   private String createStateFileName() {
     return workLocation + "/" + DECODER_STATE_FILE + "-" + settings.getServerInfo().getName()

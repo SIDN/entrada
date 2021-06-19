@@ -37,15 +37,13 @@ import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.RegExUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
-import com.google.common.net.InetAddresses;
 import com.maxmind.db.CHMCache;
+import com.maxmind.db.Reader.FileMode;
 import com.maxmind.geoip2.DatabaseReader;
-import com.maxmind.geoip2.exception.AddressNotFoundException;
 import com.maxmind.geoip2.model.AsnResponse;
-import com.maxmind.geoip2.model.IspResponse;
+import com.maxmind.geoip2.model.CountryResponse;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.util.DownloadUtil;
 import nl.sidnlabs.entrada.util.FileUtil;
@@ -64,6 +62,7 @@ public class GeoIPServiceImpl implements GeoIPService {
   private static final String FILENAME_GEOIP2_COUNTRY = "GeoIP2-Country.mmdb";
   private static final String FILENAME_GEOIP2_ASN = "GeoIP2-ISP.mmdb";
 
+  private static final int DEFAULT_CACHE_SIZE = 1024 * 1000;
 
   @Value("${geoip.maxmind.age.max}")
   private int maxAge;
@@ -137,10 +136,16 @@ public class GeoIPServiceImpl implements GeoIPService {
       // geo
       if (!geoDbInitialised) {
         File database = new File(FileUtil.appendPath(location, countryFile));
-        geoReader = new DatabaseReader.Builder(database).withCache(new CHMCache()).build();
+        geoReader = new DatabaseReader.Builder(database)
+            .withCache(new CHMCache(DEFAULT_CACHE_SIZE))
+            .fileMode(FileMode.MEMORY)
+            .build();
         // asn
         database = new File(FileUtil.appendPath(location, asnFile));
-        asnReader = new DatabaseReader.Builder(database).withCache(new CHMCache()).build();
+        asnReader = new DatabaseReader.Builder(database)
+            .withCache(new CHMCache(DEFAULT_CACHE_SIZE))
+            .fileMode(FileMode.MEMORY)
+            .build();
         geoDbInitialised = true;
       }
     } catch (IOException e) {
@@ -192,17 +197,17 @@ public class GeoIPServiceImpl implements GeoIPService {
    * 
    * @see nl.sidn.pcap.ip.geo.GeoIPService#lookupCountry(java.lang.String)
    */
-  @Override
-  public Optional<String> lookupCountry(String ip) {
-    InetAddress inetAddr;
-    try {
-      inetAddr = InetAddresses.forString(ip);
-    } catch (Exception e) {
-      log.debug("Invalid IP address: ", ip);
-      return Optional.empty();
-    }
-    return lookupCountry(inetAddr);
-  }
+  // @Override
+  // public Optional<CountryResponse> lookupCountry(String ip) {
+  // InetAddress inetAddr;
+  // try {
+  // inetAddr = InetAddresses.forString(ip);
+  // } catch (Exception e) {
+  // log.debug("Invalid IP address: ", ip);
+  // return Optional.empty();
+  // }
+  // return lookupCountry(inetAddr);
+  // }
 
   /*
    * (non-Javadoc)
@@ -210,13 +215,12 @@ public class GeoIPServiceImpl implements GeoIPService {
    * @see nl.sidn.pcap.ip.geo.GeoIPService#lookupCountry(java.net.InetAddress)
    */
   @Override
-  public Optional<String> lookupCountry(InetAddress ip) {
+  public Optional<CountryResponse> lookupCountry(InetAddress ip) {
     try {
-      return Optional.ofNullable(geoReader.country(ip).getCountry().getIsoCode());
-    } catch (AddressNotFoundException e) {
-      log.trace("Maxmind error, IP not in database: {}", ip);
+      return geoReader.tryCountry(ip);
+      // return Optional.ofNullable(geoReader.country(ip).getCountry().getIsoCode());
     } catch (Exception e) {
-      log.trace("No country found for: {}", ip);
+      log.error("Maxmind lookup error for: {}", ip, e);
     }
     return Optional.empty();
   }
@@ -227,48 +231,50 @@ public class GeoIPServiceImpl implements GeoIPService {
    * @see nl.sidn.pcap.ip.geo.GeoIPService#lookupASN(java.net.InetAddress)
    */
   @Override
-  public Optional<Pair<Integer, String>> lookupASN(InetAddress ip) {
+  public Optional<? extends AsnResponse> lookupASN(InetAddress ip) {
     try {
       if (usePaidVersion) {
         // paid version returns IspResponse
-        IspResponse r = asnReader.isp(ip);
-        return asn(r.getAutonomousSystemNumber(), r.getAutonomousSystemOrganization(), ip);
+        return asnReader.tryIsp(ip);
       }
+      // IspResponse r = asnReader.isp(ip);
+      // return asn(r.getAutonomousSystemNumber(), r.getAutonomousSystemOrganization(), ip);
+      // }
       // use free version
-      AsnResponse r = asnReader.asn(ip);
-      return asn(r.getAutonomousSystemNumber(), r.getAutonomousSystemOrganization(), ip);
-    } catch (AddressNotFoundException e) {
-      log.trace("Maxmind error, IP not in database: {}", ip);
+      return asnReader.tryAsn(ip);
+      // return asn(r.getAutonomousSystemNumber(), r.getAutonomousSystemOrganization(), ip);
+
     } catch (Exception e) {
-      log.error("Error while doing ASN lookup for: " + ip);
+      log.error("Maxmind error for IP: {}", ip, e);
     }
+
     return Optional.empty();
   }
 
-  public Optional<Pair<Integer, String>> asn(Integer asn, String org, InetAddress ip) {
-    if (asn == null) {
-      log.trace("No asn found for: {}", ip);
-      return Optional.empty();
-    }
-    return Optional.ofNullable(Pair.of(asn, org));
-  }
+  // public Optional<Pair<Integer, String>> asn(Integer asn, String org, InetAddress ip) {
+  // if (asn == null) {
+  // log.debug("No asn found for: {}", ip);
+  // return Optional.empty();
+  // }
+  // return Optional.ofNullable(Pair.of(asn, org));
+  // }
 
   /*
    * (non-Javadoc)
    * 
    * @see nl.sidn.pcap.ip.geo.GeoIPService#lookupASN(java.lang.String)
    */
-  @Override
-  public Optional<Pair<Integer, String>> lookupASN(String ip) {
-    InetAddress inetAddr;
-    try {
-      inetAddr = InetAddresses.forString(ip);
-    } catch (Exception e) {
-      log.debug("Invalid IP address: {}", ip);
-      return Optional.empty();
-    }
-    return lookupASN(inetAddr);
-  }
+  // @Override
+  // public Optional<? extends AsnResponse> lookupASN(String ip) {
+  // InetAddress inetAddr;
+  // try {
+  // inetAddr = InetAddresses.forString(ip);
+  // } catch (Exception e) {
+  // log.debug("Invalid IP address: {}", ip);
+  // return Optional.empty();
+  // }
+  // return lookupASN(inetAddr);
+  // }
 
 
   public boolean download(String database, String url, int timeout) {

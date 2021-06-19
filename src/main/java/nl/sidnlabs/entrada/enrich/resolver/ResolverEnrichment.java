@@ -1,7 +1,7 @@
 package nl.sidnlabs.entrada.enrich.resolver;
 
+import java.net.InetAddress;
 import java.util.List;
-import java.util.Optional;
 import org.springframework.stereotype.Component;
 import nl.sidnlabs.entrada.enrich.AddressEnrichment;
 
@@ -27,17 +27,24 @@ public class ResolverEnrichment implements AddressEnrichment {
    * @return Optional with name of resolver operator, empty if no match found
    */
   @Override
-  public boolean match(String address) {
-    Optional<String> r = resolverChecks
-        .stream()
-        .filter(check -> check.match(address))
-        .findFirst()
-        .map(DnsResolverCheck::getName);
+  public boolean match(InetAddress address) {
 
-    if (r.isPresent()) {
-      value = r.get();
-      return true;
+    for (DnsResolverCheck check : resolverChecks) {
+      if (check.match(address)) {
+        value = check.getName();
+        return true;
+      }
     }
+    // Optional<String> r = resolverChecks
+    // .stream()
+    // .filter(check -> check.match(address))
+    // .findAny()
+    // .map(DnsResolverCheck::getName);
+    //
+    // if (r.isPresent()) {
+    // value = r.get();
+    // return true;
+    // }
 
     return false;
   }

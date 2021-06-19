@@ -17,4 +17,5 @@ public class OpenDnsResolverCheckTest {
     assertTrue("No IPs found", ips.size() > 0);
   }
 
+
 }

@@ -1,18 +1,29 @@
 package nl.sidnlabs.entrada.enrich.geoip;
 
+import java.net.InetAddress;
 import java.util.Optional;
-import org.apache.commons.lang3.tuple.Pair;
+import org.cache2k.Cache;
+import org.cache2k.Cache2kBuilder;
 import org.springframework.stereotype.Component;
+import com.maxmind.geoip2.model.AsnResponse;
 import nl.sidnlabs.entrada.enrich.AddressEnrichment;
 
 @Component
 public class ASNEnrichment implements AddressEnrichment {
 
+  private final static int CACHE_MAX_SIZE = 25000;
+
+  private Cache<String, String> cache;
   private GeoIPService geoLookup;
   private String value;
 
   public ASNEnrichment(GeoIPService geoLookup) {
     this.geoLookup = geoLookup;
+
+    cache = new Cache2kBuilder<String, String>() {}
+        .name("geo-asn-cache")
+        .entryCapacity(CACHE_MAX_SIZE)
+        .build();
   }
 
   @Override
@@ -27,11 +38,20 @@ public class ASNEnrichment implements AddressEnrichment {
    * @return Optional with ASN if found
    */
   @Override
-  public boolean match(String address) {
-    Optional<Pair<Integer, String>> r = geoLookup.lookupASN(address);
-    if (r.isPresent()) {
-      value = r.get().getKey() != null ? r.get().getKey() + "" : null;
+  public boolean match(InetAddress address) {
+    String addr = address.getHostAddress();
+    value = cache.peek(addr);
+    if (value != null) {
       return true;
+    }
+
+    Optional<? extends AsnResponse> r = geoLookup.lookupASN(address);
+    if (r.isPresent()) {
+      if (r.get().getAutonomousSystemNumber() != null) {
+        value = r.get().getAutonomousSystemNumber().toString();
+        cache.put(addr, value);
+        return true;
+      }
     }
 
     return false;

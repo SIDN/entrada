@@ -1,8 +1,10 @@
 package nl.sidnlabs.entrada.enrich;
 
+import java.net.InetAddress;
+
 public interface AddressEnrichment {
 
-  boolean match(String address);
+  boolean match(InetAddress address);
 
   String getValue();
 

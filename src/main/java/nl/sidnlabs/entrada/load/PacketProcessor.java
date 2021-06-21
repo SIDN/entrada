@@ -184,6 +184,8 @@ public class PacketProcessor {
     int fileCounter = 0;
 
     for (String file : inputFiles) {
+      String fileName = FileUtil.filename(file);
+      long fileSize = FileUtil.size(file);
       Date startDate = new Date();
 
       if (fileArchiveService.exists(file, serverCtx.getServerInfo().getName())) {
@@ -191,7 +193,7 @@ public class PacketProcessor {
           log.debug("file {} already processed!, continue with next file", file);
         }
         // move the pcap file to archive location or delete
-        fileArchiveService.archive(file, startDate, 0);
+        fileArchiveService.archive(file, startDate, 0, fileSize);
         continue;
       }
 
@@ -206,7 +208,11 @@ public class PacketProcessor {
 
       long startTs = System.currentTimeMillis();
       read(file);
-      log.info("File processing time: " + (System.currentTimeMillis() - startTs) + "ms");
+      long fileProcTime = (System.currentTimeMillis() - startTs);
+      log
+          .info("Processed file: " + fileName + ", time(ms): " + fileProcTime + "size(bytes): "
+              + fileSize + ", packets: " + totalPacketCounter + ", packets/ms: "
+              + totalPacketCounter / fileProcTime + ", bytes/ms: " + fileSize / fileProcTime);
 
       // flush expired packets after every file, to avoid a large cache eating up the heap
       startTs = System.currentTimeMillis();
@@ -214,7 +220,7 @@ public class PacketProcessor {
       log.info("Cache purge time: " + (System.currentTimeMillis() - startTs) + "ms");
 
       // move the pcap file to archive location or delete
-      fileArchiveService.archive(file, startDate, totalPacketCounter);
+      fileArchiveService.archive(file, startDate, totalPacketCounter, fileSize);
 
       // check if we need to upload using batch (when all input files have been processed) or
       // upload all files that are not active anymore before all inout data has been processed
@@ -309,16 +315,14 @@ public class PacketProcessor {
     activeZoneTransfers = new HashMap<>();
     outputFuture = null;
     rowQueue = new ArrayBlockingQueue<>(maxRowQueuSize);
-
-    log.info("Created request with size: {}", maxRowQueuSize);
   }
 
   private void logStats() {
     log.info("--------- Done processing pcap file -----------");
-    log.info("{} total DNS messages", totalPacketCounter);
-    log.info("{} request", requestPacketCounter);
-    log.info("{} response", responsePacketCounter);
-    log.info("{} request cache", requestCache.size());
+    log.info("{} total DNS messages: ", totalPacketCounter);
+    log.info("{} requests: ", requestPacketCounter);
+    log.info("{} responses: ", responsePacketCounter);
+    log.info("{} request cache size: ", requestCache.size());
     log.info("-----------------------------------------");
   }
 
@@ -614,19 +618,25 @@ public class PacketProcessor {
       // read persisted IP datagrams
       HashMap<Datagram, Collection<DatagramPayload>> inMap =
           (HashMap<Datagram, Collection<DatagramPayload>>) stateManager.read();
-      for (Map.Entry<Datagram, Collection<DatagramPayload>> entry : inMap.entrySet()) {
-        for (DatagramPayload dgPayload : entry.getValue()) {
-          datagrams.put(entry.getKey(), dgPayload);
+      if (inMap != null) {
+        for (Map.Entry<Datagram, Collection<DatagramPayload>> entry : inMap.entrySet()) {
+          for (DatagramPayload dgPayload : entry.getValue()) {
+            datagrams.put(entry.getKey(), dgPayload);
+          }
         }
       }
-
       // read in previous request cache
       requestCache = (Map<RequestCacheKey, RequestCacheValue>) stateManager.read();
+      if (requestCache == null) {
+        requestCache = new HashMap<>();
+      }
 
       if (metrics) {
         metricManager.loadState(stateManager);
       }
-    } catch (Exception e) {
+    } catch (
+
+    Exception e) {
       log.error("Error reading state file", e);
       // delete old corrupt state
       stateManager.delete();
@@ -649,12 +659,6 @@ public class PacketProcessor {
     // use time from pcap to calc max age of cached packets
     long max = lastPacketTs - cacheTimeout;
     int purgeCounter = 0;
-
-    log.info("Cache purge TTL: {}", cacheTimeout);
-    log.info("Cache purge lastPacketTs: {}", lastPacketTs);
-    log.info("Cache purge max: {}", max);
-
-    log.info("Start request cache purge, size: {}", requestCache.size());
 
     while (iter.hasNext()) {
       RequestCacheKey key = iter.next();
@@ -681,11 +685,14 @@ public class PacketProcessor {
       }
     }
 
-    log
-        .info("Marked " + purgeCounter
-            + " expired queries from request cache to output file with rcode no response");
-
-    log.info("Completed request cache purge, size: {}", requestCache.size());
+    log.info("--------- Request cache purge stats -----------");
+    log.info("Size before: {}", requestCache.size());
+    log.info("Purge TTL: {}", cacheTimeout);
+    log.info("Purge lastPacketTs: {}", lastPacketTs);
+    log.info("CPurge max: {}", max);
+    log.info("Expired query's with rcode -1 (no response): {}", purgeCounter);
+    log.info("Size after: {}", requestCache.size());
+    log.info("----------------------------------------------------");
   }
 
   private boolean createReader(String file) {

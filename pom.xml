@@ -46,13 +46,13 @@
 		<dependency>
 			<groupId>nl.sidnlabs</groupId>
 			<artifactId>dnslib</artifactId>
-			<version>0.2.11-SNAPSHOT</version>
+			<version>0.2.11</version>
 		</dependency>
 
 		<dependency>
 			<groupId>nl.sidnlabs</groupId>
 			<artifactId>pcap-lib</artifactId>
-			<version>0.2.16-SNAPSHOT</version>
+			<version>0.2.16</version>
 		</dependency>
 
 		<dependency>

@@ -13,5 +13,5 @@ cd ../entrada
 mvn clean package
 
 mvn dockerfile:build
-mvn verify
+# mvn verify
 mvn dockerfile:push

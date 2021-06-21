@@ -60,7 +60,7 @@ public class ArchiveService {
    * @param packets the number of packets found in the file
    */
   @Transactional
-  public void archive(String file, Date start, int packets) {
+  public void archive(String file, Date start, int packets, long bytes) {
     File f = new File(file);
     FileManager fmSrc = fileManagerFactory.getFor(file);
 
@@ -78,7 +78,7 @@ public class ArchiveService {
           .rows(packets)
           .time(now.getTime() - start.getTime())
           .mode(archiveOption)
-          .bytes(FileUtil.size(file))
+          .bytes(bytes)
           .build();
 
       fileArchiveRepository.save(fa);

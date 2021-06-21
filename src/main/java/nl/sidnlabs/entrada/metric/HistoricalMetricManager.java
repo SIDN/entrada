@@ -231,5 +231,8 @@ public class HistoricalMetricManager {
 
   public void loadState(StateManager stateManager) {
     metricCache = (Map<String, TreeMap<Long, Metric>>) stateManager.read();
+    if (metricCache == null) {
+      metricCache = new HashMap<>();
+    }
   }
 }

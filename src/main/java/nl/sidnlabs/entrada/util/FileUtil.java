@@ -85,8 +85,14 @@ public class FileUtil {
   }
 
   public static long size(String file) {
-    File f = new File(file);
-    return f.exists() ? f.length() : -1;
+    try {
+      File f = new File(file);
+      return f.exists() ? f.length() : -1;
+    } catch (Exception e) {
+      log.error("Cannot get size for file: {}", file);
+    }
+
+    return 0;
   }
 
 }

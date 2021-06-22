@@ -26,7 +26,6 @@ import java.io.IOException;
 import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Date;
@@ -36,6 +35,7 @@ import java.util.Objects;
 import java.util.Set;
 import javax.annotation.PostConstruct;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.commons.net.util.SubnetUtils;
 import org.springframework.beans.factory.annotation.Value;
@@ -63,7 +63,7 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   // than checking 100k cached elements
   private Set<InetAddress> hitCache = new HashSet<>();
 
-  private BloomFilter<Integer> ipv4Filter;
+  private BloomFilter<Long> ipv4Filter;
   private BloomFilter<String> ipv6SeenFilter;
   private BloomFilter<String> ipv6NegativeFilter;
 
@@ -88,41 +88,48 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   }
 
   private void createIpV4BloomFilter(List<String> subnets) {
-    Set<Integer> ipv4Set = new HashSet<>();
+    Set<Long> ipv4Set = new HashSet<>();
     if (!subnets.isEmpty()) {
 
       for (String sn : subnets) {
         if (sn.contains(".")) {
-          SubnetUtils utils = new SubnetUtils(sn);
-          for (String ip : utils.getInfo().getAllAddresses()) {
-            try {
-              ipv4Set.add(Integer.valueOf(ipv4ToInt(ip)));
-            } catch (Exception e) {
-              log.error("Error while converting IP to int: {}", ip);
+          String cidr = StringUtils.substringAfter(sn, "/");
+          if (NumberUtils.isCreatable(cidr)) {
+            SubnetUtils utils = new SubnetUtils(sn);
+            for (String ip : utils.getInfo().getAllAddresses()) {
+              ipv4Set.add(Long.valueOf(ipToLong(ip)));
             }
+          } else {
+            log.info("Not adding invalid subnet {} to IPv4 bloomfilter", sn);
           }
         }
       }
-
-      ipv4Filter = BloomFilter.create(Funnels.integerFunnel(), ipv4Set.size(), 0.01);
-
-      for (Integer addr : ipv4Set) {
-        ipv4Filter.put(addr);
-      }
-
-      log.info("Created IPv4 filter table with size: {}", ipv4Set.size());
     }
+
+    ipv4Filter = BloomFilter.create(Funnels.longFunnel(), ipv4Set.size(), 0.01);
+
+    for (Long addr : ipv4Set) {
+      ipv4Filter.put(addr);
+    }
+
+    log.info("Created IPv4 filter table with size: {}", ipv4Set.size());
   }
 
 
-  private int ipv4ToInt(String ip) {
-    int addr = 0;
-    String[] parts = StringUtils.split(ip, '.');
-    for (int i = 0; i < 4; ++i) {
-      int n = Integer.parseInt(parts[i]);
-      addr |= ((n & 0xff) << 8 * (4 - i));
+  public long ipToLong(String ipAddress) {
+
+    String[] ipAddressInArray = StringUtils.split(ipAddress, ".");
+
+    long result = 0;
+    for (int i = 0; i < ipAddressInArray.length; i++) {
+
+      int power = 3 - i;
+      int ip = Integer.parseInt(ipAddressInArray[i]);
+      result += ip * Math.pow(256, power);
+
     }
-    return addr;
+
+    return result;
   }
 
   private void update(File file) {
@@ -239,9 +246,9 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
     if (address instanceof Inet4Address) {
       // do v4 check only
+      long addr = ipToLong(address.getHostAddress());
 
-      int addr = ByteBuffer.wrap(address.getAddress()).getInt();
-      if (ipv4Filter.mightContain(Integer.valueOf(addr))) {
+      if (ipv4Filter.mightContain(Long.valueOf(addr))) {
         return checkv4(address);
       }
 
@@ -251,13 +258,10 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
     // do v6 check only
     String addr = address.getHostAddress();
-    // System.out.println("check ip: " + addr);
     if (!ipv6SeenFilter.mightContain(addr)) {
-      // System.out.println("not seen before ip: " + addr);
       // ip not seen before, do check
       ipv6SeenFilter.put(addr);
       boolean isInRange = checkv6(address);
-      // System.out.println("check ip: " + addr + " result: " + isInRange);
       if (isInRange) {
         ipv6NegativeFilter.put(addr);
       }

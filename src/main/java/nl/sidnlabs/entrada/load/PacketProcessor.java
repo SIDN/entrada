@@ -209,10 +209,19 @@ public class PacketProcessor {
       long startTs = System.currentTimeMillis();
       read(file);
       long fileProcTime = (System.currentTimeMillis() - startTs);
+
+      double packetsMs = 0;
+      double bytessMs = 0;
+
+      if (fileProcTime > 0) {
+        packetsMs = totalPacketCounter / fileProcTime;
+        bytessMs = fileSize / fileProcTime;
+      }
+
       log
-          .info("Processed file: " + fileName + ", time(ms): " + fileProcTime + ", size(bytes): "
-              + fileSize + ", packets: " + totalPacketCounter + ", packets/ms: "
-              + totalPacketCounter / fileProcTime + ", bytes/ms: " + fileSize / fileProcTime);
+          .info(
+              "Processed file: {}, time(ms): {}, size(bytes): {}, packets: {}, packets/ms: {}, bytes/ms: {}",
+              fileName, fileProcTime, fileSize, totalPacketCounter, packetsMs, bytessMs);
 
       // flush expired packets after every file, to avoid a large cache eating up the heap
       startTs = System.currentTimeMillis();

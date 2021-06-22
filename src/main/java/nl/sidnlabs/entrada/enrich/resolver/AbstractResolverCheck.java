@@ -38,13 +38,17 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.commons.net.util.SubnetUtils;
+import org.cache2k.Cache;
+import org.cache2k.Cache2kBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import com.google.common.base.Charsets;
 import com.google.common.hash.BloomFilter;
 import com.google.common.hash.Funnels;
+import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 
 @Log4j2
+@Data
 public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
   private static final int BLOOMFILTER_IPV6_MAX = 50000;
@@ -58,10 +62,7 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   @Value("${public-resolver.match.cache.size:10000}")
   private int maxMatchCacheSize;
 
-  // only cache the matches (hits) the non-matches are too numerous
-  // to efficiently cache in memory, doing the subnet check would be faster
-  // than checking 100k cached elements
-  private Set<InetAddress> hitCache = new HashSet<>();
+  private Cache<InetAddress, Boolean> hitCache;
 
   private BloomFilter<Long> ipv4Filter;
   private BloomFilter<String> ipv6SeenFilter;
@@ -84,7 +85,10 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     ipv6NegativeFilter =
         BloomFilter.create(Funnels.stringFunnel(Charsets.US_ASCII), BLOOMFILTER_IPV6_MAX, 0.01);
 
-    hitCache.clear();
+    hitCache = new Cache2kBuilder<InetAddress, Boolean>() {}
+        .name(getName() + "-resolver-cache")
+        .entryCapacity(maxMatchCacheSize)
+        .build();
   }
 
   private void createIpV4BloomFilter(List<String> subnets) {
@@ -240,7 +244,8 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   @Override
   public boolean match(InetAddress address) {
 
-    if (hitCache.contains(address)) {
+    Boolean value = hitCache.peek(address);
+    if (value != null) {
       return true;
     }
 
@@ -296,11 +301,11 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   }
 
   private void addToCache(InetAddress address) {
-    if (hitCache.size() >= maxMatchCacheSize) {
-      log.info("{} resolver match cache limit reached", getName(), maxMatchCacheSize);
-      hitCache.clear();
-    }
-    hitCache.add(address);
+    // if (hitCache.size() > maxMatchCacheSize) {
+    // log.info("{} resolver match cache limit reached", getName(), maxMatchCacheSize);
+    // hitCache.clear();
+    // }
+    hitCache.put(address, Boolean.TRUE);
   }
 
   @Override
@@ -311,7 +316,7 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   @Override
   public void done() {
     if (log.isDebugEnabled()) {
-      log.debug("{} Clear match cache, size={}", getName(), hitCache.size());
+      log.debug("{} Clear match cache", getName());
     }
     hitCache.clear();
   }

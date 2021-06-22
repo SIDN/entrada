@@ -28,10 +28,9 @@ import org.springframework.stereotype.Component;
 import org.xbill.DNS.Cache;
 import org.xbill.DNS.Lookup;
 import org.xbill.DNS.Record;
-import org.xbill.DNS.Resolver;
-import org.xbill.DNS.SimpleResolver;
 import org.xbill.DNS.TXTRecord;
 import org.xbill.DNS.Type;
+import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
 
 /**
@@ -43,13 +42,14 @@ import lombok.extern.log4j.Log4j2;
  */
 @Log4j2
 @Component
+@Setter
 public final class GoogleResolverCheck extends AbstractResolverCheck {
 
   private static final String RESOLVER_STATE_FILENAME = "google-resolvers";
   private static final String RESOLVER_NAME = "Google";
 
   @Value("${google.resolver.hostname}")
-  private String hostname;
+  public String hostname;
   @Value("${google.resolver.timeout:15}")
   private int timeout;
 
@@ -58,14 +58,10 @@ public final class GoogleResolverCheck extends AbstractResolverCheck {
   protected List<String> fetch() {
 
     try {
-      Resolver resolver = new SimpleResolver();
-      // dns resolvers may take a long time to return a response.
-      resolver.setTimeout(timeout);
       Lookup l =
           new Lookup(StringUtils.endsWith(hostname, ".") ? hostname : hostname + ".", Type.TXT);
       // always make sure the cache is empty
       l.setCache(new Cache());
-      l.setResolver(resolver);
       Record[] records = l.run();
       if (records != null && records.length > 0) {
         return parse(records[0]);

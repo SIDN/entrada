@@ -210,7 +210,7 @@ public class PacketProcessor {
       read(file);
       long fileProcTime = (System.currentTimeMillis() - startTs);
       log
-          .info("Processed file: " + fileName + ", time(ms): " + fileProcTime + "size(bytes): "
+          .info("Processed file: " + fileName + ", time(ms): " + fileProcTime + ", size(bytes): "
               + fileSize + ", packets: " + totalPacketCounter + ", packets/ms: "
               + totalPacketCounter / fileProcTime + ", bytes/ms: " + fileSize / fileProcTime);
 

@@ -33,7 +33,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
-import javax.annotation.PostConstruct;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.time.DateUtils;
@@ -68,7 +67,6 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   private BloomFilter<String> ipv6SeenFilter;
   private BloomFilter<String> ipv6NegativeFilter;
 
-  @PostConstruct
   public void init() {
 
     String filename = workDir + System.getProperty("file.separator") + getFilename();
@@ -301,10 +299,6 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   }
 
   private void addToCache(InetAddress address) {
-    // if (hitCache.size() > maxMatchCacheSize) {
-    // log.info("{} resolver match cache limit reached", getName(), maxMatchCacheSize);
-    // hitCache.clear();
-    // }
     hitCache.put(address, Boolean.TRUE);
   }
 

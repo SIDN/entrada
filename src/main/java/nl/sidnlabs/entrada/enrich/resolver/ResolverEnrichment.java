@@ -35,16 +35,6 @@ public class ResolverEnrichment implements AddressEnrichment {
         return true;
       }
     }
-    // Optional<String> r = resolverChecks
-    // .stream()
-    // .filter(check -> check.match(address))
-    // .findAny()
-    // .map(DnsResolverCheck::getName);
-    //
-    // if (r.isPresent()) {
-    // value = r.get();
-    // return true;
-    // }
 
     return false;
   }

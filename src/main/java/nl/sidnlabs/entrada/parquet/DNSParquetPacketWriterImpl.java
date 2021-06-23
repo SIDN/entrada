@@ -32,8 +32,11 @@ public class DNSParquetPacketWriterImpl extends AbstractParquetRowWriter {
 
   private static final String DNS_AVRO_SCHEMA = "/avro/dns-query.avsc";
 
-  public DNSParquetPacketWriterImpl(@Value("${entrada.parquet.max:5000000}") int maxRows) {
-    super(maxRows);
+
+  public DNSParquetPacketWriterImpl(
+      @Value("#{${entrada.parquet.filesize.max:128}*1024*1024}") int maxfilesize,
+      @Value("#{${entrada.parquet.rowgroup.size:128}*1024*1024}") int rowgroupsize) {
+    super(maxfilesize, rowgroupsize);
   }
 
   /**

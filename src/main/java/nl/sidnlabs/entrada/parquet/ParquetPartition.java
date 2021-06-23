@@ -21,7 +21,6 @@ import nl.sidnlabs.entrada.exception.ApplicationException;
 @Value
 public class ParquetPartition<T> {
 
-  private static final int ROWGROUP_SIZE = 512 * 1024 * 1024;
   private static Configuration conf = new Configuration();
 
   private ParquetWriter<T> writer;
@@ -30,7 +29,7 @@ public class ParquetPartition<T> {
   private int rows = 0;
   private Path currentFile;
 
-  public ParquetPartition(String partition, Schema schema) {
+  public ParquetPartition(String partition, Schema schema, int rowgroupsize) {
 
     currentFile = new Path(
         partition + System.getProperty("file.separator") + UUID.randomUUID() + ".parquet.active");
@@ -48,7 +47,7 @@ public class ParquetPartition<T> {
           .withConf(conf)
           .withWriterVersion(WriterVersion.PARQUET_1_0)
           .withSchema(schema)
-          .withRowGroupSize(ROWGROUP_SIZE)
+          .withRowGroupSize(rowgroupsize)
           .build();
     } catch (IOException e) {
       throw new ApplicationException("Cannot create a Parquet parition", e);
@@ -91,5 +90,9 @@ public class ParquetPartition<T> {
         log.error("Cannot move file: {} to: {}" + source, target, e);
       }
     }
+  }
+
+  public long size() {
+    return writer != null ? writer.getDataSize() : 0;
   }
 }

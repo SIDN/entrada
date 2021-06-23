@@ -83,10 +83,12 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     ipv6NegativeFilter =
         BloomFilter.create(Funnels.stringFunnel(Charsets.US_ASCII), BLOOMFILTER_IPV6_MAX, 0.01);
 
-    hitCache = new Cache2kBuilder<InetAddress, Boolean>() {}
-        .name(getName() + "-resolver-cache")
-        .entryCapacity(maxMatchCacheSize)
-        .build();
+    if (hitCache == null) {
+      hitCache = new Cache2kBuilder<InetAddress, Boolean>() {}
+          .name(getName() + "-resolver-cache")
+          .entryCapacity(maxMatchCacheSize)
+          .build();
+    }
   }
 
   private void createIpV4BloomFilter(List<String> subnets) {

@@ -15,31 +15,34 @@ public class ParquetPartitionWriter {
 
   private String path;
   // default max 3 million packets per files max (+/- 125mb files)
-  private int maxRows;
+  private int maxSize;
+  private int rowgroupsize;
 
   private Map<String, ParquetPartition<GenericRecord>> partitions = new HashMap<>();
 
-  public ParquetPartitionWriter(String path, int maxRows) {
+  public ParquetPartitionWriter(String path, int maxSize, int rowgroupsize) {
     this.path = path;
-    this.maxRows = maxRows;
+    this.maxSize = maxSize;
+    this.rowgroupsize = Math.min(maxSize, rowgroupsize);
   }
 
   public void write(GenericRecord rec, Schema schema, Partition partition) {
 
     String partitionStr = FileUtil.appendPath(path, partition.toPath());
     // check is partition already exists, if not create a new partition
-    ParquetPartition<GenericRecord> parquetPartition =
-        partitions.computeIfAbsent(partitionStr, k -> new ParquetPartition<>(partitionStr, schema));
+    ParquetPartition<GenericRecord> parquetPartition = partitions
+        .computeIfAbsent(partitionStr,
+            k -> new ParquetPartition<>(partitionStr, schema, rowgroupsize));
 
     // write the rec to the partition
     parquetPartition.write(rec);
 
     // check if size of parquet partition is too big
-    if (parquetPartition.getRows() >= maxRows) {
+    long size = parquetPartition.size();
+    if (size >= maxSize) {
       log
-          .info(
-              "Max DNS packets reached for this Parquet partition {}, close current file and create new",
-              partitionStr);
+          .info("Partition {} size {} > max ({}), close current file and create new", partitionStr,
+              size, maxSize);
 
       parquetPartition.close();
       // remove partition from partitions map, for a possible next row for this partitions

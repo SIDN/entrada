@@ -30,7 +30,7 @@ public class ScheduledExecution {
   private String servers;
 
   @Autowired
-  GeoIPService geoIPService;
+  private GeoIPService geoIPService;
 
   private Timer processTimer;
 

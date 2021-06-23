@@ -32,8 +32,10 @@ public class ICMPParquetPacketWriterImpl extends AbstractParquetRowWriter {
 
   private static final String ICMP_AVRO_SCHEMA = "/avro/icmp-packet.avsc";
 
-  public ICMPParquetPacketWriterImpl(@Value("${entrada.parquet.max:3000000}") int maxRows) {
-    super(maxRows);
+  public ICMPParquetPacketWriterImpl(
+      @Value("#{${entrada.parquet.filesize.max:128}*1024*1024}") int maxfilesize,
+      @Value("#{${entrada.parquet.rowgroup.size:128}*1024*1024}") int rowgroupsize) {
+    super(maxfilesize, rowgroupsize);
   }
 
   @Override

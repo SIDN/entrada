@@ -4,7 +4,7 @@ import java.net.InetAddress;
 
 public interface AddressEnrichment {
 
-  boolean match(InetAddress address);
+  boolean match(String address, InetAddress inetAddress);
 
   String getValue();
 

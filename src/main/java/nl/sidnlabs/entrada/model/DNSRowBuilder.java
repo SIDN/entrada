@@ -1,10 +1,10 @@
 package nl.sidnlabs.entrada.model;
 
-import java.net.InetAddress;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.cache2k.Cache2kBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import nl.sidnlabs.dnslib.message.Header;
@@ -35,6 +35,7 @@ import nl.sidnlabs.pcap.packet.PacketFactory;
 public class DNSRowBuilder extends AbstractRowBuilder {
 
   private static final int RCODE_QUERY_WITHOUT_RESPONSE = -1;
+  private final static int CACHE_MAX_SIZE = 25000;
 
   private ServerContext serverCtx;
 
@@ -45,6 +46,11 @@ public class DNSRowBuilder extends AbstractRowBuilder {
       HistoricalMetricManager metricManager) {
     super(enrichments, metricManager);
     this.serverCtx = serverCtx;
+
+    cache = new Cache2kBuilder<String, Domaininfo>() {}
+        .name("dns-domaininfo-cache")
+        .entryCapacity(CACHE_MAX_SIZE)
+        .build();
   }
 
   @Override
@@ -84,8 +90,13 @@ public class DNSRowBuilder extends AbstractRowBuilder {
 
     // get the qname domain name details
     String normalizedQname = question == null ? "" : filter(question.getQName());
-    // normalizedQname = StringUtils.lowerCase(normalizedQname);
-    Domaininfo domaininfo = NameUtil.getDomain(normalizedQname, true);
+    Domaininfo domaininfo = cache.peek(normalizedQname);
+    if (domaininfo == null) {
+      domaininfo = NameUtil.getDomain(normalizedQname, true);
+      cache.put(normalizedQname, domaininfo);
+    } else {
+      domaininfoCacheHits++;
+    }
 
     // check to see it a response was found, if not then use -1 value for rcode
     // otherwise use the rcode returned by the server in the response.
@@ -100,10 +111,10 @@ public class DNSRowBuilder extends AbstractRowBuilder {
     row.addColumn(column("pcap_file", combo.getPcapFilename()));
 
     // add meta data for the client IP
-    InetAddress addressToCheck =
-        reqTransport != null ? reqTransport.getSrcAddr() : rspTransport.getDstAddr();
-    if (addressToCheck != null) {
-      enrich(addressToCheck, "", row);
+    if (reqTransport != null && reqTransport.getSrcAddr() != null) {
+      enrich(reqTransport.getSrc(), reqTransport.getSrcAddr(), "", row);
+    } else if (rspTransport != null && rspTransport.getDstAddr() != null) {
+      enrich(rspTransport.getDst(), rspTransport.getDstAddr(), "", row);
     }
 
     if (reqTransport != null) {
@@ -117,7 +128,6 @@ public class DNSRowBuilder extends AbstractRowBuilder {
             .record(HistoricalMetricManager.METRIC_IMPORT_TCP_HANDSHAKE_RTT,
                 (int) reqTransport.getTcpHandshake().rtt(), time, false);
       }
-
     }
 
     if (rspTransport != null) {
@@ -377,7 +387,7 @@ public class DNSRowBuilder extends AbstractRowBuilder {
           // get client country and asn
 
           if (scOption.getAddress() != null) {
-            enrich(scOption.getInetAddress(), "edns_client_subnet_", row);
+            enrich(scOption.getAddress(), scOption.getInetAddress(), "edns_client_subnet_", row);
           }
           if (!privacy) {
             row.addColumn(column("edns_client_subnet", scOption.export()));

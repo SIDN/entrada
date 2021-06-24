@@ -45,6 +45,7 @@
     { "name": "edns_client_subnet", "type":  ["null","string"], "default": null}, 
     { "name": "edns_other", "type":  ["null","string"], "default": null},
     { "name": "edns_client_subnet_asn", "type":  ["null","string"], "default": null}, 
+    { "name": "edns_client_subnet_asn_organisation", "type":  ["null","string"], "default": null}, 
     { "name": "edns_client_subnet_country", "type":  ["null","string"], "default": null},
     { "name": "labels", "type": "int" },
     { "name": "resp_frag", "type": ["null","int"], "default": null},

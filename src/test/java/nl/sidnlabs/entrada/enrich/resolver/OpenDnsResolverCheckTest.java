@@ -3,8 +3,11 @@ package nl.sidnlabs.entrada.enrich.resolver;
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.List;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.net.util.SubnetUtils;
 import org.junit.Test;
+import nl.sidnlabs.entrada.util.IpUtil;
+import nl.sidnlabs.entrada.util.StringUtil;
 
 public class OpenDnsResolverCheckTest {
 
@@ -29,9 +32,48 @@ public class OpenDnsResolverCheckTest {
 
   @Test
   public void ip2LongTest() {
-    OpenDNSResolverCheck check = new OpenDNSResolverCheck();
-    long value = check.ipToLong("173.194.169.16");
+    long value = IpUtil.ipToLong("173.194.169.16");
     assertEquals(2915215632L, value);
+  }
+
+  @Test
+  public final void ip2LongTestPerf() {
+
+    long start = System.currentTimeMillis();
+    for (int i = 0; i < 100000; i++) {
+      IpUtil.ipToLong("173.194.169.16");
+    }
+    System.out.println("IndexOf: " + (System.currentTimeMillis() - start) + "ms");
+
+
+  }
+
+  @Test
+  public final void testFastSplitIpv4() {
+    String[] r = StringUtil.splitFastIpv4("123.125.111.172");
+    assertEquals("123", r[0]);
+    assertEquals("125", r[1]);
+    assertEquals("111", r[2]);
+    assertEquals("172", r[3]);
+  }
+
+  @Test
+  public final void testIndexOfPerf() {
+    String line = "123.125.111.172";
+
+    long start = System.currentTimeMillis();
+    for (int i = 0; i < 100000; i++) {
+      StringUtil.splitFastIpv4(line);
+    }
+    System.out.println("IndexOf: " + (System.currentTimeMillis() - start) + "ms");
+
+    start = System.currentTimeMillis();
+    for (int i = 0; i < 100000; i++) {
+      StringUtils.split(line, ".");
+    }
+
+    System.out.println("StringUtils: " + (System.currentTimeMillis() - start) + "ms");
+
   }
 
 

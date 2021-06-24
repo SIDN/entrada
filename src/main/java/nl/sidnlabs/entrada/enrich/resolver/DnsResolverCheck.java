@@ -8,9 +8,9 @@ public interface DnsResolverCheck {
 
   String getName();
 
-  boolean match(InetAddress address);
+  boolean match(String address, InetAddress inetAddress);
 
-  int getMatchers();
+  int getMatcherCount();
 
   void done();
 }

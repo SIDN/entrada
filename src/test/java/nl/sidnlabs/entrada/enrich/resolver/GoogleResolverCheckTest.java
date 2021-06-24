@@ -17,9 +17,9 @@ public class GoogleResolverCheckTest {
     check.init();
 
     InetAddress addr = InetAddresses.forString("173.194.169.16");
-    assertTrue("No resolver match found", check.match(addr));
+    assertTrue("No resolver match found", check.match(addr.getHostAddress(), addr));
     // try 2nd time see if cache is working correct
-    assertTrue("No resolver match found", check.match(addr));
+    assertTrue("No resolver match found", check.match(addr.getHostAddress(), addr));
   }
 
 }

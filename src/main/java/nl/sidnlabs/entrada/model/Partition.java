@@ -2,9 +2,9 @@ package nl.sidnlabs.entrada.model;
 
 import org.apache.commons.lang3.StringUtils;
 import lombok.Builder;
-import lombok.Value;
+import lombok.Data;
 
-@Value
+@Data
 @Builder
 public class Partition {
 
@@ -14,16 +14,41 @@ public class Partition {
   private int day;
   private String server;
 
+  private String path;
+
   public String toPath() {
-    if (dns) {
-      return "year=" + year + "/month=" + month + "/day=" + day + "/server="
-          + StringUtils.defaultIfBlank(StringUtils.deleteWhitespace(server), "__default__");
+    if (path != null) {
+      return path;
     }
 
-    // icmp is partitioned by year/month/day only because there is not
-    // that much data and adding "server" add partition key would create
-    // even smaller data files
-    return "year=" + year + "/month=" + month + "/day=" + day;
+    if (dns) {
+      path = new StringBuilder()
+          .append("year=")
+          .append(year)
+          .append("/month=")
+          .append(month)
+          .append("/day=")
+          .append(day)
+          .append("/server=")
+          .append(StringUtils.defaultIfBlank(StringUtils.deleteWhitespace(server), "__default__"))
+          .toString();
+    } else {
+
+      // icmp is partitioned by year/month/day only because there is not
+      // that much data and adding "server" add partition key would create
+      // even smaller data files
+
+      path = new StringBuilder()
+          .append("year=")
+          .append(year)
+          .append("/month=")
+          .append(month)
+          .append("/day=")
+          .append(day)
+          .toString();
+    }
+
+    return path;
   }
 
 }

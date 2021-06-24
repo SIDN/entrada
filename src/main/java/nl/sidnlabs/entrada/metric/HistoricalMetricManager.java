@@ -92,16 +92,14 @@ public class HistoricalMetricManager {
 
   private String createMetricName(String metric) {
     // replace dot in the server name with underscore otherwise graphite will assume nesting
-    return prefix + "." + metric + ".ns." + servername();
-  }
 
-  private String servername() {
-    if (StringUtils.isBlank(settings.getServerInfo().getNormalizedName())) {
-      // no server used, then use general purpose "all"
-      return "all";
-    }
-
-    return settings.getServerInfo().getNormalizedName();
+    return new StringBuilder()
+        .append(prefix)
+        .append(".")
+        .append(metric)
+        .append(".ns.")
+        .append(StringUtils.defaultIfBlank(settings.getServerInfo().getNormalizedName(), "all"))
+        .toString();
   }
 
   public void record(String metric, int value, long timestamp) {

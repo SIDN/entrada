@@ -3,19 +3,15 @@ package nl.sidnlabs.entrada.enrich.resolver;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import org.jboss.netty.handler.ipfilter.CIDR;
-import org.jboss.netty.handler.ipfilter.IpSet;
 import lombok.Getter;
 
 @Getter
-public class FastIpSubnet implements IpSet, Comparable<FastIpSubnet> {
+public class FastIpSubnet implements Comparable<FastIpSubnet> {
 
-  /** Internal representation */
   private final CIDR cidr;
   private String cidrString;
 
-  /** Create IpSubnet for ALL (used for ALLOW or DENY ALL) */
   public FastIpSubnet() {
-    // ALLOW or DENY ALL
     cidr = null;
   }
 
@@ -34,18 +30,6 @@ public class FastIpSubnet implements IpSet, Comparable<FastIpSubnet> {
   }
 
   /**
-   * Compares the given IP-Address against the Subnet and returns true if the ip is in the
-   * subnet-ip-range and false if not.
-   *
-   * @param ipAddr an ipaddress
-   * @return returns true if the given IP address is inside the currently set network.
-   */
-  // public boolean contains(InetAddress ipAddr) throws UnknownHostException {
-  // //InetAddress inetAddress1 = InetAddress.getByName(ipAddr);
-  // return contains(ipAddr);
-  // }
-
-  /**
    * Compares the given InetAddress against the Subnet and returns true if the ip is in the
    * subnet-ip-range and false if not.
    *
@@ -53,8 +37,7 @@ public class FastIpSubnet implements IpSet, Comparable<FastIpSubnet> {
    */
   public boolean contains(InetAddress inetAddress) {
     if (cidr == null) {
-      // ANY
-      return true;
+      return false;
     }
     return cidr.contains(inetAddress);
   }

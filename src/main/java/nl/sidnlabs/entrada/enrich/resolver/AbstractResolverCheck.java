@@ -23,7 +23,6 @@ import static java.nio.file.StandardOpenOption.CREATE;
 import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
 import java.io.File;
 import java.io.IOException;
-import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.nio.file.Files;
@@ -61,9 +60,9 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   @Value("${public-resolver.match.cache.size:10000}")
   private int maxMatchCacheSize;
 
-  private Cache<InetAddress, Boolean> hitCache;
+  private Cache<String, Boolean> hitCache;
 
-  private BloomFilter<Long> ipv4Filter;
+  private BloomFilter<String> ipv4Filter;
   private BloomFilter<String> ipv6SeenFilter;
   private BloomFilter<String> ipv6NegativeFilter;
 
@@ -72,10 +71,12 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     String filename = workDir + System.getProperty("file.separator") + getFilename();
     File file = new File(filename);
     // read from local file
-    if (!readFromFile(file)) {
-      log.info("File {} cannot be read, reload from source as backup", file);
+    if (!isFileAvailable(file)) {
+      log.info("Fetch new data for {}", getName());
       update(file);
     }
+
+    load(file);
 
     ipv6SeenFilter =
         BloomFilter.create(Funnels.stringFunnel(Charsets.US_ASCII), BLOOMFILTER_IPV6_MAX, 0.01);
@@ -83,8 +84,9 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     ipv6NegativeFilter =
         BloomFilter.create(Funnels.stringFunnel(Charsets.US_ASCII), BLOOMFILTER_IPV6_MAX, 0.01);
 
+
     if (hitCache == null) {
-      hitCache = new Cache2kBuilder<InetAddress, Boolean>() {}
+      hitCache = new Cache2kBuilder<String, Boolean>() {}
           .name(getName() + "-resolver-cache")
           .entryCapacity(maxMatchCacheSize)
           .build();
@@ -92,7 +94,7 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   }
 
   private void createIpV4BloomFilter(List<String> subnets) {
-    Set<Long> ipv4Set = new HashSet<>();
+    Set<String> ipv4Set = new HashSet<>();
     if (!subnets.isEmpty()) {
 
       for (String sn : subnets) {
@@ -101,7 +103,7 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
           if (NumberUtils.isCreatable(cidr)) {
             SubnetUtils utils = new SubnetUtils(sn);
             for (String ip : utils.getInfo().getAllAddresses()) {
-              ipv4Set.add(Long.valueOf(ipToLong(ip)));
+              ipv4Set.add(ip);
             }
           } else {
             log.info("Not adding invalid subnet {} to IPv4 bloomfilter", sn);
@@ -110,101 +112,33 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
       }
     }
 
-    ipv4Filter = BloomFilter.create(Funnels.longFunnel(), ipv4Set.size(), 0.01);
+    ipv4Filter = BloomFilter.create(Funnels.stringFunnel(Charsets.US_ASCII), ipv4Set.size(), 0.01);
 
-    for (Long addr : ipv4Set) {
+    for (String addr : ipv4Set) {
       ipv4Filter.put(addr);
     }
 
     log.info("Created IPv4 filter table with size: {}", ipv4Set.size());
   }
 
-
-  public long ipToLong(String ipAddress) {
-
-    String[] ipAddressInArray = StringUtils.split(ipAddress, ".");
-
-    long result = 0;
-    for (int i = 0; i < ipAddressInArray.length; i++) {
-
-      int power = 3 - i;
-      int ip = Integer.parseInt(ipAddressInArray[i]);
-      result += ip * Math.pow(256, power);
-
-    }
-
-    return result;
-  }
-
   private void update(File file) {
     // load new subnets from source
     List<String> subnets = fetch();
 
-    createIpV4BloomFilter(subnets);
-
     if (!subnets.isEmpty()) {
-
-      matchers4.clear();
-      matchers6.clear();
-      // create subnets for matching
-      subnets
-          .stream()
-          .filter(s -> s.contains("."))
-          .map(this::subnetFor)
-          .filter(Objects::nonNull)
-          .forEach(s -> matchers4.add(s));
-
-      subnets
-          .stream()
-          .filter(s -> s.contains(":"))
-          .map(this::subnetFor)
-          .filter(Objects::nonNull)
-          .forEach(s -> matchers6.add(s));
-
       // write subnets to file so we do not need to get them from source every time the app starts
       writeToFile(subnets, file);
     }
-    log.info("Loaded {} resolver addresses from file: {}", getMatchers(), file);
+    log.info("Fetched {} resolver addresses from file: {}", subnets.size(), file);
   }
 
-
-
-  private FastIpSubnet subnetFor(String address) {
-    try {
-      return new FastIpSubnet(address);
-    } catch (UnknownHostException e) {
-      log.error("Cannot create subnet for: {}", address, e);
-    }
-
-    return null;
-  }
-
-  protected abstract List<String> fetch();
-
-  private boolean readFromFile(File file) {
-    log.info("Load resolver addresses from file: " + file);
-
-    // if file does not exist or was update last on previous day, then update resolvers ip's
-    if (!file.exists()) {
-      return false;
-    }
-
-    Date lastModifiedDate = new Date(file.lastModified());
-    Date currentDate = new Date();
-
-    if (!DateUtils.isSameDay(lastModifiedDate, currentDate)) {
-      if (log.isDebugEnabled()) {
-        log.debug("File {} is too old, do not use it.", file);
-      }
-      return false;
-    }
-
+  private void load(File file) {
     List<String> lines;
     try {
       lines = Files.readAllLines(file.toPath());
     } catch (Exception e) {
       log.error("Error while reading file: {}", file, e);
-      return false;
+      return;
     }
 
     createIpV4BloomFilter(lines);
@@ -226,9 +160,38 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
         .filter(Objects::nonNull)
         .forEach(s -> matchers6.add(s));
 
-    log.info("Loaded {} resolver addresses from file: {}", getMatchers(), file);
+    log.info("Loaded {} resolver addresses from file: {}", getMatcherCount(), file);
+  }
 
-    return !matchers4.isEmpty() || !matchers6.isEmpty();
+  private FastIpSubnet subnetFor(String address) {
+    try {
+      return new FastIpSubnet(address);
+    } catch (UnknownHostException e) {
+      log.error("Cannot create subnet for: {}", address, e);
+    }
+
+    return null;
+  }
+
+  protected abstract List<String> fetch();
+
+  private boolean isFileAvailable(File file) {
+    log.info("Load resolver addresses from file: " + file);
+
+    // if file does not exist or if it was not created today, then update resolvers ip's
+    if (!file.exists()) {
+      return false;
+    }
+
+    Date lastModifiedDate = new Date(file.lastModified());
+    Date currentDate = new Date();
+
+    if (!DateUtils.isSameDay(lastModifiedDate, currentDate)) {
+      log.info("File {} is too old", file);
+      return false;
+    }
+
+    return true;
   }
 
   private void writeToFile(List<String> subnets, File file) {
@@ -242,19 +205,17 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   protected abstract String getFilename();
 
   @Override
-  public boolean match(InetAddress address) {
+  public boolean match(String address, InetAddress inetAddress) {
 
     Boolean value = hitCache.peek(address);
     if (value != null) {
       return true;
     }
 
-    if (address instanceof Inet4Address) {
+    if (address.indexOf('.') != -1) {
       // do v4 check only
-      long addr = ipToLong(address.getHostAddress());
-
-      if (ipv4Filter.mightContain(Long.valueOf(addr))) {
-        return checkv4(address);
+      if (ipv4Filter.mightContain(address)) {
+        return checkv4(address, inetAddress);
       }
 
       return false;
@@ -262,16 +223,15 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     }
 
     // do v6 check only
-    String addr = address.getHostAddress();
-    if (!ipv6SeenFilter.mightContain(addr)) {
+    if (!ipv6SeenFilter.mightContain(address)) {
       // ip not seen before, do check
-      ipv6SeenFilter.put(addr);
-      boolean isInRange = checkv6(address);
+      ipv6SeenFilter.put(address);
+      boolean isInRange = checkv6(address, inetAddress);
       if (isInRange) {
-        ipv6NegativeFilter.put(addr);
+        ipv6NegativeFilter.put(address);
       }
       return isInRange;
-    } else if (!ipv6NegativeFilter.mightContain(addr)) {
+    } else if (!ipv6NegativeFilter.mightContain(address)) {
       // ip MUST have been seen before and MUST not be in ipv6NegativeFilter
       return false;
     }
@@ -280,9 +240,9 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     return true;
   }
 
-  private boolean checkv4(InetAddress address) {
+  private boolean checkv4(String address, InetAddress inetAddress) {
     for (FastIpSubnet sn : matchers4) {
-      if (sn.contains(address)) {
+      if (sn.contains(inetAddress)) {
         addToCache(address);
         return true;
       }
@@ -290,9 +250,9 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     return false;
   }
 
-  private boolean checkv6(InetAddress address) {
+  private boolean checkv6(String address, InetAddress inetAddress) {
     for (FastIpSubnet sn : matchers6) {
-      if (sn.contains(address)) {
+      if (sn.contains(inetAddress)) {
         addToCache(address);
         return true;
       }
@@ -300,12 +260,12 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     return false;
   }
 
-  private void addToCache(InetAddress address) {
+  private void addToCache(String address) {
     hitCache.put(address, Boolean.TRUE);
   }
 
   @Override
-  public int getMatchers() {
+  public int getMatcherCount() {
     return matchers4.size() + matchers6.size();
   }
 
@@ -314,7 +274,14 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     if (log.isDebugEnabled()) {
       log.debug("{} Clear match cache", getName());
     }
+
+    // delete all cache and bloomfilter structures, makes them
+    // avail for garbage collection and prevents incorrect data in
+    // the filter when the source data is changed
     hitCache.clear();
+    ipv4Filter = null;
+    ipv6SeenFilter = null;
+    ipv6NegativeFilter = null;
   }
 
 }

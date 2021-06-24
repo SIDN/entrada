@@ -27,10 +27,10 @@ public class ResolverEnrichment implements AddressEnrichment {
    * @return Optional with name of resolver operator, empty if no match found
    */
   @Override
-  public boolean match(InetAddress address) {
+  public boolean match(String address, InetAddress inetAddress) {
 
     for (DnsResolverCheck check : resolverChecks) {
-      if (check.match(address)) {
+      if (check.match(address, inetAddress)) {
         value = check.getName();
         return true;
       }

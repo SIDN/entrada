@@ -41,10 +41,12 @@ public abstract class AbstractParquetRowWriter implements RowWriter {
   protected Schema avroSchema;
   private int maxfilesize;
   private int rowgroupsize;
+  private int pageRowLimit;
 
-  public AbstractParquetRowWriter(int maxfilesize, int rowgroupsize) {
+  public AbstractParquetRowWriter(int maxfilesize, int rowgroupsize, int pageRowLimit) {
     this.maxfilesize = maxfilesize;
     this.rowgroupsize = rowgroupsize;
+    this.pageRowLimit = pageRowLimit;
   }
 
   public Schema schema(String schema) {
@@ -73,7 +75,7 @@ public abstract class AbstractParquetRowWriter implements RowWriter {
       throw new ApplicationException("Cannot create location: " + path);
     }
 
-    writer = new ParquetPartitionWriter(path, maxfilesize, rowgroupsize);
+    writer = new ParquetPartitionWriter(path, maxfilesize, rowgroupsize, pageRowLimit);
     log.info("Created new Parquet writer using path: {}", path);
   }
 

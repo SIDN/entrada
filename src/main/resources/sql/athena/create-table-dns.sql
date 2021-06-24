@@ -41,6 +41,7 @@ CREATE EXTERNAL TABLE IF NOT EXISTS ${DATABASE_NAME}.${TABLE_NAME}(
   edns_client_subnet string,
   edns_other string,
   edns_client_subnet_asn string,
+  edns_client_subnet_asn_organisation string,
   edns_client_subnet_country string,
   labels int,
   resp_frag int,

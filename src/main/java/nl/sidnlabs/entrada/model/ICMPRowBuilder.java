@@ -2,6 +2,7 @@ package nl.sidnlabs.entrada.model;
 
 import java.sql.Timestamp;
 import java.util.List;
+import org.cache2k.Cache2kBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import nl.sidnlabs.dnslib.message.Header;
@@ -21,6 +22,8 @@ import nl.sidnlabs.pcap.packet.Packet;
 @Component("icmpBuilder")
 public class ICMPRowBuilder extends AbstractRowBuilder {
 
+  private final static int CACHE_MAX_SIZE = 25000;
+
   private ServerContext serverCtx;
 
   @Value("${entrada.privacy.enabled:false}")
@@ -30,6 +33,11 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
       HistoricalMetricManager metricManager) {
     super(enrichments, metricManager);
     this.serverCtx = serverCtx;
+
+    cache = new Cache2kBuilder<String, Domaininfo>() {}
+        .name("icmp-domaininfo-cache")
+        .entryCapacity(CACHE_MAX_SIZE)
+        .build();
   }
 
   @Override
@@ -62,7 +70,7 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
     // get the time in milliseconds
     Row row = new Row(new Timestamp(icmpPacket.getTsMilli()));
 
-    enrich(icmpPacket.getSrcAddr(), "ip_", row);
+    enrich(icmpPacket.getSrc(), icmpPacket.getSrcAddr(), "ip_", row);
 
     // icmp payload
     Question q = null;
@@ -77,8 +85,14 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
       }
       dnsResponseHdr = dnsResponseMessage.getHeader();
       normalizedQname = q == null ? "" : filter(q.getQName());
-      // normalizedQname = StringUtils.lowerCase(normalizedQname);
-      domaininfo = NameUtil.getDomain(normalizedQname, true);
+
+      domaininfo = cache.peek(normalizedQname);
+      if (domaininfo == null) {
+        domaininfo = NameUtil.getDomain(normalizedQname, true);
+        cache.put(normalizedQname, domaininfo);
+      } else {
+        domaininfoCacheHits++;
+      }
     }
 
     // values from query now.

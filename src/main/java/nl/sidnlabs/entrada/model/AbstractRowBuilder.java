@@ -3,7 +3,9 @@ package nl.sidnlabs.entrada.model;
 import java.net.InetAddress;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
+import org.cache2k.Cache;
 import lombok.extern.log4j.Log4j2;
+import nl.sidnlabs.dnslib.util.Domaininfo;
 import nl.sidnlabs.entrada.enrich.AddressEnrichment;
 import nl.sidnlabs.entrada.metric.HistoricalMetricManager;
 import nl.sidnlabs.entrada.model.Row.Column;
@@ -16,6 +18,9 @@ public abstract class AbstractRowBuilder implements RowBuilder {
   protected long packetCounter;
   private List<AddressEnrichment> enrichments;
   protected HistoricalMetricManager metricManager;
+
+  protected Cache<String, Domaininfo> cache;
+  protected int domaininfoCacheHits;
 
   public AbstractRowBuilder(List<AddressEnrichment> enrichments,
       HistoricalMetricManager metricManager) {
@@ -39,10 +44,19 @@ public abstract class AbstractRowBuilder implements RowBuilder {
     return new Column<>(name, Long.valueOf(value));
   }
 
-  protected void enrich(InetAddress address, String prefix, Row row) {
+  /**
+   * Enrich row based on IP address, use both String and InetAddress params tp prevent having to
+   * convert between the 2 too many times
+   * 
+   * @param address
+   * @param inetAddress
+   * @param prefix
+   * @param row
+   */
+  protected void enrich(String address, InetAddress inetAddress, String prefix, Row row) {
 
     for (AddressEnrichment e : enrichments) {
-      if (e.match(address)) {
+      if (e.match(address, inetAddress)) {
         addColumn(row, prefix, e);
       }
     }
@@ -82,6 +96,8 @@ public abstract class AbstractRowBuilder implements RowBuilder {
 
   protected void showStatus() {
     log.info(packetCounter + " rows written to parquet file.");
+    log.info(domaininfoCacheHits + " domaininfo cache hits.");
+
   }
 
   @Override

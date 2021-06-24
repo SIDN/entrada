@@ -38,18 +38,17 @@ public class ASNOrganisationEnrichment implements AddressEnrichment {
    * @return Optional with ASN if found
    */
   @Override
-  public boolean match(InetAddress address) {
-    String addr = address.getHostAddress();
-    value = cache.peek(addr);
+  public boolean match(String address, InetAddress inetAddress) {
+    value = cache.peek(address);
     if (value != null) {
       return true;
     }
 
-    Optional<? extends AsnResponse> r = geoLookup.lookupASN(address);
+    Optional<? extends AsnResponse> r = geoLookup.lookupASN(inetAddress);
     if (r.isPresent()) {
       value = r.get().getAutonomousSystemOrganization();
       if (value != null) {
-        cache.put(addr, value);
+        cache.put(address, value);
         return true;
       }
     }

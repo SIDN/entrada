@@ -43,6 +43,7 @@ AS SELECT
 	  edns_dnssec_n3u,
 	  edns_other,
 	  edns_client_subnet_asn,
+	  edns_client_subnet_asn_organisation,
 	  edns_client_subnet_country,
 	  labels,
 	  resp_frag,

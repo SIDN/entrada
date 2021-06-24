@@ -40,18 +40,17 @@ public class CountryEnrichment implements AddressEnrichment {
    * @return Optional with country if found
    */
   @Override
-  public boolean match(InetAddress address) {
-    String addr = address.getHostAddress();
-    value = cache.peek(addr);
+  public boolean match(String address, InetAddress inetAddress) {
+    value = cache.peek(address);
     if (value != null) {
       return true;
     }
 
-    Optional<CountryResponse> r = geoLookup.lookupCountry(address);
+    Optional<CountryResponse> r = geoLookup.lookupCountry(inetAddress);
     if (r.isPresent()) {
       value = r.get().getCountry().getIsoCode();
       if (value != null) {
-        cache.put(addr, value);
+        cache.put(address, value);
         return true;
       }
     }

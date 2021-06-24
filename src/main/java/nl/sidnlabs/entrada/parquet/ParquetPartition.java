@@ -29,7 +29,7 @@ public class ParquetPartition<T> {
   private int rows = 0;
   private Path currentFile;
 
-  public ParquetPartition(String partition, Schema schema, int rowgroupsize) {
+  public ParquetPartition(String partition, Schema schema, int rowgroupsize, int pageRowLimit) {
 
     currentFile = new Path(
         partition + System.getProperty("file.separator") + UUID.randomUUID() + ".parquet.active");
@@ -48,6 +48,7 @@ public class ParquetPartition<T> {
           .withWriterVersion(WriterVersion.PARQUET_1_0)
           .withSchema(schema)
           .withRowGroupSize(rowgroupsize)
+          .withPageRowCountLimit(pageRowLimit)
           .build();
     } catch (IOException e) {
       throw new ApplicationException("Cannot create a Parquet parition", e);

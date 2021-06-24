@@ -40,6 +40,7 @@ create external table if not exists ${DATABASE_NAME}.${TABLE_NAME} (
 	 edns_client_subnet STRING,
 	 edns_other STRING,
 	 edns_client_subnet_asn STRING,
+	 edns_client_subnet_asn_organisation STRING,
 	 edns_client_subnet_country STRING,
 	 labels INT,
 	 resp_frag INT,

@@ -53,6 +53,7 @@ import nl.sidnlabs.entrada.util.FileUtil;
  */
 @Log4j2
 @Component
+// @Scope(value = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class GeoIPServiceImpl implements GeoIPService {
 
   // free dbs
@@ -195,23 +196,6 @@ public class GeoIPServiceImpl implements GeoIPService {
   /*
    * (non-Javadoc)
    * 
-   * @see nl.sidn.pcap.ip.geo.GeoIPService#lookupCountry(java.lang.String)
-   */
-  // @Override
-  // public Optional<CountryResponse> lookupCountry(String ip) {
-  // InetAddress inetAddr;
-  // try {
-  // inetAddr = InetAddresses.forString(ip);
-  // } catch (Exception e) {
-  // log.debug("Invalid IP address: ", ip);
-  // return Optional.empty();
-  // }
-  // return lookupCountry(inetAddr);
-  // }
-
-  /*
-   * (non-Javadoc)
-   * 
    * @see nl.sidn.pcap.ip.geo.GeoIPService#lookupCountry(java.net.InetAddress)
    */
   @Override
@@ -237,9 +221,7 @@ public class GeoIPServiceImpl implements GeoIPService {
         // paid version returns IspResponse
         return asnReader.tryIsp(ip);
       }
-      // IspResponse r = asnReader.isp(ip);
-      // return asn(r.getAutonomousSystemNumber(), r.getAutonomousSystemOrganization(), ip);
-      // }
+
       // use free version
       return asnReader.tryAsn(ip);
       // return asn(r.getAutonomousSystemNumber(), r.getAutonomousSystemOrganization(), ip);
@@ -250,32 +232,6 @@ public class GeoIPServiceImpl implements GeoIPService {
 
     return Optional.empty();
   }
-
-  // public Optional<Pair<Integer, String>> asn(Integer asn, String org, InetAddress ip) {
-  // if (asn == null) {
-  // log.debug("No asn found for: {}", ip);
-  // return Optional.empty();
-  // }
-  // return Optional.ofNullable(Pair.of(asn, org));
-  // }
-
-  /*
-   * (non-Javadoc)
-   * 
-   * @see nl.sidn.pcap.ip.geo.GeoIPService#lookupASN(java.lang.String)
-   */
-  // @Override
-  // public Optional<? extends AsnResponse> lookupASN(String ip) {
-  // InetAddress inetAddr;
-  // try {
-  // inetAddr = InetAddresses.forString(ip);
-  // } catch (Exception e) {
-  // log.debug("Invalid IP address: {}", ip);
-  // return Optional.empty();
-  // }
-  // return lookupASN(inetAddr);
-  // }
-
 
   public boolean download(String database, String url, int timeout) {
     // do not log api key

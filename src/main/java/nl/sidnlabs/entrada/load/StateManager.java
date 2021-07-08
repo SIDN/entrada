@@ -20,6 +20,7 @@ import nl.sidnlabs.entrada.exception.ApplicationException;
 public class StateManager {
 
   private static final String DECODER_STATE_FILE = "pcap-decoder-state";
+  private static final String REQUEST_CACHE_STATE_FILE = "request-cache";
   private static final Kryo KRYO = new Kryo();
 
   private Output output = null;
@@ -28,22 +29,36 @@ public class StateManager {
   @Value("${entrada.location.persistence}")
   private String workLocation;
 
-  private ServerContext settings;
+  private ServerContext ctx;
 
-  public StateManager(ServerContext settings) {
-    this.settings = settings;
+  public StateManager(ServerContext ctx) {
+    this.ctx = ctx;
 
     KRYO.setRegistrationRequired(false);
   }
 
   private String createStateFileName() {
-    return workLocation + "/" + DECODER_STATE_FILE + "-" + settings.getServerInfo().getName()
+    return workLocation + "/" + DECODER_STATE_FILE + "-" + ctx.getServerInfo().getName() + ".bin";
+  }
+
+  private String createRequestCacheFileName() {
+    return workLocation + "/" + REQUEST_CACHE_STATE_FILE + "-" + ctx.getServerInfo().getName()
         + ".bin";
   }
 
+  public void writeRequestCache(Object data) {
+    String f = createRequestCacheFileName();
+    write(data, f);
+  }
+
   public void write(Object data) {
+    String f = createStateFileName();
+    write(data, f);
+  }
+
+  public void write(Object data, String f) {
     if (output == null) {
-      String f = createStateFileName();
+      // String f = createStateFileName();
       if (log.isDebugEnabled()) {
         log.debug("Create KRYO output linked to file {}", f);
       }
@@ -57,20 +72,37 @@ public class StateManager {
     KRYO.writeClassAndObject(output, data);
   }
 
+  public Object readRequestCache() {
+    String f = createRequestCacheFileName();
+    return read(f);
+  }
+
+
   public Object read() {
+    String f = createStateFileName();
+    return read(f);
+  }
+
+  /**
+   * 
+   * @return null when no data could not be read
+   */
+  public Object read(String f) {
     if (input == null) {
-      String f = createStateFileName();
+      // String f = createStateFileName();
       if (log.isDebugEnabled()) {
         log.debug("Create KRYO input linked to file {}", f);
       }
       try {
         input = new Input(new FileInputStream(f));
+        return KRYO.readClassAndObject(input);
       } catch (Exception e) {
-        throw new ApplicationException("Cannot read state file: " + f, e);
+        // throw new ApplicationException("Cannot read state file: " + f, e);
+        log.error("Cannot read state file: " + f, e);
       }
     }
 
-    return KRYO.readClassAndObject(input);
+    return null;
   }
 
   public boolean stateAvailable() {

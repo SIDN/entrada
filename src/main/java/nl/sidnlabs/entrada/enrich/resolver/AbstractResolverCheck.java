@@ -42,6 +42,7 @@ import org.springframework.beans.factory.annotation.Value;
 import com.google.common.base.Charsets;
 import com.google.common.hash.BloomFilter;
 import com.google.common.hash.Funnels;
+import com.googlecode.ipv6.IPv6Address;
 import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 
@@ -49,10 +50,8 @@ import lombok.extern.log4j.Log4j2;
 @Data
 public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
-  private static final int BLOOMFILTER_IPV6_MAX = 50000;
-
   private List<FastIpSubnet> matchers4 = new ArrayList<>();
-  private List<FastIpSubnet> matchers6 = new ArrayList<>();
+  private List<FastIpV6Subnet> matchers6 = new ArrayList<>();
 
   @Value("${entrada.location.persistence}")
   private String workDir;
@@ -63,8 +62,6 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   private Cache<String, Boolean> hitCache;
 
   private BloomFilter<String> ipv4Filter;
-  private BloomFilter<String> ipv6SeenFilter;
-  private BloomFilter<String> ipv6NegativeFilter;
 
   public void init() {
 
@@ -78,18 +75,8 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
     load(file);
 
-    ipv6SeenFilter =
-        BloomFilter.create(Funnels.stringFunnel(Charsets.US_ASCII), BLOOMFILTER_IPV6_MAX, 0.01);
-
-    ipv6NegativeFilter =
-        BloomFilter.create(Funnels.stringFunnel(Charsets.US_ASCII), BLOOMFILTER_IPV6_MAX, 0.01);
-
-
     if (hitCache == null) {
-      hitCache = new Cache2kBuilder<String, Boolean>() {}
-          .name(getName() + "-resolver-cache")
-          .entryCapacity(maxMatchCacheSize)
-          .build();
+      hitCache = new Cache2kBuilder<String, Boolean>() {}.entryCapacity(maxMatchCacheSize).build();
     }
   }
 
@@ -156,7 +143,7 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     lines
         .stream()
         .filter(s -> s.contains(":"))
-        .map(this::subnetFor)
+        .map(this::v6SubnetFor)
         .filter(Objects::nonNull)
         .forEach(s -> matchers6.add(s));
 
@@ -166,6 +153,16 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   private FastIpSubnet subnetFor(String address) {
     try {
       return new FastIpSubnet(address);
+    } catch (UnknownHostException e) {
+      log.error("Cannot create subnet for: {}", address, e);
+    }
+
+    return null;
+  }
+
+  private FastIpV6Subnet v6SubnetFor(String address) {
+    try {
+      return new FastIpV6Subnet(address);
     } catch (UnknownHostException e) {
       log.error("Cannot create subnet for: {}", address, e);
     }
@@ -204,17 +201,29 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
   protected abstract String getFilename();
 
+  private Boolean cached(String address) {
+    return hitCache.peek(address);
+  }
+
+  private boolean isIpv4(String address) {
+    return address.indexOf('.') != -1;
+  }
+
+  private boolean isIpv4InFilter(String address) {
+    return ipv4Filter.mightContain(address);
+  }
+
   @Override
   public boolean match(String address, InetAddress inetAddress) {
 
-    Boolean value = hitCache.peek(address);
+    Boolean value = cached(address);
     if (value != null) {
       return true;
     }
 
-    if (address.indexOf('.') != -1) {
+    if (isIpv4(address)) {
       // do v4 check only
-      if (ipv4Filter.mightContain(address)) {
+      if (isIpv4InFilter(address)) {
         return checkv4(address, inetAddress);
       }
 
@@ -223,21 +232,7 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     }
 
     // do v6 check only
-    if (!ipv6SeenFilter.mightContain(address)) {
-      // ip not seen before, do check
-      ipv6SeenFilter.put(address);
-      boolean isInRange = checkv6(address, inetAddress);
-      if (isInRange) {
-        ipv6NegativeFilter.put(address);
-      }
-      return isInRange;
-    } else if (!ipv6NegativeFilter.mightContain(address)) {
-      // ip MUST have been seen before and MUST not be in ipv6NegativeFilter
-      return false;
-    }
-
-    // IP has been seen before and the check result MUST have been: True
-    return true;
+    return checkv6(address, inetAddress);
   }
 
   private boolean checkv4(String address, InetAddress inetAddress) {
@@ -251,8 +246,9 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   }
 
   private boolean checkv6(String address, InetAddress inetAddress) {
-    for (FastIpSubnet sn : matchers6) {
-      if (sn.contains(inetAddress)) {
+    IPv6Address v6 = IPv6Address.fromInetAddress(inetAddress);
+    for (FastIpV6Subnet sn : matchers6) {
+      if (sn.contains(v6)) {
         addToCache(address);
         return true;
       }
@@ -280,8 +276,6 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     // the filter when the source data is changed
     hitCache.clear();
     ipv4Filter = null;
-    ipv6SeenFilter = null;
-    ipv6NegativeFilter = null;
   }
 
 }

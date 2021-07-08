@@ -45,6 +45,7 @@ import lombok.extern.log4j.Log4j2;
  */
 @Log4j2
 @Component
+// @Scope(value = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 @Setter
 public final class OpenDNSResolverCheck extends AbstractResolverCheck {
 

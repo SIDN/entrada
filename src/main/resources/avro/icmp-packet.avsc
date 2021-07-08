@@ -14,6 +14,7 @@
     { "name": "ip_dst", "type": "string" },
     { "name": "ip_country", "type": ["null","string"], "default": null},
     { "name": "ip_asn", "type": ["null","string"], "default": null},
+    { "name": "ip_asn_organisation", "type": ["null","string"], "default": null},
     { "name": "ip_len", "type": "int"},
     { "name": "l4_prot", "type": "int" },
     { "name": "l4_srcp", "type": "int"},

@@ -31,18 +31,18 @@ public class ParquetPartitionWriter {
     this.pageRowLimit = pageRowLimit;
   }
 
-  public void write(GenericRecord rec, Schema schema, Partition partition) {
+  public boolean write(GenericRecord rec, Schema schema, Partition partition) {
     rows++;
+
+    boolean newPartition = false;
     String partitionStr = FileUtil.appendPath(path, partition.toPath());
     // check is partition already exists, if not create a new partition
     ParquetPartition<GenericRecord> parquetPartition = partitions.get(partitionStr);
     if (parquetPartition == null) {
       parquetPartition = new ParquetPartition<>(partitionStr, schema, rowgroupsize, pageRowLimit);
       partitions.put(partitionStr, parquetPartition);
+      newPartition = true;
     }
-    // ParquetPartition<GenericRecord> parquetPartition = partitions
-    // .computeIfAbsent(partitionStr,
-    // k -> new ParquetPartition<>(partitionStr, schema, rowgroupsize, pageRowLimit));
 
     // write the rec to the partition
     parquetPartition.write(rec);
@@ -62,6 +62,8 @@ public class ParquetPartitionWriter {
         partitions.remove(partitionStr);
       }
     }
+
+    return newPartition;
   }
 
   public void close() {

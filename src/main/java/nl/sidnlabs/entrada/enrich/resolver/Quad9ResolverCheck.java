@@ -33,6 +33,7 @@ import lombok.extern.log4j.Log4j2;
 
 @Log4j2
 @Component
+// @Scope(value = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public final class Quad9ResolverCheck extends AbstractResolverCheck {
 
   private static final String RESOLVER_SOURCE_FILENAME = "/resolver/quad9-resolvers.txt";

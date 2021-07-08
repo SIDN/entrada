@@ -22,6 +22,7 @@ AS SELECT
     ip_dst,
     ip_country,
     ip_asn,
+    ip_asn_organisation,
     ip_len,
     l4_prot,
     l4_srcp,

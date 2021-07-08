@@ -28,7 +28,8 @@ public class CompressionUtil {
     if (StringUtils.endsWithIgnoreCase(filename, ".pcap")) {
       return wrap(in, bufSize);
     } else if (StringUtils.endsWithIgnoreCase(filename, ".gz")) {
-      return new GzipCompressorInputStream(wrap(in, bufSize), true);
+      // GzipCompressorInputStream already adds buffer to stream
+      return new GzipCompressorInputStream(in);
     } else if (StringUtils.endsWithIgnoreCase(filename, ".xz")) {
       return new XZInputStream(wrap(in, bufSize));
     }

@@ -29,4 +29,6 @@ public interface OutputWriter extends Callable<Map<String, Set<Partition>>> {
 
   Map<String, Set<Partition>> activePartitions();
 
+  void stop();
+
 }

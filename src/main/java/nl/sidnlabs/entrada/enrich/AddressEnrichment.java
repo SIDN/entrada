@@ -4,9 +4,9 @@ import java.net.InetAddress;
 
 public interface AddressEnrichment {
 
-  boolean match(String address, InetAddress inetAddress);
+  String match(String address, InetAddress inetAddress);
 
-  String getValue();
+  // String getValue();
 
   String getColumn();
 

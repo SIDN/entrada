@@ -4,28 +4,44 @@ import java.net.InetAddress;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.cache2k.Cache;
+import org.cache2k.Cache2kBuilder;
+import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.log4j.Log4j2;
-import nl.sidnlabs.dnslib.util.Domaininfo;
+import nl.sidnlabs.entrada.ServerContext;
 import nl.sidnlabs.entrada.enrich.AddressEnrichment;
+import nl.sidnlabs.entrada.enrich.resolver.ResolverEnrichment;
 import nl.sidnlabs.entrada.metric.HistoricalMetricManager;
+import nl.sidnlabs.entrada.metric.Metric;
 import nl.sidnlabs.entrada.model.Row.Column;
 
 @Log4j2
 public abstract class AbstractRowBuilder implements RowBuilder {
 
   protected static final int STATUS_COUNT = 100000;
+  private final static int CACHE_MAX_SIZE = 50000;
+
+  @Value("${entrada.privacy.enabled:false}")
+  protected boolean privacy;
+  @Value("${management.metrics.export.graphite.enabled:true}")
+  protected boolean metricsEnabled;
+
 
   protected long packetCounter;
   private List<AddressEnrichment> enrichments;
   protected HistoricalMetricManager metricManager;
+  protected ServerContext serverCtx;
 
-  protected Cache<String, Domaininfo> cache;
   protected int domaininfoCacheHits;
 
+  protected Cache<String, String> domainCache;
+
   public AbstractRowBuilder(List<AddressEnrichment> enrichments,
-      HistoricalMetricManager metricManager) {
+      HistoricalMetricManager metricManager, ServerContext serverCtx) {
     this.enrichments = enrichments;
     this.metricManager = metricManager;
+    this.serverCtx = serverCtx;
+
+    domainCache = new Cache2kBuilder<String, String>() {}.entryCapacity(CACHE_MAX_SIZE).build();
   }
 
   protected Column<String> column(String name, String value) {
@@ -53,49 +69,37 @@ public abstract class AbstractRowBuilder implements RowBuilder {
    * @param prefix
    * @param row
    */
-  protected void enrich(String address, InetAddress inetAddress, String prefix, Row row) {
+  protected void enrich(String address, InetAddress inetAddress, String prefix, Row row,
+      boolean skipResolvers, List<Metric> metrics) {
 
+    // only perform checks that are required
     for (AddressEnrichment e : enrichments) {
-      if (e.match(address, inetAddress)) {
-        addColumn(row, prefix, e);
+      if (skipResolvers && e instanceof ResolverEnrichment) {
+        continue;
+      }
+
+      String value = e.match(address, inetAddress);
+      if (value != null) {
+        addColumn(row, prefix, e.getColumn(), value, metrics);
       }
     }
   }
 
-  private void addColumn(Row row, String prefix, AddressEnrichment e) {
-    row.addColumn(column(prefix + e.getColumn(), e.getValue()));
+  private void addColumn(Row row, String prefix, String col, String value, List<Metric> metrics) {
+    row.addColumn(column(prefix + col, value));
 
-    if (StringUtils.equals(e.getColumn(), "country")) {
-      metricManager
-          .record(HistoricalMetricManager.METRIC_IMPORT_COUNTRY_COUNT + "." + e.getValue(), 1,
-              row.getTs().getTime());
+    if (metricsEnabled && StringUtils.equals(col, "country")) {
+
+      metrics
+          .add(HistoricalMetricManager
+              .createMetric(HistoricalMetricManager.METRIC_IMPORT_COUNTRY_COUNT + "." + value, 1,
+                  row.getTime(), true));
+
     }
-  }
-
-
-  /**
-   * replace all non printable ascii chars with the hex value of the char.
-   * 
-   * @param str string to filter
-   * @return filtered version of input string
-   */
-  protected String filter(String str) {
-
-    StringBuilder filtered = new StringBuilder(str.length());
-    for (int i = 0; i < str.length(); i++) {
-      char current = str.charAt(i);
-      if (current >= 0x20 && current <= 0x7e) {
-        filtered.append(current);
-      } else {
-        filtered.append("0x" + Integer.toHexString(current));
-      }
-    }
-
-    return filtered.toString();
   }
 
   protected void showStatus() {
-    log.info(packetCounter + " rows written to parquet file.");
+    log.info(packetCounter + " rows created.");
     log.info(domaininfoCacheHits + " domaininfo cache hits.");
 
   }

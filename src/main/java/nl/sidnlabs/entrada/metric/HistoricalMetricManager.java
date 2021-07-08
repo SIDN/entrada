@@ -25,15 +25,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteSender;
+import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.ServerContext;
 import nl.sidnlabs.entrada.load.StateManager;
+import nl.sidnlabs.entrada.model.Row;
 
 
 /**
@@ -43,6 +46,7 @@ import nl.sidnlabs.entrada.load.StateManager;
  */
 @Log4j2
 @Component
+@Data
 public class HistoricalMetricManager {
 
   // do not send last minute
@@ -59,6 +63,7 @@ public class HistoricalMetricManager {
   // layer 4 stats
   public static final String METRIC_IMPORT_TCP_COUNT = "tcp";
   public static final String METRIC_IMPORT_UDP_COUNT = "udp";
+  public static final String METRIC_IMPORT_ICMP_COUNT = "icmp";
 
   public static final String METRIC_IMPORT_IP_VERSION_4_COUNT = "ip.4";
   public static final String METRIC_IMPORT_IP_VERSION_6_COUNT = "ip.6";
@@ -70,7 +75,13 @@ public class HistoricalMetricManager {
   public static final String METRIC_IMPORT_TCP_PACKET_RTT = "tcp.rtt.packet.median";
   public static final String METRIC_IMPORT_TCP_PACKET_RTT_SAMPLES = "tcp.rtt.packet.samples";
 
-  private Map<String, TreeMap<Long, Metric>> metricCache = new HashMap<>();
+  @Value("${management.metrics.export.graphite.enabled:true}")
+  protected boolean metricsEnabled;
+
+  private int metricListCounter = 0;
+  private int metricCounter = 0;
+
+  private Map<String, TreeMap<Long, Metric>> metricCache = new ConcurrentHashMap<>(1000);
 
   @Value("${management.metrics.export.graphite.prefix}")
   private String prefix;
@@ -102,31 +113,43 @@ public class HistoricalMetricManager {
         .toString();
   }
 
-  public void record(String metric, int value, long timestamp) {
-    record(metric, value, timestamp, true);
-  }
+  public void update(Row row) {
+    if (!metricsEnabled || row.getMetrics() == null) {
+      // do nothing
+      return;
+    }
 
-  public void record(String metric, int value, long timestamp, boolean simple) {
-    long metricTime = round(timestamp);
-    String metricName = createMetricName(metric);
-    TreeMap<Long, Metric> metricValues = metricCache.get(metricName);
-    if (metricValues == null) {
-      // create new treemap
-      metricValues = new TreeMap<>();
-      metricValues.put(metricTime, createMetric(metricName, value, metricTime, simple));
-      metricCache.put(metricName, metricValues);
-    } else {
-
-      Metric m = metricValues.get(metricTime);
+    for (Metric m : row.getMetrics()) {
       if (m != null) {
-        m.update(value);
-      } else {
-        metricValues.put(metricTime, createMetric(metricName, value, metricTime, simple));
+        update(m);
       }
     }
   }
 
-  private Metric createMetric(String metric, int value, long timestamp, boolean simple) {
+
+  private void update(Metric m) {
+    long metricTime = round(m.getTime());
+    Long time = Long.valueOf(metricTime);
+    String metricName = createMetricName(m.getName());
+    TreeMap<Long, Metric> metricValues = metricCache.get(metricName);
+
+    if (metricValues == null) {
+      // create new treemap
+      metricValues = new TreeMap<>();
+      metricValues.put(time, m);
+      metricCache.put(metricName, metricValues);
+    } else {
+
+      Metric mHist = metricValues.get(time);
+      if (mHist != null) {
+        mHist.update(m.getValue());
+      } else {
+        metricValues.put(time, m);
+      }
+    }
+  }
+
+  public static Metric createMetric(String metric, int value, long timestamp, boolean simple) {
     if (simple) {
       return new SimpleMetric(metric, value, timestamp);
     }
@@ -139,13 +162,14 @@ public class HistoricalMetricManager {
    * the last timestamp value is used by graphite.
    */
   public boolean flush() {
-    log.info("Flushing metrics to Graphite");
-    if (log.isDebugEnabled()) {
-      metricCache
-          .entrySet()
-          .stream()
-          .forEach(e -> log.debug("Metric: {}  value: {}", e.getKey(), e.getValue()));
-    }
+    log.info("Flushing metrics to Graphite, size: {}", metricCache.size());
+
+    int oldSize = metricCache.size();
+
+    metricCache
+        .entrySet()
+        .stream()
+        .forEach(e -> log.info("Metric: {}  entries: {}", e.getKey(), e.getValue().size()));
 
     GraphiteSender graphite = new Graphite(host, port);
     try {
@@ -169,6 +193,14 @@ public class HistoricalMetricManager {
         // ignore
       }
     }
+
+    int newSize = metricCache.size();
+
+    log.info("-------------- Metrics Manager Stats ---------------------");
+    log.info("Metrics processed: {}", metricCounter);
+    log.info("Metrics count before flush: {}", oldSize);
+    log.info("Metrics count after flush: {}", newSize);
+
 
     return true;
   }
@@ -219,7 +251,6 @@ public class HistoricalMetricManager {
   }
 
   public void persistState(StateManager stateManager) {
-    flush();
     stateManager.write(metricCache);
   }
 
@@ -233,4 +264,5 @@ public class HistoricalMetricManager {
       metricCache = new HashMap<>();
     }
   }
+
 }

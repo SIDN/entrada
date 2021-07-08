@@ -13,7 +13,6 @@ public class MeanMetric implements Metric {
 
   private String name;
   private long time;
-  private int size;
   private int[] values = new int[INITIAL_SIZE];
   private int count;
 
@@ -24,13 +23,13 @@ public class MeanMetric implements Metric {
   }
 
   public void update(int value) {
-    if (size >= MAX_SAMPLE_SIZE) {
+    if (count >= MAX_SAMPLE_SIZE) {
       // protection against filling up all the memory when lots
       // of tcp queries are received.
       return;
     }
 
-    if (count == values.length - 1) {
+    if (count == values.length) {
       values = Arrays.copyOf(values, values.length + INITIAL_SIZE);
     }
 

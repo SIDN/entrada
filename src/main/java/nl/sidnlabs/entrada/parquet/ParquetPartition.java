@@ -31,6 +31,8 @@ public class ParquetPartition<T> {
 
   public ParquetPartition(String partition, Schema schema, int rowgroupsize, int pageRowLimit) {
 
+    long start = System.currentTimeMillis();
+
     currentFile = new Path(
         partition + System.getProperty("file.separator") + UUID.randomUUID() + ".parquet.active");
     filename = currentFile.toString();
@@ -50,6 +52,9 @@ public class ParquetPartition<T> {
           .withRowGroupSize(rowgroupsize)
           .withPageRowCountLimit(pageRowLimit)
           .build();
+
+      log.info("Created ParquetWriter, time: {}", System.currentTimeMillis() - start);
+
     } catch (IOException e) {
       throw new ApplicationException("Cannot create a Parquet parition", e);
     }
@@ -68,7 +73,7 @@ public class ParquetPartition<T> {
 
   public void close() {
     if (log.isDebugEnabled()) {
-      log.debug("close()");
+      log.debug("close file: {}", filename);
     }
     try {
       writer.close();
@@ -78,12 +83,11 @@ public class ParquetPartition<T> {
       log.error("Cannot close file: " + filename, e);
     }
 
-    if (StringUtils.endsWith(currentFile.toString(), ".active")) {
+    if (StringUtils.endsWith(filename, ".active")) {
       // rename files ending with .parquet.active to .parquet
       // to indicate that they are no longer being written to
-      java.nio.file.Path source = Paths.get(currentFile.toString());
-      java.nio.file.Path target =
-          Paths.get(StringUtils.removeEnd(currentFile.toString(), ".active"));
+      java.nio.file.Path source = Paths.get(filename);
+      java.nio.file.Path target = Paths.get(StringUtils.removeEnd(filename, ".active"));
 
       try {
         Files.move(source, target);

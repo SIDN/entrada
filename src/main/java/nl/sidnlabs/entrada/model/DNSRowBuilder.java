@@ -1,11 +1,8 @@
 package nl.sidnlabs.entrada.model;
 
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.cache2k.Cache2kBuilder;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import nl.sidnlabs.dnslib.message.Header;
 import nl.sidnlabs.dnslib.message.Message;
@@ -18,11 +15,11 @@ import nl.sidnlabs.dnslib.message.records.edns0.NSidOption;
 import nl.sidnlabs.dnslib.message.records.edns0.OPTResourceRecord;
 import nl.sidnlabs.dnslib.message.records.edns0.PaddingOption;
 import nl.sidnlabs.dnslib.message.records.edns0.PingOption;
-import nl.sidnlabs.dnslib.util.Domaininfo;
 import nl.sidnlabs.dnslib.util.NameUtil;
 import nl.sidnlabs.entrada.ServerContext;
 import nl.sidnlabs.entrada.enrich.AddressEnrichment;
 import nl.sidnlabs.entrada.metric.HistoricalMetricManager;
+import nl.sidnlabs.entrada.metric.Metric;
 import nl.sidnlabs.entrada.support.RowData;
 import nl.sidnlabs.pcap.packet.Packet;
 import nl.sidnlabs.pcap.packet.PacketFactory;
@@ -31,30 +28,21 @@ import nl.sidnlabs.pcap.packet.PacketFactory;
  * Create output format independent row model
  *
  */
-@Component("dnsBuilder")
+@Component("dns")
+// @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class DNSRowBuilder extends AbstractRowBuilder {
 
   private static final int RCODE_QUERY_WITHOUT_RESPONSE = -1;
-  private final static int CACHE_MAX_SIZE = 25000;
 
-  private ServerContext serverCtx;
-
-  @Value("${entrada.privacy.enabled:false}")
-  private boolean privacy;
 
   public DNSRowBuilder(List<AddressEnrichment> enrichments, ServerContext serverCtx,
       HistoricalMetricManager metricManager) {
-    super(enrichments, metricManager);
-    this.serverCtx = serverCtx;
-
-    cache = new Cache2kBuilder<String, Domaininfo>() {}
-        .name("dns-domaininfo-cache")
-        .entryCapacity(CACHE_MAX_SIZE)
-        .build();
+    super(enrichments, metricManager, serverCtx);
   }
 
   @Override
   public Row build(RowData combo, String server) {
+    List<Metric> metrics = new ArrayList<>(20);
 
     packetCounter++;
     if (packetCounter % STATUS_COUNT == 0) {
@@ -68,7 +56,7 @@ public class DNSRowBuilder extends AbstractRowBuilder {
 
     // get the time in milliseconds
     long time = packetTime(reqTransport, rspTransport);
-    Row row = new Row(new Timestamp(time));
+    Row row = new Row(ProtocolType.DNS, time);
 
     // get the question
     Question question = lookupQuestion(reqMessage, rspMessage);
@@ -89,11 +77,18 @@ public class DNSRowBuilder extends AbstractRowBuilder {
     }
 
     // get the qname domain name details
-    String normalizedQname = question == null ? "" : filter(question.getQName());
-    Domaininfo domaininfo = cache.peek(normalizedQname);
-    if (domaininfo == null) {
-      domaininfo = NameUtil.getDomain(normalizedQname, true);
-      cache.put(normalizedQname, domaininfo);
+    String qname = question != null ? question.getQName() : null;
+    String domainname = null;
+    int labels = 0;
+    if (qname != null) {
+      domainname = domainCache.peek(qname);
+      labels = NameUtil.labels(qname);
+    }
+    if (domainname == null && qname != null) {
+      domainname = NameUtil.domainname(qname);
+      if (domainname != null) {
+        domainCache.put(qname, domainname);
+      }
     } else {
       domaininfoCacheHits++;
     }
@@ -112,9 +107,9 @@ public class DNSRowBuilder extends AbstractRowBuilder {
 
     // add meta data for the client IP
     if (reqTransport != null && reqTransport.getSrcAddr() != null) {
-      enrich(reqTransport.getSrc(), reqTransport.getSrcAddr(), "", row);
+      enrich(reqTransport.getSrc(), reqTransport.getSrcAddr(), "", row, false, metrics);
     } else if (rspTransport != null && rspTransport.getDstAddr() != null) {
-      enrich(rspTransport.getDst(), rspTransport.getDstAddr(), "", row);
+      enrich(rspTransport.getDst(), rspTransport.getDstAddr(), "", row, false, metrics);
     }
 
     if (reqTransport != null) {
@@ -124,9 +119,13 @@ public class DNSRowBuilder extends AbstractRowBuilder {
       if (reqTransport.getTcpHandshake() != null) {
         // found tcp handshake info
         row.addColumn(column("tcp_hs_rtt", reqTransport.getTcpHandshake().rtt()));
-        metricManager
-            .record(HistoricalMetricManager.METRIC_IMPORT_TCP_HANDSHAKE_RTT,
-                (int) reqTransport.getTcpHandshake().rtt(), time, false);
+
+        if (metricsEnabled) {
+          metrics
+              .add(HistoricalMetricManager
+                  .createMetric(HistoricalMetricManager.METRIC_IMPORT_TCP_HANDSHAKE_RTT,
+                      (int) reqTransport.getTcpHandshake().rtt(), time, false));
+        }
       }
     }
 
@@ -159,8 +158,13 @@ public class DNSRowBuilder extends AbstractRowBuilder {
 
         // EDNS0 for response
         writeResponseOptions(rspMessage, row);
+        if (metricsEnabled) {
+          metrics
+              .add(HistoricalMetricManager
+                  .createMetric(HistoricalMetricManager.METRIC_IMPORT_DNS_RESPONSE_COUNT, 1, time,
+                      true));
+        }
 
-        metricManager.record(HistoricalMetricManager.METRIC_IMPORT_DNS_RESPONSE_COUNT, 1, time);
       } // end of response only section
     }
 
@@ -169,9 +173,9 @@ public class DNSRowBuilder extends AbstractRowBuilder {
     row
         .addColumn(column("rcode", rcode))
         .addColumn(column("time", time))
-        .addColumn(column("qname", normalizedQname))
-        .addColumn(column("domainname", domaininfo.getName()))
-        .addColumn(column("labels", domaininfo.getLabels()))
+        .addColumn(column("qname", qname))
+        .addColumn(column("domainname", domainname))
+        .addColumn(column("labels", labels))
         .addColumn(column("ipv", ipVersion(reqTransport, rspTransport)))
 
         .addColumn(column("dst", dstIpAdress(reqTransport, rspTransport)))
@@ -207,21 +211,28 @@ public class DNSRowBuilder extends AbstractRowBuilder {
         int requestFrags = reqTransport.getReassembledFragments();
         row.addColumn(column("frag", requestFrags));
       } // end request only section
-
-      metricManager.record(HistoricalMetricManager.METRIC_IMPORT_DNS_QUERY_COUNT, 1, time);
+      if (metricsEnabled) {
+        metrics
+            .add(HistoricalMetricManager
+                .createMetric(HistoricalMetricManager.METRIC_IMPORT_DNS_QUERY_COUNT, 1, time,
+                    true));
+      }
     }
 
     // question
     if (question != null) {
       writeQuestion(question, row);
+      if (metricsEnabled) {
+        metrics
+            .add(HistoricalMetricManager
+                .createMetric(HistoricalMetricManager.METRIC_IMPORT_DNS_QTYPE + "."
+                    + question.getQTypeValue(), 1, time, true));
+      }
 
-      metricManager
-          .record(HistoricalMetricManager.METRIC_IMPORT_DNS_QTYPE + "." + question.getQTypeValue(),
-              1, time);
     }
 
     // EDNS0 for request
-    writeRequestOptions(reqMessage, row);
+    writeRequestOptions(reqMessage, row, metrics);
 
     // calculate the processing time
     if (reqTransport != null && rspTransport != null) {
@@ -229,29 +240,57 @@ public class DNSRowBuilder extends AbstractRowBuilder {
     }
 
     // create metrics
-    metricManager.record(HistoricalMetricManager.METRIC_IMPORT_DNS_RCODE + "." + rcode, 1, time);
-    metricManager.record(HistoricalMetricManager.METRIC_IMPORT_DNS_OPCODE + "." + opcode, 1, time);
+    if (metricsEnabled) {
+      metrics
+          .add(HistoricalMetricManager
+              .createMetric(HistoricalMetricManager.METRIC_IMPORT_DNS_RCODE + "." + rcode, 1, time,
+                  true));
+
+      metrics
+          .add(HistoricalMetricManager
+              .createMetric(HistoricalMetricManager.METRIC_IMPORT_DNS_OPCODE + "." + opcode, 1,
+                  time, true));
 
 
-    if (reqTransport != null) {
-      if (reqTransport.getIpVersion() == 4) {
-        metricManager.record(HistoricalMetricManager.METRIC_IMPORT_IP_VERSION_4_COUNT, 1, time);
-      } else {
-        metricManager.record(HistoricalMetricManager.METRIC_IMPORT_IP_VERSION_6_COUNT, 1, time);
+      if (reqTransport != null) {
+        if (reqTransport.getIpVersion() == 4) {
+          metrics
+              .add(HistoricalMetricManager
+                  .createMetric(HistoricalMetricManager.METRIC_IMPORT_DNS_RESPONSE_COUNT, 1, time,
+                      true));
+
+        } else {
+          metrics
+              .add(HistoricalMetricManager
+                  .createMetric(HistoricalMetricManager.METRIC_IMPORT_IP_VERSION_6_COUNT, 1, time,
+                      true));
+        }
+      } else if (rspTransport != null) {
+        if (rspTransport.getIpVersion() == 4) {
+          metrics
+              .add(HistoricalMetricManager
+                  .createMetric(HistoricalMetricManager.METRIC_IMPORT_IP_VERSION_4_COUNT, 1, time,
+                      true));
+        } else {
+          metrics
+              .add(HistoricalMetricManager
+                  .createMetric(HistoricalMetricManager.METRIC_IMPORT_IP_VERSION_6_COUNT, 1, time,
+                      true));
+        }
       }
-    } else if (rspTransport != null) {
-      if (rspTransport.getIpVersion() == 4) {
-        metricManager.record(HistoricalMetricManager.METRIC_IMPORT_IP_VERSION_4_COUNT, 1, time);
+
+      if (prot == PacketFactory.PROTOCOL_TCP) {
+        metrics
+            .add(HistoricalMetricManager
+                .createMetric(HistoricalMetricManager.METRIC_IMPORT_TCP_COUNT, 1, time, true));
       } else {
-        metricManager.record(HistoricalMetricManager.METRIC_IMPORT_IP_VERSION_6_COUNT, 1, time);
+        metrics
+            .add(HistoricalMetricManager
+                .createMetric(HistoricalMetricManager.METRIC_IMPORT_UDP_COUNT, 1, time, true));
       }
     }
 
-    if (prot == PacketFactory.PROTOCOL_TCP) {
-      metricManager.record(HistoricalMetricManager.METRIC_IMPORT_TCP_COUNT, 1, time);
-    } else {
-      metricManager.record(HistoricalMetricManager.METRIC_IMPORT_UDP_COUNT, 1, time);
-    }
+    row.setMetrics(metrics);
 
     return row;
   }
@@ -358,7 +397,7 @@ public class DNSRowBuilder extends AbstractRowBuilder {
    * @param message
    * @param builder
    */
-  private void writeRequestOptions(Message message, Row row) {
+  private void writeRequestOptions(Message message, Row row, List<Metric> metrics) {
     if (message == null) {
       return;
     }
@@ -387,8 +426,10 @@ public class DNSRowBuilder extends AbstractRowBuilder {
           // get client country and asn
 
           if (scOption.getAddress() != null) {
-            enrich(scOption.getAddress(), scOption.getInetAddress(), "edns_client_subnet_", row);
+            enrich(scOption.getAddress(), scOption.getInetAddress(), "edns_client_subnet_", row,
+                true, metrics);
           }
+
           if (!privacy) {
             row.addColumn(column("edns_client_subnet", scOption.export()));
           }

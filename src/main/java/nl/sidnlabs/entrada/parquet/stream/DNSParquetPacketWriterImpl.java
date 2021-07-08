@@ -17,28 +17,36 @@
  * [<http://www.gnu.org/licenses/].
  *
  */
-package nl.sidnlabs.entrada.parquet;
+package nl.sidnlabs.entrada.parquet.stream;
 
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import org.apache.avro.Schema;
 import org.apache.avro.Schema.Field;
+import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+import nl.sidnlabs.entrada.model.ProtocolType;
 import nl.sidnlabs.entrada.model.Partition;
 import nl.sidnlabs.entrada.model.Row;
+import nl.sidnlabs.entrada.model.Row.Column;
 
 @Component("parquet-dns")
+@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class DNSParquetPacketWriterImpl extends AbstractParquetRowWriter {
 
   private static final String DNS_AVRO_SCHEMA = "/avro/dns-query.avsc";
 
-  private Calendar cal = Calendar.getInstance();
-  private GenericRecordBuilder builder = recordBuilder(DNS_AVRO_SCHEMA);
+  private Schema schema = schema(DNS_AVRO_SCHEMA);
+  private GenericRecord record;
   private List<Field> fields;
-  private Partition partition;
+  private Map<String, Integer> fieldPosMap = new HashMap<>();
 
   public DNSParquetPacketWriterImpl(
       @Value("#{${entrada.parquet.filesize.max:128}*1024*1024}") int maxfilesize,
@@ -46,9 +54,11 @@ public class DNSParquetPacketWriterImpl extends AbstractParquetRowWriter {
       @Value("${entrada.parquet.page-row.limit:20000}") int pageRowLimit) {
     super(maxfilesize, rowgroupsize, pageRowLimit);
 
-    this.cal = Calendar.getInstance();
-    this.builder = recordBuilder(DNS_AVRO_SCHEMA);
-    this.fields = schema(DNS_AVRO_SCHEMA).getFields();
+    this.fields = schema.getFields();
+    for (Field f : fields) {
+      fieldPosMap.put(f.name(), Integer.valueOf(f.pos()));
+    }
+    this.record = new GenericData.Record(schema);
   }
 
   /**
@@ -58,44 +68,74 @@ public class DNSParquetPacketWriterImpl extends AbstractParquetRowWriter {
    * @param server the name server the row is linked to
    */
   @Override
-  public Partition write(Row row, String server) {
+  public void write(Row row, String server) {
     // NOTE: make sure not to do any expensive stuff here, this method is called
     // many times. cache stuff where possible
-    rowCounter++;
-    // use time from row for parquet row
-    cal.setTimeInMillis(row.getTs().getTime());
+    // thats why we are not using the Avro GenericRecordBuilder
 
-    // reuse old builder, first clear old values
-    for (Field f : fields) {
-      builder.clear(f);
+    if (writer == null) {
+      open(workLocation, server, "dns");
     }
 
-    // map all the columns in the row to the avro record fields
-    row.getColumns().stream().forEach(c -> {
-      builder.set(c.getName(), c.getValue());
-    });
+    rowCounter++;
+    if (rowCounter % STATUS_COUNT == 0) {
+      showStatus();
+    }
 
-    // create the actual record and write to parquet file
-    GenericRecord record = builder.build();
+    // use time from row for parquet row
+    cal.setTimeInMillis(row.getTime());
+
+    // reuse old record, first clear old values
+    clear();
+
+    // update fields with new values
+    update(row);
+
     // try to reuse the partition instance if possible
-    if (partition == null || partition.getDay() != cal.get(Calendar.DAY_OF_MONTH)
+    if (isNewPartition(server)) {
+      partition = createPartition(server);
+      partitions.add(partition);
+    }
+
+    writer.write(record, schema, partition);
+  }
+
+  private void clear() {
+    for (Field f : fields) {
+      // builder.clear(f);
+      record.put(f.pos(), null);
+    }
+  }
+
+  private void update(Row row) {
+    for (Column c : row.getColumns()) {
+      record.put(fieldPosMap.get(c.getName()).intValue(), c.getValue());
+    }
+  }
+
+  private boolean isNewPartition(String server) {
+    return partition == null || partition.getDay() != cal.get(Calendar.DAY_OF_MONTH)
         || partition.getMonth() != cal.get(Calendar.MONTH) + 1
         || partition.getYear() != cal.get(Calendar.YEAR)
-        || !StringUtils.equals(partition.getServer(), server)) {
-
-      partition = Partition
-          .builder()
-          .year(cal.get(Calendar.YEAR))
-          .month(cal.get(Calendar.MONTH) + 1)
-          .day(cal.get(Calendar.DAY_OF_MONTH))
-          .server(server)
-          .dns(true)
-          .build();
-
-    }
-    writer.write(record, schema(DNS_AVRO_SCHEMA), partition);
-
-    return partition;
+        || !StringUtils.equals(partition.getServer(), server);
   }
+
+  private Partition createPartition(String server) {
+    return Partition
+        .builder()
+        .year(cal.get(Calendar.YEAR))
+        .month(cal.get(Calendar.MONTH) + 1)
+        .day(cal.get(Calendar.DAY_OF_MONTH))
+        .server(server)
+        .dns(true)
+        .build();
+
+  }
+
+  @Override
+  public ProtocolType type() {
+    return ProtocolType.DNS;
+  }
+
 }
 

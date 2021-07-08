@@ -10,6 +10,7 @@ create external table if not exists ${DATABASE_NAME}.${TABLE_NAME} (
 	ip_dst STRING,
 	ip_country STRING,
 	ip_asn STRING,
+	ip_asn_organisation STRING,
 	ip_len INT,
 	l4_prot INT,
 	l4_srcp INT,

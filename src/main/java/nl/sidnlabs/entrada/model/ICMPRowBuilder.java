@@ -1,49 +1,41 @@
 package nl.sidnlabs.entrada.model;
 
-import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
-import org.cache2k.Cache2kBuilder;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import nl.sidnlabs.dnslib.message.Header;
 import nl.sidnlabs.dnslib.message.Message;
 import nl.sidnlabs.dnslib.message.Question;
 import nl.sidnlabs.dnslib.message.records.edns0.OPTResourceRecord;
-import nl.sidnlabs.dnslib.util.Domaininfo;
 import nl.sidnlabs.dnslib.util.NameUtil;
 import nl.sidnlabs.entrada.ServerContext;
 import nl.sidnlabs.entrada.enrich.AddressEnrichment;
 import nl.sidnlabs.entrada.metric.HistoricalMetricManager;
+import nl.sidnlabs.entrada.metric.Metric;
 import nl.sidnlabs.entrada.support.RowData;
 import nl.sidnlabs.pcap.packet.DNSPacket;
 import nl.sidnlabs.pcap.packet.ICMPPacket;
 import nl.sidnlabs.pcap.packet.Packet;
 
-@Component("icmpBuilder")
+@Component("icmp")
 public class ICMPRowBuilder extends AbstractRowBuilder {
-
-  private final static int CACHE_MAX_SIZE = 25000;
-
-  private ServerContext serverCtx;
-
-  @Value("${entrada.privacy.enabled:false}")
-  private boolean privacy;
 
   public ICMPRowBuilder(List<AddressEnrichment> enrichments, ServerContext serverCtx,
       HistoricalMetricManager metricManager) {
-    super(enrichments, metricManager);
-    this.serverCtx = serverCtx;
-
-    cache = new Cache2kBuilder<String, Domaininfo>() {}
-        .name("icmp-domaininfo-cache")
-        .entryCapacity(CACHE_MAX_SIZE)
-        .build();
+    super(enrichments, metricManager, serverCtx);
   }
 
   @Override
   public Row build(RowData combo, String server) {
+    List<Metric> metrics = new ArrayList<>(1);
 
     ICMPPacket icmpPacket = (ICMPPacket) combo.getRequest();
+    if (metricsEnabled) {
+      metrics
+          .add(HistoricalMetricManager
+              .createMetric(HistoricalMetricManager.METRIC_IMPORT_UDP_COUNT, 1,
+                  icmpPacket.getTsMilli(), true));
+    }
 
     Packet originalPacket = null;
     Message dnsResponseMessage = null;
@@ -68,31 +60,37 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
 
 
     // get the time in milliseconds
-    Row row = new Row(new Timestamp(icmpPacket.getTsMilli()));
+    Row row = new Row(ProtocolType.ICMP, icmpPacket.getTsMilli());
 
-    enrich(icmpPacket.getSrc(), icmpPacket.getSrcAddr(), "ip_", row);
+    enrich(icmpPacket.getSrc(), icmpPacket.getSrcAddr(), "ip_", row, false, metrics);
 
     // icmp payload
     Question q = null;
     Header dnsResponseHdr = null;
-    Domaininfo domaininfo = null;
-    String normalizedQname = null;
+    String qname = null;
+    String domainname = null;
+    int labels = 0;
 
     if (dnsResponseMessage != null) {
       // malformed (bad_format) message can have missing question
       if (!dnsResponseMessage.getQuestions().isEmpty()) {
         q = dnsResponseMessage.getQuestions().get(0);
       }
-      dnsResponseHdr = dnsResponseMessage.getHeader();
-      normalizedQname = q == null ? "" : filter(q.getQName());
-
-      domaininfo = cache.peek(normalizedQname);
-      if (domaininfo == null) {
-        domaininfo = NameUtil.getDomain(normalizedQname, true);
-        cache.put(normalizedQname, domaininfo);
+      qname = q != null ? q.getQName() : null;
+      if (qname != null) {
+        domainname = domainCache.peek(qname);
+        labels = NameUtil.labels(qname);
+      }
+      if (domainname == null && qname != null) {
+        domainname = NameUtil.domainname(qname);
+        if (domainname != null) {
+          domainCache.put(qname, domainname);
+        }
       } else {
         domaininfoCacheHits++;
       }
+
+      dnsResponseHdr = dnsResponseMessage.getHeader();
     }
 
     // values from query now.
@@ -160,8 +158,8 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
             // reassembled udp header of
             // the original udp response
             .addColumn(column("orig_dns_id", dnsResponseHdr.getId()))
-            .addColumn(column("orig_dns_qname", normalizedQname))
-            .addColumn(column("orig_dns_domainname", domaininfo.getName()))
+            .addColumn(column("orig_dns_qname", qname))
+            .addColumn(column("orig_dns_domainname", domainname))
             .addColumn(column("orig_dns_aa", dnsResponseHdr.isAa()))
             .addColumn(column("orig_dns_tc", dnsResponseHdr.isTc()))
             .addColumn(column("orig_dns_rd", dnsResponseHdr.isRd()))
@@ -175,7 +173,7 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
             .addColumn(column("orig_dns_qdcount", (int) dnsResponseHdr.getQdCount()))
             .addColumn(column("orig_dns_rcode", dnsResponseHdr.getRawRcode()))
             .addColumn(column("orig_dns_opcode", dnsResponseHdr.getRawOpcode()))
-            .addColumn(column("orig_dns_labels", domaininfo.getLabels()));
+            .addColumn(column("orig_dns_labels", labels));
 
         if (q != null) {
           // unassinged, private or unknown, get raw value
@@ -194,6 +192,7 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
       }
     }
 
+    row.setMetrics(metrics);
     return row;
   }
 

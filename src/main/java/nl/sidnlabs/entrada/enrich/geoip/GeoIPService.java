@@ -10,12 +10,8 @@ public interface GeoIPService {
 
   void initialize();
 
-  // Optional<CountryResponse> lookupCountry(String ip);
-
   Optional<CountryResponse> lookupCountry(InetAddress addr);
 
   Optional<? extends AsnResponse> lookupASN(InetAddress ip);
-
-  // Optional<? extends AsnResponse> lookupASN(String ip);
 
 }

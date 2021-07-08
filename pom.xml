@@ -40,19 +40,20 @@
 		<dockerfile-maven-version>1.4.13</dockerfile-maven-version>
 		<java.version>11</java.version>
 		<spring-cloud.version>Hoxton.SR11</spring-cloud.version>
+		<scala.binary.version>2.13</scala.binary.version>
 	</properties>
 
 	<dependencies>
 		<dependency>
 			<groupId>nl.sidnlabs</groupId>
 			<artifactId>dnslib</artifactId>
-			<version>0.2.11</version>
+			<version>0.2.12-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>
 			<groupId>nl.sidnlabs</groupId>
 			<artifactId>pcap-lib</artifactId>
-			<version>0.2.16</version>
+			<version>0.2.17-SNAPSHOT</version>
 		</dependency>
 
 		<dependency>
@@ -148,7 +149,7 @@
 		<dependency>
 			<groupId>org.tukaani</groupId>
 			<artifactId>xz</artifactId>
-			<version>1.8</version>
+			<version>1.9</version>
 		</dependency>
 
 		<dependency>
@@ -286,6 +287,17 @@
 			<version>1.2</version>
 		</dependency>
 
+		<dependency>
+			<groupId>com.googlecode.java-ipv6</groupId>
+			<artifactId>java-ipv6</artifactId>
+			<version>0.17</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.typesafe.akka</groupId>
+			<artifactId>akka-stream_${scala.binary.version}</artifactId>
+		</dependency>
+
 	</dependencies>
 
 	<dependencyManagement>
@@ -294,6 +306,14 @@
 				<groupId>org.springframework.cloud</groupId>
 				<artifactId>spring-cloud-dependencies</artifactId>
 				<version>${spring-cloud.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+
+			<dependency>
+				<groupId>com.typesafe.akka</groupId>
+				<artifactId>akka-bom_${scala.binary.version}</artifactId>
+				<version>2.6.15</version>
 				<type>pom</type>
 				<scope>import</scope>
 			</dependency>

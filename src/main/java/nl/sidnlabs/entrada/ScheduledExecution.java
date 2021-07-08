@@ -35,8 +35,8 @@ public class ScheduledExecution {
   private Timer processTimer;
 
   public ScheduledExecution(ServerContext serverCtx, ApplicationContext applicationContext,
-      List<DnsResolverCheck> resolverChecks, MeterRegistry registry, SharedContext sharedContext,
-      List<FileManager> fileManagers) {
+      MeterRegistry registry, SharedContext sharedContext, List<FileManager> fileManagers,
+      List<DnsResolverCheck> resolverChecks) {
 
     this.serverCtx = serverCtx;
     this.applicationContext = applicationContext;
@@ -48,9 +48,6 @@ public class ScheduledExecution {
 
   @Scheduled(fixedDelayString = "#{${entrada.execution.delay}*1000}")
   public void run() {
-    log.info("Checking if maxmind DB is up to date");
-    geoIPService.initialize();
-    log.info("Start loading data for name servers: {}", servers);
 
     if (!sharedContext.isEnabled()) {
       // processing not enabled
@@ -60,8 +57,12 @@ public class ScheduledExecution {
 
     sharedContext.setExecutionStatus(true);
 
+    log.info("Checking if maxmind DB is up to date");
+    geoIPService.initialize();
+    log.info("Start loading data for name servers: {}", servers);
+
     // initialize DnsResolverCheck to make sure they use uptodate data
-    resolverChecks.stream().forEach(DnsResolverCheck::init);
+    // resolverChecks.stream().forEach(DnsResolverCheck::init);
 
     // create new processor each time, to avoid caches getting too big or having
     // memory leaks leading to OOM Exceptions
@@ -80,7 +81,7 @@ public class ScheduledExecution {
 
     sharedContext.setExecutionStatus(false);
 
-    resolverChecks.stream().forEach(DnsResolverCheck::done);
+    // resolverChecks.stream().forEach(DnsResolverCheck::done);
 
     log.info("Completed loading name server data");
   }

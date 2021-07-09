@@ -158,7 +158,6 @@ public class PacketProcessor {
 
   private Config akkaConfig;
   private ActorSystem system;
-  private ApplicationContext ctx;
 
   private RowBuilderOperator rowBuilder;
   private Graph<ClosedShape, List<CompletionStage<Done>>> graph;
@@ -170,8 +169,7 @@ public class PacketProcessor {
       ArchiveService fileArchiveService, FileManagerFactory fileManagerFactory,
       PartitionService partitionService, HistoricalMetricManager historicalMetricManager,
       UploadService uploadService, SharedContext sharedContext, Config akkaConfig,
-      ApplicationContext ctx, ApplicationContext applicationContext, RowBuilderOperator rowBuilder,
-      PacketJoiner joiner) {
+      ApplicationContext applicationContext, RowBuilderOperator rowBuilder, PacketJoiner joiner) {
 
     this.serverCtx = serverCtx;
     this.stateManager = persistenceManager;
@@ -183,7 +181,6 @@ public class PacketProcessor {
     this.sharedContext = sharedContext;
     this.applicationContext = applicationContext;
     this.akkaConfig = akkaConfig;
-    this.ctx = ctx;
     this.rowBuilder = rowBuilder;
     this.joiner = joiner;
   }
@@ -274,11 +271,11 @@ public class PacketProcessor {
 
       printStats(currentFileName, fileProcTime, fileSize, joiner.getCounter(), packetsMs, bytessMs);
 
-      // reset counters
-      reset();
-
       // move the pcap file to archive location or delete
       fileArchiveService.archive(file, startDate, joiner.getCounter(), fileSize);
+
+      // reset counters
+      reset();
 
       // check if we need to upload using batch (when all input files have been processed) or
       // upload all files that are not active anymore before all inout data has been processed
@@ -320,7 +317,7 @@ public class PacketProcessor {
       // save unmatched packet state to file
       // the next pcap might have the missing responses
       persistState();
-
+      // create new graph for each server
       stopAkka();
     }
 
@@ -569,7 +566,7 @@ public class PacketProcessor {
       log.error("Got exception from PCAP reader", e);
     } finally {
       // clear expired cache entries
-      pcapReader.clearCache(cacheTimeoutTCPConfig * 1000, cacheTimeoutIPFragConfig * 60 * 1000);
+      pcapReader.clearCache(cacheTimeoutTCPConfig * 1000, cacheTimeoutIPFragConfig * 1000);
       // make sure the pcap reader is always closed to avoid leaks
       pcapReader.close();
     }

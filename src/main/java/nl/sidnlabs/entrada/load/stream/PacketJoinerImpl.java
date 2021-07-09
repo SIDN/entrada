@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Map;
 import javax.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
@@ -25,6 +27,10 @@ import nl.sidnlabs.pcap.packet.PacketFactory;
 @Log4j2
 @Component
 @Getter
+// use prototype scope, create new bean each time batch of files is processed
+// this to avoid problems with memory/caches when running app for a long period of time
+// and having cached data for multiple servers in the same bean instance
+@Scope(value = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class PacketJoinerImpl implements PacketJoiner {
 
   @Value("${entrada.icmp.enable}")

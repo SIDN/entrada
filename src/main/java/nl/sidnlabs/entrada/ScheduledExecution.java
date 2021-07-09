@@ -21,7 +21,7 @@ import nl.sidnlabs.entrada.load.PacketProcessor;
 public class ScheduledExecution {
 
   private ServerContext serverCtx;
-  private ApplicationContext applicationContext;
+  private ApplicationContext ctx;
   private SharedContext sharedContext;
   private List<DnsResolverCheck> resolverChecks;
   private List<FileManager> fileManagers;
@@ -34,12 +34,12 @@ public class ScheduledExecution {
 
   private Timer processTimer;
 
-  public ScheduledExecution(ServerContext serverCtx, ApplicationContext applicationContext,
-      MeterRegistry registry, SharedContext sharedContext, List<FileManager> fileManagers,
+  public ScheduledExecution(ServerContext serverCtx, ApplicationContext ctx, MeterRegistry registry,
+      SharedContext sharedContext, List<FileManager> fileManagers,
       List<DnsResolverCheck> resolverChecks) {
 
     this.serverCtx = serverCtx;
-    this.applicationContext = applicationContext;
+    this.ctx = ctx;
     this.resolverChecks = resolverChecks;
     this.sharedContext = sharedContext;
     this.fileManagers = fileManagers;
@@ -61,27 +61,23 @@ public class ScheduledExecution {
     geoIPService.initialize();
     log.info("Start loading data for name servers: {}", servers);
 
-    // initialize DnsResolverCheck to make sure they use uptodate data
-    // resolverChecks.stream().forEach(DnsResolverCheck::init);
-
     // create new processor each time, to avoid caches getting too big or having
     // memory leaks leading to OOM Exceptions
-    PacketProcessor processor = applicationContext.getBean(PacketProcessor.class);
 
     if (StringUtils.isBlank(servers)) {
       // no individual servers configured, assume the pcap data is in the input location root dir
-      runForServer("", processor);
+      runForServer("", ctx.getBean(PacketProcessor.class));
     } else {
       // individual servers configured, process each server directory
-      Arrays.stream(StringUtils.split(servers, ",")).forEach(s -> runForServer(s, processor));
+      Arrays
+          .stream(StringUtils.split(servers, ","))
+          .forEach(s -> runForServer(s, ctx.getBean(PacketProcessor.class)));
     }
 
     // cleanup filesystems, make sure all cached data and locked files are cleanup up
     fileManagers.stream().forEach(FileManager::close);
 
     sharedContext.setExecutionStatus(false);
-
-    // resolverChecks.stream().forEach(DnsResolverCheck::done);
 
     log.info("Completed loading name server data");
   }

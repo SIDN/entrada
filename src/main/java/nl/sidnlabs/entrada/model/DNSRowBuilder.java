@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
+import akka.japi.Pair;
 import nl.sidnlabs.dnslib.message.Header;
 import nl.sidnlabs.dnslib.message.Message;
 import nl.sidnlabs.dnslib.message.Question;
@@ -35,13 +36,12 @@ public class DNSRowBuilder extends AbstractRowBuilder {
   private static final int RCODE_QUERY_WITHOUT_RESPONSE = -1;
 
 
-  public DNSRowBuilder(List<AddressEnrichment> enrichments, ServerContext serverCtx,
-      HistoricalMetricManager metricManager) {
-    super(enrichments, metricManager, serverCtx);
+  public DNSRowBuilder(List<AddressEnrichment> enrichments, ServerContext serverCtx) {
+    super(enrichments, serverCtx);
   }
 
   @Override
-  public Row build(RowData combo, String server) {
+  public Pair<Row, List> build(RowData combo, String server) {
     List<Metric> metrics = new ArrayList<>(20);
 
     packetCounter++;
@@ -90,7 +90,7 @@ public class DNSRowBuilder extends AbstractRowBuilder {
         domainCache.put(qname, domainname);
       }
     } else {
-      domaininfoCacheHits++;
+      domainCacheHits++;
     }
 
     // check to see it a response was found, if not then use -1 value for rcode
@@ -290,9 +290,8 @@ public class DNSRowBuilder extends AbstractRowBuilder {
       }
     }
 
-    row.setMetrics(metrics);
-
-    return row;
+    // row.setMetrics(metrics);
+    return Pair.create(row, metrics);
   }
 
   private int opCode(Header req, Header rsp) {

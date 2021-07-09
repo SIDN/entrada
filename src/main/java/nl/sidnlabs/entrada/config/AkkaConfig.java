@@ -27,7 +27,8 @@ public class AkkaConfig {
 
     Map<String, Object> cfgMap = new HashMap<>();
     cfgMap.putAll(createThreadConfig("reader-dispatcher", 1, "PinnedDispatcher"));
-    cfgMap.putAll(createThreadConfig("metrics-dispatcher", 1, "Dispatcher"));
+    cfgMap.putAll(createThreadConfig("metrics-dispatcher", 1, "PinnedDispatcher"));
+    cfgMap.putAll(createThreadConfig("decoder-dispatcher", 1, "PinnedDispatcher"));
     cfgMap
         .putAll(
             createThreadConfig("writer-dispatcher", dnsWriters + icmpWriters, "PinnedDispatcher"));

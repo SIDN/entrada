@@ -3,6 +3,7 @@ package nl.sidnlabs.entrada.model;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Component;
+import akka.japi.Pair;
 import nl.sidnlabs.dnslib.message.Header;
 import nl.sidnlabs.dnslib.message.Message;
 import nl.sidnlabs.dnslib.message.Question;
@@ -20,13 +21,12 @@ import nl.sidnlabs.pcap.packet.Packet;
 @Component("icmp")
 public class ICMPRowBuilder extends AbstractRowBuilder {
 
-  public ICMPRowBuilder(List<AddressEnrichment> enrichments, ServerContext serverCtx,
-      HistoricalMetricManager metricManager) {
-    super(enrichments, metricManager, serverCtx);
+  public ICMPRowBuilder(List<AddressEnrichment> enrichments, ServerContext serverCtx) {
+    super(enrichments, serverCtx);
   }
 
   @Override
-  public Row build(RowData combo, String server) {
+  public Pair<Row, List> build(RowData combo, String server) {
     List<Metric> metrics = new ArrayList<>(1);
 
     ICMPPacket icmpPacket = (ICMPPacket) combo.getRequest();
@@ -87,7 +87,7 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
           domainCache.put(qname, domainname);
         }
       } else {
-        domaininfoCacheHits++;
+        domainCacheHits++;
       }
 
       dnsResponseHdr = dnsResponseMessage.getHeader();
@@ -192,8 +192,7 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
       }
     }
 
-    row.setMetrics(metrics);
-    return row;
+    return Pair.create(row, metrics);
   }
 
 }

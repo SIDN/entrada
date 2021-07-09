@@ -5,7 +5,6 @@ import java.util.List;
 import lombok.Data;
 import lombok.ToString;
 import lombok.Value;
-import nl.sidnlabs.entrada.metric.Metric;
 
 @Data
 public class Row {
@@ -15,8 +14,6 @@ public class Row {
 
   @ToString.Exclude
   private List<Column<?>> columns = new ArrayList<>(100);
-  @ToString.Exclude
-  private List<Metric> metrics = new ArrayList<>(10);
 
   public Row(ProtocolType type, long time) {
     this.type = type;

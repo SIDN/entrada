@@ -19,8 +19,10 @@
  */
 package nl.sidnlabs.entrada.load.stream;
 
+import java.util.List;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
+import akka.japi.Pair;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.ServerContext;
@@ -70,7 +72,7 @@ public class RowBuilderOperator {
     return -1;
   }
 
-  public Row process(RowData p, String svr) {
+  public Pair<Row, List> process(RowData p, String svr) {
     if (p != null) {
       rowCounter++;
       int proto = lookupProtocol(p);

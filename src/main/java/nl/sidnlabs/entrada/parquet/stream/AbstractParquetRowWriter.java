@@ -116,8 +116,7 @@ public abstract class AbstractParquetRowWriter implements RowWriter {
   }
 
   public void close() {
-    log.info("Close Parquet writer");
-    showStatus();
+    log.info("Close " + type().name() + "Parquet writer");
     reset();
 
     if (writer != null) {

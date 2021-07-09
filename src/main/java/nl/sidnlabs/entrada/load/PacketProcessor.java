@@ -47,21 +47,22 @@ import com.google.common.collect.TreeMultimap;
 import com.typesafe.config.Config;
 import akka.Done;
 import akka.actor.ActorSystem;
+import akka.japi.Pair;
 import akka.stream.ClosedShape;
+import akka.stream.FanOutShape2;
 import akka.stream.FlowShape;
 import akka.stream.Graph;
 import akka.stream.Outlet;
-import akka.stream.OverflowStrategy;
 import akka.stream.SinkShape;
 import akka.stream.UniformFanOutShape;
 import akka.stream.javadsl.Balance;
-import akka.stream.javadsl.Broadcast;
 import akka.stream.javadsl.Flow;
 import akka.stream.javadsl.GraphDSL;
 import akka.stream.javadsl.Keep;
 import akka.stream.javadsl.RunnableGraph;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
+import akka.stream.javadsl.Unzip;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.ServerContext;
 import nl.sidnlabs.entrada.SharedContext;
@@ -102,9 +103,6 @@ public class PacketProcessor {
   @Value("${entrada.tcp.enable:true}")
   private boolean tcpEnabled;
 
-  @Value("${entrada.row.buffer.size:100000}")
-  private int bufferSize;
-
   @Value("${entrada.cache.timeout.tcp.flows}")
   private int cacheTimeoutTCPConfig;
 
@@ -124,7 +122,7 @@ public class PacketProcessor {
   private boolean skipFirst;
 
   @Value("${management.metrics.export.graphite.enabled}")
-  private boolean metrics;
+  private boolean metricsEnabled;
 
   @Value("#{${entrada.partition.activity.ping:5}*60*1000}")
   private int maxPartitionPingMs;
@@ -406,7 +404,7 @@ public class PacketProcessor {
     final String svr = serverCtx.getServerInfo().getNormalizedName();
     final List<Sink<Row, CompletionStage<Done>>> list = new ArrayList<>();
 
-    // create sinks for dns, icmp and metrics
+    // create sinks for dns
     for (int i = 0; i < dnsWriterCount; i++) {
 
       RowWriter w = applicationContext.getBean("parquet-dns", RowWriter.class);
@@ -414,13 +412,14 @@ public class PacketProcessor {
 
       Sink<Row, CompletionStage<Done>> s = Flow
           .of(Row.class)
-          .buffer(bufferSize, OverflowStrategy.backpressure())
+          // .buffer(bufferSize, OverflowStrategy.backpressure())
           .toMat(Sink.<Row>foreach(r -> w.write(r, svr)), Keep.right())
           .async("writer-dispatcher");
 
       list.add(s);
     }
 
+    // create sinks for icmp
     for (int i = 0; i < icmpWriterCount; i++) {
 
       RowWriter w = applicationContext.getBean("parquet-icmp", RowWriter.class);
@@ -428,94 +427,118 @@ public class PacketProcessor {
 
       Sink<Row, CompletionStage<Done>> s = Flow
           .of(Row.class)
-          .buffer(bufferSize, OverflowStrategy.backpressure())
+          // .buffer(bufferSize, OverflowStrategy.backpressure())
           .toMat(Sink.<Row>foreach(r -> w.write(r, svr)), Keep.right())
           .async("writer-dispatcher");
 
       list.add(s);
     }
 
-    Sink<Row, CompletionStage<Done>> s = Flow
-        .of(Row.class)
-        .buffer(bufferSize, OverflowStrategy.backpressure())
-        .toMat(Sink.<Row>foreach(r -> metricManager.update(r)), Keep.right())
-        .async("metrics-dispatcher");
-
-    list.add(s);
 
     // create reuseable akka streams graph
-    return GraphDSL
-        .create(list,
-            (GraphDSL.Builder<List<CompletionStage<Done>>> builder, List<SinkShape<Row>> outs) -> {
+    return GraphDSL.create(list, (builder, outs) -> {
 
-              final Outlet<Packet> IN = builder
-                  .add(Source
-                      .fromJavaStream(() -> pcapReader.stream())
-                      // send last packet when pcap stream is done
-                      .concat(Source.single(Packet.LAST))
-                      .buffer(bufferSize, OverflowStrategy.backpressure())
-                      .async("reader-dispatcher"))
-                  .out();
+      // create input source, reading pcap file on dedicated thread
+      final Outlet<Packet> IN = builder
+          .add(Source
+              .fromJavaStream(() -> pcapReader.stream())
+              // send last packet when pcap stream is done to let downstream operators cleanup/close
+              .concat(Source.single(Packet.LAST))
+              .async("reader-dispatcher")
+              .log("Akka-SRC"))
+          .out();
 
-              final FlowShape<Packet, Packet> DECODE =
-                  builder.add(Flow.of(Packet.class).map(p -> ipDecoder.decode(p)));
+      // add step to decode packets (this is not threadsafe, don't exec parallel
+      // use single pinneddispatcher to prevent thread context-switch overhead
+      final FlowShape<Packet, Packet> DECODE = builder
+          .add(Flow
+              .of(Packet.class)
+              // .buffer(bufferSize, OverflowStrategy.backpressure())
+              .map(p -> ipDecoder.decode(p))
+              .async("decoder-dispatcher"));
 
-              final FlowShape<Packet, RowData> JOIN =
-                  builder.add(Flow.of(Packet.class).mapConcat(p -> joiner.join(p)));
+      // add step to join packets (this is not threadsafe, don't exec parallel
+      final FlowShape<Packet, RowData> JOIN = builder
+          .add(Flow
+              .of(Packet.class)
+              // .buffer(bufferSize, OverflowStrategy.backpressure())
+              .mapConcat(p -> joiner.join(p)));
 
-              // run rowbuilder on seperate theads from row-builder-dispatcher
-              final Executor rowBuilderEx = system.dispatchers().lookup("row-builder-dispatcher");
+      // run rowbuilder on seperate theads from row-builder-dispatcher
+      final Executor rowBuilderEx = system.dispatchers().lookup("row-builder-dispatcher");
+      // building rows can be done parallel to increase throughput
+      final FlowShape<RowData, Pair<Row, List>> BUILD_ROW = builder
+          .add(Flow
+              .of(RowData.class)
+              // .buffer(bufferSize, OverflowStrategy.backpressure())
+              .mapAsyncUnordered(rowbuilderCount, rd -> CompletableFuture
+                  .supplyAsync(() -> rowBuilder.process(rd, svr), rowBuilderEx)));
 
-              final FlowShape<RowData, Row> BUILD_ROW = builder
-                  .add(Flow
-                      .of(RowData.class)
-                      .buffer(bufferSize, OverflowStrategy.backpressure())
-                      .mapAsyncUnordered(rowbuilderCount,
-                          rd -> CompletableFuture
-                              .supplyAsync(() -> rowBuilder.process(rd, svr), rowBuilderEx))
-                      .async());
+      // send rows to 2 substreams, 1 for writing row to parquet and 1 for sending metrics to
+      // grafana
+      final FanOutShape2<Pair<Row, List>, Row, List> UNZIP_ROW_METRIC =
+          builder.add(Unzip.create(Row.class, List.class));
 
+      final Integer DNS = Integer.valueOf(0);
+      final Integer ICMP = Integer.valueOf(1);
+      // create partitioner, to create a streams of dns packets and a streams of icmp packets
+      // each stream will be sent to pool of sinks
+      final UniformFanOutShape<Row, Row> PROT_PARTITIONER = builder
+          .add(akka.stream.javadsl.Partition
+              .create(Row.class, 2, e -> (e.getType() == ProtocolType.DNS) ? DNS : ICMP));
 
-              // send rows to 2 substrams, 1 for writing parquet and 1 for sending metrics to
-              // grafana
-              final UniformFanOutShape<Row, Row> BCAST_WRITER_METRICS =
-                  builder.add(Broadcast.create(2));
+      // create sink for metrics
+      SinkShape<List> metricSink = null;
+      if (metricsEnabled) {
+        metricSink = builder
+            .add(Flow
+                .of(List.class)
+                // .buffer(bufferSize, OverflowStrategy.backpressure())
+                .toMat(Sink.<List>foreach(r -> metricManager.update(r)), Keep.right())
+                .async("metrics-dispatcher"));
+      } else {
+        // ignore metrics output
+        metricSink = builder.add(Sink.<List>ignore());
+      }
 
-              final Integer DNS = Integer.valueOf(0);
-              final Integer ICMP = Integer.valueOf(1);
+      // send outputs of unzipper to correct downstream operators
+      builder.from(UNZIP_ROW_METRIC.out0()).viaFanOut(PROT_PARTITIONER);
+      builder.from(UNZIP_ROW_METRIC.out1()).to(metricSink);
 
-              final UniformFanOutShape<Row, Row> PROT_PARTITIONER = builder
-                  .add(akka.stream.javadsl.Partition
-                      .create(Row.class, 2, e -> (e.getType() == ProtocolType.DNS) ? DNS : ICMP));
+      // only add balancer to graph if dns and/or icmp writer pools >1 writer
+      // having shorter graph is more efficient
+      if (dnsWriterCount > 1) {
+        final UniformFanOutShape<Row, Row> DNS_OUT = builder.add(Balance.create(dnsWriterCount));
+        // connect partitioner to balancer
+        builder.from(PROT_PARTITIONER.out(0)).viaFanOut(DNS_OUT);
+        // connect the dns sinks to the corresponding balancer
+        for (int i = 0; i < dnsWriterCount; i++) {
+          // 1st get dns outs from list
+          builder.from(DNS_OUT).to(outs.get(i));
+        }
+      } else {
+        // single dns sink, do not use balancer
+        builder.from(PROT_PARTITIONER.out(0)).to(outs.get(0));
+      }
 
-              // broadcast-0 going to partitioner
-              builder.from(BCAST_WRITER_METRICS.out(0)).viaFanOut(PROT_PARTITIONER);
-              // broadcast-1 going to metrics sink
-              builder.from(BCAST_WRITER_METRICS.out(1)).to(outs.get(outs.size() - 1));
+      if (icmpWriterCount > 1) {
+        final UniformFanOutShape<Row, Row> ICMP_OUT = builder.add(Balance.create(icmpWriterCount));
+        builder.from(PROT_PARTITIONER.out(1)).viaFanOut(ICMP_OUT);
+        // connect the icmp sinks to the corresponding balancer
+        for (int i = dnsWriterCount; i < outs.size(); i++) {
+          // icmp outs are at end of the list after dns sinks
+          builder.from(ICMP_OUT).to(outs.get(i));
+        }
+      } else {
+        // single icmp sink, do not use balancer
+        builder.from(PROT_PARTITIONER.out(1)).to(outs.get(dnsWriterCount));
+      }
 
-
-              final UniformFanOutShape<Row, Row> DNS_OUT =
-                  builder.add(Balance.create(dnsWriterCount));
-              final UniformFanOutShape<Row, Row> ICMP_OUT =
-                  builder.add(Balance.create(icmpWriterCount));
-
-              builder.from(PROT_PARTITIONER.out(0)).viaFanOut(DNS_OUT);
-              builder.from(PROT_PARTITIONER.out(1)).viaFanOut(ICMP_OUT);
-
-              for (int i = 0; i < outs.size(); i++) {
-                // 1st get dns outs from list
-                if (i < dnsWriterCount) {
-                  builder.from(DNS_OUT).to(outs.get(i));
-                } else if (i < (dnsWriterCount + icmpWriterCount)) {
-                  // icmp outs are at end of the list
-                  builder.from(ICMP_OUT).to(outs.get(i));
-                }
-              }
-
-              builder.from(IN).via(DECODE).via(JOIN).via(BUILD_ROW).viaFanOut(BCAST_WRITER_METRICS);
-
-              return ClosedShape.getInstance();
-            });
+      // create graph flow
+      builder.from(IN).via(DECODE).via(JOIN).via(BUILD_ROW).toInlet(UNZIP_ROW_METRIC.in());
+      // return reusable graph
+      return ClosedShape.getInstance();
+    });
   }
 
 
@@ -598,7 +621,7 @@ public class PacketProcessor {
 
       // flush metrics to make sure that metrics that can be sent already are sent
       // always send historical stats to monitoring
-      if (metrics) {
+      if (metricsEnabled) {
         metricManager.persistState(stateManager);
       } else {
         // TODO: don't collect metrics if graphite is disabled, use micrometer abstraction directly
@@ -618,7 +641,7 @@ public class PacketProcessor {
       stateManager.close();
     }
 
-    log.info("------------- State persistence stats --------------------");
+    log.info("------------- State Persist Stats ------------------------");
     log.info("Persist state to disk time {}", System.currentTimeMillis() - startTs);
     log.info("Persist {} TCP flows", flows.size());
     log.info("Persist {} Datagrams", datagramCount);
@@ -662,7 +685,7 @@ public class PacketProcessor {
 
       joiner.setRequestCache(requestCache);
 
-      if (metrics) {
+      if (metricsEnabled) {
         metricManager.loadState(stateManager);
       }
     } catch (

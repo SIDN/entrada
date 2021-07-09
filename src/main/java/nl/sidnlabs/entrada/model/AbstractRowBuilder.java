@@ -28,17 +28,14 @@ public abstract class AbstractRowBuilder implements RowBuilder {
 
   protected long packetCounter;
   private List<AddressEnrichment> enrichments;
-  protected HistoricalMetricManager metricManager;
   protected ServerContext serverCtx;
 
-  protected int domaininfoCacheHits;
+  protected int domainCacheHits;
 
   protected Cache<String, String> domainCache;
 
-  public AbstractRowBuilder(List<AddressEnrichment> enrichments,
-      HistoricalMetricManager metricManager, ServerContext serverCtx) {
+  public AbstractRowBuilder(List<AddressEnrichment> enrichments, ServerContext serverCtx) {
     this.enrichments = enrichments;
-    this.metricManager = metricManager;
     this.serverCtx = serverCtx;
 
     domainCache = new Cache2kBuilder<String, String>() {}.entryCapacity(CACHE_MAX_SIZE).build();
@@ -100,7 +97,7 @@ public abstract class AbstractRowBuilder implements RowBuilder {
 
   protected void showStatus() {
     log.info(packetCounter + " rows created.");
-    log.info(domaininfoCacheHits + " domaininfo cache hits.");
+    log.info(domainCacheHits + " domainname cache hits.");
 
   }
 

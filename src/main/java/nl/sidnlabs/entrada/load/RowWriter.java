@@ -1,8 +1,8 @@
 package nl.sidnlabs.entrada.load;
 
 import java.util.Set;
-import nl.sidnlabs.entrada.model.ProtocolType;
 import nl.sidnlabs.entrada.model.Partition;
+import nl.sidnlabs.entrada.model.ProtocolType;
 import nl.sidnlabs.entrada.model.Row;
 
 public interface RowWriter {

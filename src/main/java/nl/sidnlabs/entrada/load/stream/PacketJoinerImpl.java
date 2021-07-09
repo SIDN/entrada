@@ -29,7 +29,7 @@ public class PacketJoinerImpl implements PacketJoiner {
 
   @Value("${entrada.icmp.enable}")
   private boolean icmpEnabled;
-  @Value("${entrada.cache.timeout:3}")
+  @Value("${entrada.cache.timeout:2}")
   private int cacheTimeoutConfig;
 
   private Map<RequestCacheKey, RequestCacheValue> requestCache = new HashMap<>();

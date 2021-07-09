@@ -36,7 +36,6 @@ import lombok.Data;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.ServerContext;
 import nl.sidnlabs.entrada.load.StateManager;
-import nl.sidnlabs.entrada.model.Row;
 
 
 /**
@@ -113,13 +112,15 @@ public class HistoricalMetricManager {
         .toString();
   }
 
-  public void update(Row row) {
-    if (!metricsEnabled || row.getMetrics() == null) {
+  @SuppressWarnings("unchecked")
+  public void update(@SuppressWarnings("rawtypes") List l) {
+    if (!metricsEnabled || l == null) {
       // do nothing
       return;
     }
 
-    for (Metric m : row.getMetrics()) {
+    List<Metric> metrics = (List<Metric>) l;
+    for (Metric m : metrics) {
       if (m != null) {
         update(m);
       }
@@ -161,15 +162,20 @@ public class HistoricalMetricManager {
    * trailing queries in later pcap files. duplicate timestamps get overwritten by graphite and only
    * the last timestamp value is used by graphite.
    */
-  public boolean flush() {
+  public void flush() {
     log.info("Flushing metrics to Graphite, size: {}", metricCache.size());
+
+    if (!metricsEnabled) {
+      // do nothing
+      return;
+    }
 
     int oldSize = metricCache.size();
 
     metricCache
         .entrySet()
         .stream()
-        .forEach(e -> log.info("Metric: {}  entries: {}", e.getKey(), e.getValue().size()));
+        .forEach(e -> log.info("Metric: {}  datapoints: {}", e.getKey(), e.getValue().size()));
 
     GraphiteSender graphite = new Graphite(host, port);
     try {
@@ -179,7 +185,6 @@ public class HistoricalMetricManager {
     } catch (Exception e) {
       // cannot connect connect to graphite
       log.error("Could not connect to Graphite", e);
-      return false;
     } finally {
       // remove sent metric, avoiding sending them again.
       metricCache.values().stream().forEach(this::trunc);
@@ -200,9 +205,6 @@ public class HistoricalMetricManager {
     log.info("Metrics processed: {}", metricCounter);
     log.info("Metrics count before flush: {}", oldSize);
     log.info("Metrics count after flush: {}", newSize);
-
-
-    return true;
   }
 
   public void clear() {

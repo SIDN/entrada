@@ -218,6 +218,15 @@ public class PacketProcessor {
   }
 
   public void execute() {
+    try {
+      execute_();
+    } finally {
+      // create new graph for each server
+      stopAkka();
+    }
+  }
+
+  public void execute_() {
     // search for input files
     List<String> inputFiles = scan();
     if (inputFiles.isEmpty()) {
@@ -317,8 +326,6 @@ public class PacketProcessor {
       // save unmatched packet state to file
       // the next pcap might have the missing responses
       persistState();
-      // create new graph for each server
-      stopAkka();
     }
 
     log.info("Ready, processed {} new files", fileCounter);

@@ -2,17 +2,17 @@ package nl.sidnlabs.entrada.model;
 
 import java.util.ArrayList;
 import java.util.List;
-import lombok.Data;
-import lombok.ToString;
-import lombok.Value;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.Setter;
 
-@Data
+@Getter
+@Setter
 public class Row {
 
   private ProtocolType type;
   private long time;
 
-  @ToString.Exclude
   private List<Column<?>> columns = new ArrayList<>(100);
 
   public Row(ProtocolType type, long time) {
@@ -25,7 +25,9 @@ public class Row {
     return this;
   }
 
-  @Value
+  @Getter
+  @Setter
+  @AllArgsConstructor
   public static class Column<T> {
     private String name;
     private T value;

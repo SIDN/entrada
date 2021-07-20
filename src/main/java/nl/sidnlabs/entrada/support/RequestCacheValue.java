@@ -20,18 +20,20 @@
 package nl.sidnlabs.entrada.support;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 import nl.sidnlabs.dnslib.message.Message;
 import nl.sidnlabs.pcap.packet.Packet;
 
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 public class RequestCacheValue {
 
   private Message message;
   private Packet packet;
-  private String filename;
+  // private String filename;
 
 }

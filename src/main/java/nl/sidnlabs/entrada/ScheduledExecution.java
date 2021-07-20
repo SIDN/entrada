@@ -12,7 +12,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.enrich.geoip.GeoIPService;
-import nl.sidnlabs.entrada.enrich.resolver.DnsResolverCheck;
 import nl.sidnlabs.entrada.file.FileManager;
 import nl.sidnlabs.entrada.load.PacketProcessor;
 
@@ -23,7 +22,6 @@ public class ScheduledExecution {
   private ServerContext serverCtx;
   private ApplicationContext ctx;
   private SharedContext sharedContext;
-  private List<DnsResolverCheck> resolverChecks;
   private List<FileManager> fileManagers;
 
   @Value("${entrada.nameservers}")
@@ -35,12 +33,10 @@ public class ScheduledExecution {
   private Timer processTimer;
 
   public ScheduledExecution(ServerContext serverCtx, ApplicationContext ctx, MeterRegistry registry,
-      SharedContext sharedContext, List<FileManager> fileManagers,
-      List<DnsResolverCheck> resolverChecks) {
+      SharedContext sharedContext, List<FileManager> fileManagers) {
 
     this.serverCtx = serverCtx;
     this.ctx = ctx;
-    this.resolverChecks = resolverChecks;
     this.sharedContext = sharedContext;
     this.fileManagers = fileManagers;
     processTimer = registry.timer("processor.execution.time");
@@ -58,8 +54,9 @@ public class ScheduledExecution {
     sharedContext.setExecutionStatus(true);
 
     log.info("Checking if maxmind DB is up to date");
+    // make sure the database are only downloaded once when using multiple geoip lookup instances
     geoIPService.initialize();
-    log.info("Start loading data for name servers: {}", servers);
+    log.info("Start loading data for: {}", servers);
 
     // create new processor each time, to avoid caches getting too big or having
     // memory leaks leading to OOM Exceptions
@@ -83,7 +80,7 @@ public class ScheduledExecution {
   }
 
   private void runForServer(String server, PacketProcessor processor) {
-    log.info("Start loading name data for server: {}", server);
+    log.info("Start loading data for: {}", server);
 
     if (!sharedContext.isEnabled()) {
       // processing not enabled
@@ -97,10 +94,10 @@ public class ScheduledExecution {
       // record time spent while processing all pcap files
       processTimer.record(processor::execute);
     } catch (Exception e) {
-      log.error("Error while processing pcap data for name server: {}", server, e);
+      log.error("Error while processing pcap data for: {}", server, e);
     }
 
-    log.info("Completed loading data for name server: {}", server);
+    log.info("Completed loading data for: {}", server);
   }
 
 }

@@ -1,24 +1,19 @@
 package nl.sidnlabs.entrada.metric;
 
 import java.util.Arrays;
-import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
-@Data
-public class MeanMetric implements Metric {
+public class MeanMetric extends AbstractMetric {
 
   private static final int MAX_SAMPLE_SIZE = 10000;
   private static final int INITIAL_SIZE = 1000;
 
-  private String name;
-  private long time;
   private int[] values = new int[INITIAL_SIZE];
   private int count;
 
   public MeanMetric(String name, int value, long time) {
-    this.name = name;
-    this.time = time;
+    super(name, value, time);
     update(value);
   }
 
@@ -35,6 +30,7 @@ public class MeanMetric implements Metric {
 
     values[count] = value;
     count++;
+    updated = true;
   }
 
 
@@ -56,7 +52,7 @@ public class MeanMetric implements Metric {
     return median;
   }
 
-  @Override
+
   public int getValue() {
     return (int) median();
   }

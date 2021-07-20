@@ -20,45 +20,38 @@
 package nl.sidnlabs.entrada.parquet.stream;
 
 import java.util.Calendar;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import org.apache.avro.Schema;
-import org.apache.avro.Schema.Field;
-import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
-import nl.sidnlabs.entrada.model.ProtocolType;
+import nl.sidnlabs.entrada.ServerContext;
 import nl.sidnlabs.entrada.model.Partition;
-import nl.sidnlabs.entrada.model.Row;
-import nl.sidnlabs.entrada.model.Row.Column;
+import nl.sidnlabs.entrada.model.ProtocolType;
 
 @Component("parquet-dns")
 @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class DNSParquetPacketWriterImpl extends AbstractParquetRowWriter {
 
   private static final String DNS_AVRO_SCHEMA = "/avro/dns-query.avsc";
-
   private Schema schema = schema(DNS_AVRO_SCHEMA);
-  private GenericRecord record;
-  private List<Field> fields;
-  private Map<String, Integer> fieldPosMap = new HashMap<>();
+  // private GenericRecord record;
+  // private List<Field> fields;
+  // private Map<String, Integer> fieldPosMap = new HashMap<>();
 
   public DNSParquetPacketWriterImpl(
       @Value("#{${entrada.parquet.filesize.max:128}*1024*1024}") int maxfilesize,
       @Value("#{${entrada.parquet.rowgroup.size:128}*1024*1024}") int rowgroupsize,
-      @Value("${entrada.parquet.page-row.limit:20000}") int pageRowLimit) {
-    super(maxfilesize, rowgroupsize, pageRowLimit);
+      @Value("${entrada.parquet.page-row.limit:20000}") int pageRowLimit, ServerContext ctx) {
+    super(maxfilesize, rowgroupsize, pageRowLimit, ctx);
 
-    this.fields = schema.getFields();
-    for (Field f : fields) {
-      fieldPosMap.put(f.name(), Integer.valueOf(f.pos()));
-    }
-    this.record = new GenericData.Record(schema);
+    // this.fields = schema.getFields();
+    // for (Field f : fields) {
+    // fieldPosMap.put(f.name(), Integer.valueOf(f.pos()));
+    // }
+    // this.record = new GenericData.Record(schema);
   }
 
   /**
@@ -68,13 +61,13 @@ public class DNSParquetPacketWriterImpl extends AbstractParquetRowWriter {
    * @param server the name server the row is linked to
    */
   @Override
-  public void write(Row row, String server) {
+  public void write(GenericRecord record, String server) {
     // NOTE: make sure not to do any expensive stuff here, this method is called
     // many times. cache stuff where possible
     // thats why we are not using the Avro GenericRecordBuilder
 
     if (writer == null) {
-      open(workLocation, server, "dns");
+      open();
     }
 
     rowCounter++;
@@ -83,13 +76,7 @@ public class DNSParquetPacketWriterImpl extends AbstractParquetRowWriter {
     }
 
     // use time from row for parquet row
-    cal.setTimeInMillis(row.getTime());
-
-    // reuse old record, first clear old values
-    clear();
-
-    // update fields with new values
-    update(row);
+    cal.setTimeInMillis(((Long) record.get("time")).longValue());
 
     // try to reuse the partition instance if possible
     if (isNewPartition(server)) {
@@ -98,19 +85,6 @@ public class DNSParquetPacketWriterImpl extends AbstractParquetRowWriter {
     }
 
     writer.write(record, schema, partition);
-  }
-
-  private void clear() {
-    for (Field f : fields) {
-      // builder.clear(f);
-      record.put(f.pos(), null);
-    }
-  }
-
-  private void update(Row row) {
-    for (Column c : row.getColumns()) {
-      record.put(fieldPosMap.get(c.getName()).intValue(), c.getValue());
-    }
   }
 
   private boolean isNewPartition(String server) {

@@ -36,14 +36,15 @@ import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
 import javax.annotation.PostConstruct;
+import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import com.google.common.collect.Multimap;
-import com.google.common.collect.TreeMultimap;
 import com.typesafe.config.Config;
 import akka.Done;
 import akka.actor.ActorSystem;
@@ -53,12 +54,16 @@ import akka.stream.FanOutShape2;
 import akka.stream.FlowShape;
 import akka.stream.Graph;
 import akka.stream.Outlet;
+import akka.stream.OverflowStrategy;
 import akka.stream.SinkShape;
+import akka.stream.UniformFanInShape;
 import akka.stream.UniformFanOutShape;
 import akka.stream.javadsl.Balance;
 import akka.stream.javadsl.Flow;
 import akka.stream.javadsl.GraphDSL;
+import akka.stream.javadsl.GraphDSL.Builder;
 import akka.stream.javadsl.Keep;
+import akka.stream.javadsl.Merge;
 import akka.stream.javadsl.RunnableGraph;
 import akka.stream.javadsl.Sink;
 import akka.stream.javadsl.Source;
@@ -66,13 +71,14 @@ import akka.stream.javadsl.Unzip;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.ServerContext;
 import nl.sidnlabs.entrada.SharedContext;
+import nl.sidnlabs.entrada.exception.ApplicationException;
 import nl.sidnlabs.entrada.file.FileManager;
 import nl.sidnlabs.entrada.file.FileManagerFactory;
-import nl.sidnlabs.entrada.load.stream.RowBuilderOperator;
 import nl.sidnlabs.entrada.metric.HistoricalMetricManager;
+import nl.sidnlabs.entrada.model.BaseMetricValues;
 import nl.sidnlabs.entrada.model.Partition;
 import nl.sidnlabs.entrada.model.ProtocolType;
-import nl.sidnlabs.entrada.model.Row;
+import nl.sidnlabs.entrada.model.RowBuilder;
 import nl.sidnlabs.entrada.service.ArchiveService;
 import nl.sidnlabs.entrada.service.PartitionService;
 import nl.sidnlabs.entrada.service.UploadService;
@@ -91,6 +97,7 @@ import nl.sidnlabs.pcap.packet.Datagram;
 import nl.sidnlabs.pcap.packet.DatagramPayload;
 import nl.sidnlabs.pcap.packet.FlowData;
 import nl.sidnlabs.pcap.packet.Packet;
+import nl.sidnlabs.pcap.packet.PacketFactory;
 import nl.sidnlabs.pcap.packet.TCPFlow;
 
 @Log4j2
@@ -103,17 +110,20 @@ public class PacketProcessor {
   @Value("${entrada.tcp.enable:true}")
   private boolean tcpEnabled;
 
-  @Value("${entrada.cache.timeout.tcp.flows}")
+  @Value("${entrada.icmp.enable:true}")
+  private boolean icmpEnabled;
+
+  @Value("#{${entrada.cache.timeout.tcp.flows}*1000}")
   private int cacheTimeoutTCPConfig;
 
-  @Value("${entrada.cache.timeout.ip.fragmented}")
+  @Value("#{${entrada.cache.timeout.ip.fragmented}*1000}")
   private int cacheTimeoutIPFragConfig;
 
   @Value("${entrada.inputstream.buffer:64}")
   private int bufferSizeConfig;
 
-  @Value("${entrada.icmp.enable}")
-  private boolean icmpEnabled;
+  @Value("${entrada.stream.buffer:16}")
+  private int streamBufferSize;
 
   @Value("${entrada.location.input}")
   private String inputLocation;
@@ -136,8 +146,14 @@ public class PacketProcessor {
   @Value("${entrada.writer.icmp.count:1}")
   private int icmpWriterCount;
 
-  @Value("${entrada.row.builder.count:1}")
-  private int rowbuilderCount;
+  @Value("${entrada.row.builder.dns.count:1}")
+  private int dnsRowbuilderCount;
+
+  @Value("${entrada.row.builder.icmp.count:1}")
+  private int icmpRowbuilderCount;
+
+  @Value("${entrada.row.decoder.count:2}")
+  private int rowDecoderCount;
 
   private PcapReader pcapReader;
   private ApplicationContext applicationContext;
@@ -152,24 +168,29 @@ public class PacketProcessor {
   private ServerContext serverCtx;
   private HistoricalMetricManager metricManager;
   private UploadService uploadService;
-  // maps with state, loaded at start and persisted at end
-  private Map<TCPFlow, FlowData> flows = new HashMap<>();
-  private Multimap<Datagram, DatagramPayload> datagrams = TreeMultimap.create();
+
+  final Integer DNS = Integer.valueOf(0);
+  final Integer ICMP = Integer.valueOf(1);
+  final Integer UNKWN = Integer.valueOf(-1);
 
   private Config akkaConfig;
   private ActorSystem system;
 
-  private RowBuilderOperator rowBuilder;
   private Graph<ClosedShape, List<CompletionStage<Done>>> graph;
   private List<RowWriter> writers = new ArrayList<>();
   private PacketJoiner joiner;
-  private IPDecoder ipDecoder;
+  private List<IPDecoder> ipDecoders = new ArrayList<>();
+  private RowBuilder dnsRowbuiler;
+  private RowBuilder icmpRowbuiler;
+
+  private boolean stateLoaded = false;
 
   public PacketProcessor(ServerContext serverCtx, StateManager persistenceManager,
       ArchiveService fileArchiveService, FileManagerFactory fileManagerFactory,
       PartitionService partitionService, HistoricalMetricManager historicalMetricManager,
       UploadService uploadService, SharedContext sharedContext, Config akkaConfig,
-      ApplicationContext applicationContext, RowBuilderOperator rowBuilder, PacketJoiner joiner) {
+      ApplicationContext applicationContext, PacketJoiner joiner,
+      @Qualifier("dns") RowBuilder dnsRowbuiler, @Qualifier("icmp") RowBuilder icmpRowbuiler) {
 
     this.serverCtx = serverCtx;
     this.stateManager = persistenceManager;
@@ -181,20 +202,16 @@ public class PacketProcessor {
     this.sharedContext = sharedContext;
     this.applicationContext = applicationContext;
     this.akkaConfig = akkaConfig;
-    this.rowBuilder = rowBuilder;
     this.joiner = joiner;
+    this.dnsRowbuiler = dnsRowbuiler;
+    this.icmpRowbuiler = icmpRowbuiler;
   }
 
   @PostConstruct
   private void init() {
-    // create deocder here, so we can offload the decoding to a separate thread
-    TCPDecoder tcpDecoder = null;
-    // can share decoders, decoding is single threaded in akka streams
-    DNSDecoder dnsDecoder = new DNSDecoder(false);
-    if (tcpEnabled) {
-      tcpDecoder = new TCPDecoder(dnsDecoder);
+    if (rowDecoderCount < 2) {
+      throw new ApplicationException("Config option entrada.row.decoder.count must be >= 2");
     }
-    ipDecoder = new IPDecoder(tcpDecoder, new UDPDecoder(dnsDecoder), new ICMPDecoder());
   }
 
   private void startAkka() {
@@ -212,8 +229,9 @@ public class PacketProcessor {
   }
 
   private void reset() {
-    ipDecoder.reset();
-    rowBuilder.reset();
+    ipDecoders.stream().forEach(IPDecoder::reset);
+    dnsRowbuiler.reset();
+    icmpRowbuiler.reset();
     joiner.reset();
   }
 
@@ -226,7 +244,11 @@ public class PacketProcessor {
     }
   }
 
-  public void execute_() {
+  private boolean isStateLoaded() {
+    return stateLoaded;
+  }
+
+  private void execute_() {
     // search for input files
     List<String> inputFiles = scan();
     if (inputFiles.isEmpty()) {
@@ -236,8 +258,6 @@ public class PacketProcessor {
 
     long partitionCheckTs = System.currentTimeMillis();
     long startAll = System.currentTimeMillis();
-    // load the state from the previous run
-    loadState();
     int fileCounter = 0;
 
     Map<String, Set<Partition>> createdPartitions = null;
@@ -259,6 +279,16 @@ public class PacketProcessor {
       if (!isAkkaStarted()) {
         // start akka system
         startAkka();
+      }
+
+      // only create akka graph once
+      if (graph == null) {
+        graph = createGraph();
+      }
+
+      if (!isStateLoaded()) {
+        // load the state from the previous run
+        loadState();
       }
 
       // clear counters
@@ -341,11 +371,11 @@ public class PacketProcessor {
     log.info("Packets/ms: {}", packetsMs);
     log.info("Bytes/ms: {}", bytessMs);
 
-    ipDecoder.printStats();
-    rowBuilder.printStats();
-    for (RowWriter w : writers) {
-      w.printStats();
-    }
+
+    ipDecoders.stream().forEach(IPDecoder::printStats);
+    dnsRowbuiler.printStats();
+    icmpRowbuiler.printStats();
+    writers.stream().forEach(RowWriter::printStats);
   }
 
   private void stop() {
@@ -403,24 +433,45 @@ public class PacketProcessor {
     partitions.entrySet().stream().forEach(e -> partitionService.create(e.getKey(), e.getValue()));
   }
 
+
+  private Integer protocol(Packet p) {
+    // protocol can be zero for special NULL and LAST packets, send those to DNS streams
+    if (p.getProtocol() == 0 || p.getProtocol() == PacketFactory.PROTOCOL_TCP
+        || p.getProtocol() == PacketFactory.PROTOCOL_UDP) {
+      return DNS;
+    } else if (p.getProtocol() == PacketFactory.PROTOCOL_ICMP_V4
+        || p.getProtocol() == PacketFactory.PROTOCOL_ICMP_V6) {
+      return ICMP;
+    }
+
+    return UNKWN;
+  }
+
+  private UniformFanOutShape<Packet, Packet> createProtocolPartitioner(
+      Builder<List<CompletionStage<Done>>> builder) {
+
+    return builder
+        .add(akka.stream.javadsl.Partition.create(Packet.class, 2, p -> this.protocol(p)));
+  }
+
   private Graph<ClosedShape, List<CompletionStage<Done>>> createGraph() {
 
-    final String svr = serverCtx.getServerInfo().getNormalizedName();
-    final List<Sink<Row, CompletionStage<Done>>> list = new ArrayList<>();
+    final String serverName = serverCtx.getServerInfo().getServer();
+    final List<Sink<GenericRecord, CompletionStage<Done>>> sinks = new ArrayList<>();
 
     // create sinks for dns
     for (int i = 0; i < dnsWriterCount; i++) {
-
+      // parquet-dns writers are not thread safe, create new instances
       RowWriter w = applicationContext.getBean("parquet-dns", RowWriter.class);
       writers.add(w);
 
-      Sink<Row, CompletionStage<Done>> s = Flow
-          .of(Row.class)
-          // .buffer(bufferSize, OverflowStrategy.backpressure())
-          .toMat(Sink.<Row>foreach(r -> w.write(r, svr)), Keep.right())
-          .async("writer-dispatcher");
+      Sink<GenericRecord, CompletionStage<Done>> s = Flow
+          .of(GenericRecord.class)
+          .buffer(1000, OverflowStrategy.backpressure())
+          .toMat(Sink.<GenericRecord>foreach(r -> w.write(r, serverName)), Keep.right())
+          .async("entrada-dispatcher");
 
-      list.add(s);
+      sinks.add(s);
     }
 
     // create sinks for icmp
@@ -429,122 +480,216 @@ public class PacketProcessor {
       RowWriter w = applicationContext.getBean("parquet-icmp", RowWriter.class);
       writers.add(w);
 
-      Sink<Row, CompletionStage<Done>> s = Flow
-          .of(Row.class)
-          // .buffer(bufferSize, OverflowStrategy.backpressure())
-          .toMat(Sink.<Row>foreach(r -> w.write(r, svr)), Keep.right())
-          .async("writer-dispatcher");
+      Sink<GenericRecord, CompletionStage<Done>> s = Flow
+          .of(GenericRecord.class)
+          .buffer(1000, OverflowStrategy.backpressure())
+          .toMat(Sink.<GenericRecord>foreach(r -> w.write(r, serverName)), Keep.right())
+          .async("entrada-dispatcher");
 
-      list.add(s);
+      sinks.add(s);
     }
 
-
     // create reuseable akka streams graph
-    return GraphDSL.create(list, (builder, outs) -> {
+    return GraphDSL.create(sinks, (builder, outs) -> {
+
+      final Executor ex = system.dispatchers().lookup("entrada-dispatcher");
+
+      // create sink for metrics
+      final SinkShape<BaseMetricValues> metricSink = createMetricsSink(builder);
+      final UniformFanInShape<BaseMetricValues, BaseMetricValues> METRIC_SINK_MERGE =
+          builder.add(Merge.create(2));
+      builder.from(METRIC_SINK_MERGE).to(metricSink);
 
       // create input source, reading pcap file on dedicated thread
       final Outlet<Packet> IN = builder
           .add(Source
               .fromJavaStream(() -> pcapReader.stream())
+              .buffer(streamBufferSize, OverflowStrategy.backpressure())
               // send last packet when pcap stream is done to let downstream operators cleanup/close
               .concat(Source.single(Packet.LAST))
-              .async("reader-dispatcher")
+              .async("entrada-dispatcher")
               .log("Akka-SRC"))
           .out();
 
-      // add step to decode packets (this is not threadsafe, don't exec parallel
-      // use single pinneddispatcher to prevent thread context-switch overhead
-      final FlowShape<Packet, Packet> DECODE = builder
+
+      // create operators for decoding the packets from pcap bytes
+      final List<FlowShape<Packet, Packet>> DECODERS = createDecoders(builder);
+      final UniformFanInShape<Packet, Packet> MERGE_DECODERS =
+          builder.add(Merge.create(rowDecoderCount));
+
+      // create partitioner, to create multiple 2 streams 1 for dns and 1 for icmp
+      final UniformFanOutShape<Packet, Packet> DECODER_PARTITIONER =
+          createDecoderPartitioner(builder);
+
+      builder.from(IN).toFanOut(DECODER_PARTITIONER);
+      // link each decoder to the upstream decoder partitioner and the downstream merge
+      for (int i = 0; i < DECODERS.size(); i++) {
+        builder.from(DECODER_PARTITIONER.out(i)).via(DECODERS.get(i)).viaFanIn(MERGE_DECODERS);
+      }
+
+      // create partition to split stream based on protocol type
+      final UniformFanOutShape<Packet, Packet> PROT_PARTITIONER =
+          createProtocolPartitioner(builder);
+
+      // Create ICMP flow
+      final FlowShape<Packet, Pair<GenericRecord, BaseMetricValues>> ICMP_ROW_BUILDER = builder
           .add(Flow
               .of(Packet.class)
-              // .buffer(bufferSize, OverflowStrategy.backpressure())
-              .map(p -> ipDecoder.decode(p))
-              .async("decoder-dispatcher"));
+              .buffer(streamBufferSize, OverflowStrategy.backpressure())
+              .mapAsyncUnordered(icmpRowbuilderCount, p -> CompletableFuture
+                  .supplyAsync(() -> icmpRowbuiler.build(p, serverName), ex)));
 
-      // add step to join packets (this is not threadsafe, don't exec parallel
+      // unzipper for row-builder output
+      final FanOutShape2<Pair<GenericRecord, BaseMetricValues>, GenericRecord, BaseMetricValues> ICMP_UNZIP_ROW_METRIC =
+          builder.add(Unzip.create(GenericRecord.class, BaseMetricValues.class));
+
+      // balancer for icmp writers
+      final UniformFanOutShape<GenericRecord, GenericRecord> ICMP_OUT_BALANCER =
+          builder.add(Balance.create(icmpWriterCount));
+
+      for (int i = dnsWriterCount; i < outs.size(); i++) {
+        // icmp outs are at end of the list after dns sinks
+        builder.from(ICMP_OUT_BALANCER).to(outs.get(i));
+      }
+
+      // connect everything
+      // builder -> unzipper
+      builder.from(ICMP_ROW_BUILDER).toInlet(ICMP_UNZIP_ROW_METRIC.in());
+      // unzipper packet -> writer balancer
+      builder.from(ICMP_UNZIP_ROW_METRIC.out0()).viaFanOut(ICMP_OUT_BALANCER);
+      // unzipper packet -> metric merge
+      builder.from(ICMP_UNZIP_ROW_METRIC.out1()).toFanIn(METRIC_SINK_MERGE);
+      // protocol partitioner -> icmp row builder
+      builder.from(PROT_PARTITIONER.out(ICMP.intValue())).via(ICMP_ROW_BUILDER);
+      // out from decoder merge to protocol partitioner
+      builder.from(MERGE_DECODERS).viaFanOut(PROT_PARTITIONER);
+
+      // Now add DNS flow
+
+      // add step to join packets (this is not thread safe, don't run this parallel
       final FlowShape<Packet, RowData> JOIN = builder
           .add(Flow
               .of(Packet.class)
-              // .buffer(bufferSize, OverflowStrategy.backpressure())
+              .buffer(streamBufferSize, OverflowStrategy.backpressure())
               .mapConcat(p -> joiner.join(p)));
 
-      // run rowbuilder on seperate theads from row-builder-dispatcher
-      final Executor rowBuilderEx = system.dispatchers().lookup("row-builder-dispatcher");
-      // building rows can be done parallel to increase throughput
-      final FlowShape<RowData, Pair<Row, List>> BUILD_ROW = builder
+      // from protocol partioner send dns packets to joiner
+      builder.from(PROT_PARTITIONER.out(DNS.intValue())).via(JOIN);
+
+      // create operator to build rows
+      final FlowShape<RowData, Pair<GenericRecord, BaseMetricValues>> DNS_ROW_BUILDER = builder
           .add(Flow
               .of(RowData.class)
-              // .buffer(bufferSize, OverflowStrategy.backpressure())
-              .mapAsyncUnordered(rowbuilderCount, rd -> CompletableFuture
-                  .supplyAsync(() -> rowBuilder.process(rd, svr), rowBuilderEx)));
+              .buffer(streamBufferSize, OverflowStrategy.backpressure())
+              .mapAsyncUnordered(dnsRowbuilderCount, rd -> CompletableFuture
+                  .supplyAsync(() -> dnsRowbuiler.build(rd, serverName), ex)));
 
-      // send rows to 2 substreams, 1 for writing row to parquet and 1 for sending metrics to
-      // grafana
-      final FanOutShape2<Pair<Row, List>, Row, List> UNZIP_ROW_METRIC =
-          builder.add(Unzip.create(Row.class, List.class));
 
-      final Integer DNS = Integer.valueOf(0);
-      final Integer ICMP = Integer.valueOf(1);
-      // create partitioner, to create a streams of dns packets and a streams of icmp packets
-      // each stream will be sent to pool of sinks
-      final UniformFanOutShape<Row, Row> PROT_PARTITIONER = builder
-          .add(akka.stream.javadsl.Partition
-              .create(Row.class, 2, e -> (e.getType() == ProtocolType.DNS) ? DNS : ICMP));
+      // from dns joiner -> row builder
+      builder.from(JOIN).via(DNS_ROW_BUILDER);
 
-      // create sink for metrics
-      SinkShape<List> metricSink = null;
-      if (metricsEnabled) {
-        metricSink = builder
-            .add(Flow
-                .of(List.class)
-                // .buffer(bufferSize, OverflowStrategy.backpressure())
-                .toMat(Sink.<List>foreach(r -> metricManager.update(r)), Keep.right())
-                .async("metrics-dispatcher"));
-      } else {
-        // ignore metrics output
-        metricSink = builder.add(Sink.<List>ignore());
+      // unzip, split row and metric into 2 separate streams
+      final FanOutShape2<Pair<GenericRecord, BaseMetricValues>, GenericRecord, BaseMetricValues> DNS_UNZIP_ROW_METRIC =
+          builder.add(Unzip.create(GenericRecord.class, BaseMetricValues.class));
+
+      // output from row builder to unzipper
+      builder.from(DNS_ROW_BUILDER).toInlet(DNS_UNZIP_ROW_METRIC.in());
+
+      // create balancer for dns writers
+      final UniformFanOutShape<GenericRecord, GenericRecord> DNS_WRITER_BALANCER =
+          builder.add(Balance.create(dnsWriterCount));
+
+      // link all balancer ports to dns sinks
+      for (int i = 0; i < dnsWriterCount; i++) {
+        // 1st get dns outs from list
+        builder.from(DNS_WRITER_BALANCER).to(outs.get(i));
       }
 
-      // send outputs of unzipper to correct downstream operators
-      builder.from(UNZIP_ROW_METRIC.out0()).viaFanOut(PROT_PARTITIONER);
-      builder.from(UNZIP_ROW_METRIC.out1()).to(metricSink);
+      // unzipper dns row -> writer balancer
+      builder.from(DNS_UNZIP_ROW_METRIC.out0()).viaFanOut(DNS_WRITER_BALANCER);
+      // unzipper metric -> metric merge
+      builder.from(DNS_UNZIP_ROW_METRIC.out1()).toFanIn(METRIC_SINK_MERGE);
 
-      // only add balancer to graph if dns and/or icmp writer pools >1 writer
-      // having shorter graph is more efficient
-      if (dnsWriterCount > 1) {
-        final UniformFanOutShape<Row, Row> DNS_OUT = builder.add(Balance.create(dnsWriterCount));
-        // connect partitioner to balancer
-        builder.from(PROT_PARTITIONER.out(0)).viaFanOut(DNS_OUT);
-        // connect the dns sinks to the corresponding balancer
-        for (int i = 0; i < dnsWriterCount; i++) {
-          // 1st get dns outs from list
-          builder.from(DNS_OUT).to(outs.get(i));
-        }
-      } else {
-        // single dns sink, do not use balancer
-        builder.from(PROT_PARTITIONER.out(0)).to(outs.get(0));
-      }
-
-      if (icmpWriterCount > 1) {
-        final UniformFanOutShape<Row, Row> ICMP_OUT = builder.add(Balance.create(icmpWriterCount));
-        builder.from(PROT_PARTITIONER.out(1)).viaFanOut(ICMP_OUT);
-        // connect the icmp sinks to the corresponding balancer
-        for (int i = dnsWriterCount; i < outs.size(); i++) {
-          // icmp outs are at end of the list after dns sinks
-          builder.from(ICMP_OUT).to(outs.get(i));
-        }
-      } else {
-        // single icmp sink, do not use balancer
-        builder.from(PROT_PARTITIONER.out(1)).to(outs.get(dnsWriterCount));
-      }
-
-      // create graph flow
-      builder.from(IN).via(DECODE).via(JOIN).via(BUILD_ROW).toInlet(UNZIP_ROW_METRIC.in());
-      // return reusable graph
       return ClosedShape.getInstance();
     });
   }
 
+  private List<FlowShape<Packet, Packet>> createDecoders(
+      Builder<List<CompletionStage<Done>>> builder) {
+
+    final Executor ex = system.dispatchers().lookup("entrada-dispatcher");
+
+    List<FlowShape<Packet, Packet>> decoders = new ArrayList<>();
+    for (int i = 0; i < rowDecoderCount; i++) {
+
+      // create deocder here, so we can offload the decoding to a separate thread
+      TCPDecoder tcpDecoder = null;
+      // can share decoders, decoding is single threaded in akka streams
+      DNSDecoder dnsDecoder = new DNSDecoder(false);
+      if (tcpEnabled) {
+        tcpDecoder = new TCPDecoder(dnsDecoder);
+      }
+      IPDecoder ipDecoder =
+          new IPDecoder(tcpDecoder, new UDPDecoder(dnsDecoder), new ICMPDecoder());
+
+      ipDecoders.add(ipDecoder);
+
+      FlowShape<Packet, Packet> d = builder
+          .add(Flow
+              .of(Packet.class)
+              .buffer(streamBufferSize, OverflowStrategy.backpressure())
+              .mapAsyncUnordered(1,
+                  p -> CompletableFuture.supplyAsync(() -> ipDecoder.decode(p), ex)));
+
+      decoders.add(d);
+
+    }
+
+    return decoders;
+  }
+
+  /**
+   * The same src/dst and dst/src combinations must be sent to the same decoder because decoders are
+   * stateful
+   * 
+   * @param p
+   * @return
+   */
+  private Integer decoderPartitionerSelector(Packet p) {
+    if (p.getSrcAddr() == null) {
+      return Integer.valueOf(0);
+    }
+
+    int hash = Math.abs(p.getSrcAddr().hashCode() - p.getDstAddr().hashCode());
+    return Integer.valueOf(hash % rowDecoderCount);
+  }
+
+  private UniformFanOutShape<Packet, Packet> createDecoderPartitioner(
+      Builder<List<CompletionStage<Done>>> builder) {
+
+    if (rowDecoderCount > 1) {
+      return builder
+          .add(akka.stream.javadsl.Partition
+              .create(Packet.class, rowDecoderCount, p -> decoderPartitionerSelector(p)));
+    }
+    return null;
+
+  }
+
+  private SinkShape<BaseMetricValues> createMetricsSink(
+      Builder<List<CompletionStage<Done>>> builder) {
+    if (metricsEnabled) {
+      return builder
+          .add(Flow
+              .of(BaseMetricValues.class)
+              .buffer(streamBufferSize, OverflowStrategy.backpressure())
+              .toMat(Sink.<BaseMetricValues>foreach(r -> metricManager.update(r)), Keep.right())
+              .async("entrada-dispatcher"));
+    }
+    // ignore metrics output
+    return builder.add(Sink.<BaseMetricValues>ignore());
+
+  }
 
   private void read(String file) {
     log.info("Start reading from file {}", file);
@@ -556,24 +701,20 @@ public class PacketProcessor {
     }
 
     try {
-      // only create akka graph once
-      if (graph == null) {
-        graph = createGraph();
-      }
 
       final List<CompletionStage<Done>> csList = RunnableGraph.fromGraph(graph).run(system);
       // wait until all graph sinks are done
       waitForGraphToComplete(csList);
 
       if (log.isDebugEnabled()) {
-        log.debug("Done with pcap decoding");
+        log.debug("Done executing Akka Streams graph");
       }
     } catch (Exception e) {
       // log all exception, should not happen
-      log.error("Got exception from PCAP reader", e);
+      log.error("Got exception running kka Streams graph", e);
     } finally {
       // clear expired cache entries
-      pcapReader.clearCache(cacheTimeoutTCPConfig * 1000, cacheTimeoutIPFragConfig * 1000);
+      pcapReader.clearCache(cacheTimeoutTCPConfig, cacheTimeoutIPFragConfig);
       // make sure the pcap reader is always closed to avoid leaks
       pcapReader.close();
     }
@@ -593,33 +734,42 @@ public class PacketProcessor {
     log.info("Write internal state to file");
 
     int datagramCount = 0;
+    int flowCount = 0;
     int cacheCount = 0;
     long startTs = System.currentTimeMillis();
 
     try {
       // persist tcp state
-      stateManager.write(flows);
+      for (IPDecoder id : ipDecoders) {
+        Map<TCPFlow, FlowData> flows = ((TCPDecoder) id.getTcpReader()).getFlows();
+        flowCount += flows.size();
+        stateManager.writeObject(flows);
+      }
 
-      if (datagrams != null) {
-        // persist IP datagrams
-        Map<Datagram, Collection<DatagramPayload>> outMap = new HashMap<>();
-        for (Map.Entry<Datagram, Collection<DatagramPayload>> entry : datagrams
-            .asMap()
-            .entrySet()) {
-          Collection<DatagramPayload> datagrams2persist = new ArrayList<>();
-          for (DatagramPayload sequencePayload : entry.getValue()) {
-            datagrams2persist.add(sequencePayload);
+      for (IPDecoder id : ipDecoders) {
+
+        if (id.getDatagrams() != null) {
+          // persist IP datagrams
+          Map<Datagram, Collection<DatagramPayload>> outMap = new HashMap<>();
+          for (Map.Entry<Datagram, Collection<DatagramPayload>> entry : id
+              .getDatagrams()
+              .asMap()
+              .entrySet()) {
+            Collection<DatagramPayload> datagrams2persist = new ArrayList<>();
+            for (DatagramPayload sequencePayload : entry.getValue()) {
+              datagrams2persist.add(sequencePayload);
+            }
+            outMap.put(entry.getKey(), datagrams2persist);
+            datagramCount++;
           }
-          outMap.put(entry.getKey(), datagrams2persist);
-          datagramCount++;
-        }
 
-        stateManager.write(outMap);
+          stateManager.writeObject(outMap);
+        }
       }
 
       if (joiner.getRequestCache() != null) {
         // persist request cache
-        stateManager.write(joiner.getRequestCache());
+        stateManager.writeObject(joiner.getRequestCache());
         cacheCount = joiner.getRequestCache().size();
       }
 
@@ -647,7 +797,7 @@ public class PacketProcessor {
 
     log.info("------------- State Persist Stats ------------------------");
     log.info("Persist state to disk time {}", System.currentTimeMillis() - startTs);
-    log.info("Persist {} TCP flows", flows.size());
+    log.info("Persist {} TCP flows", flowCount);
     log.info("Persist {} Datagrams", datagramCount);
     log.info("Persist {} DNS requests from cache", cacheCount);
     log.info("Persist {} unsent metrics", metricManager.size());
@@ -658,31 +808,44 @@ public class PacketProcessor {
   private void loadState() {
     log.info("Load internal state from file");
 
+    stateLoaded = true;
+    // datagrams = TreeMultimap.create();
+    int flowCount = 0;
+    int datagramCount = 0;
     try {
       if (!stateManager.stateAvailable()) {
         log.info("No state file found, do not try to load previous state");
+
+        // tcpFlows = new HashMap<>();
         return;
       }
-
-      // read persisted TCP sessions
-      flows = (Map<TCPFlow, FlowData>) stateManager.read();
-      if (flows == null) {
-        flows = new HashMap<>();
-      }
-
-      // read persisted IP datagrams
-      HashMap<Datagram, Collection<DatagramPayload>> inMap =
-          (HashMap<Datagram, Collection<DatagramPayload>>) stateManager.read();
-      if (inMap != null) {
-        for (Map.Entry<Datagram, Collection<DatagramPayload>> entry : inMap.entrySet()) {
-          for (DatagramPayload dgPayload : entry.getValue()) {
-            datagrams.put(entry.getKey(), dgPayload);
-          }
+      for (IPDecoder id : ipDecoders) {
+        // read persisted TCP sessions
+        Map<TCPFlow, FlowData> flows = (Map<TCPFlow, FlowData>) stateManager.readObject();
+        if (flows != null) {
+          flowCount += flows.size();
+          ((TCPDecoder) id.getTcpReader()).setFlows(flows);
         }
       }
+
+      for (IPDecoder id : ipDecoders) {
+        // read persisted IP datagrams
+        HashMap<Datagram, Collection<DatagramPayload>> inMap =
+            (HashMap<Datagram, Collection<DatagramPayload>>) stateManager.readObject();
+        if (inMap != null) {
+          Multimap<Datagram, DatagramPayload> datagrams = id.getDatagrams();
+          for (Map.Entry<Datagram, Collection<DatagramPayload>> entry : inMap.entrySet()) {
+            for (DatagramPayload dgPayload : entry.getValue()) {
+              datagrams.put(entry.getKey(), dgPayload);
+            }
+          }
+          datagramCount += datagrams.size();
+        }
+      }
+
       // read in previous request cache
       Map<RequestCacheKey, RequestCacheValue> requestCache =
-          (Map<RequestCacheKey, RequestCacheValue>) stateManager.read();
+          (Map<RequestCacheKey, RequestCacheValue>) stateManager.readObject();
       if (requestCache == null) {
         requestCache = new HashMap<>();
       }
@@ -692,9 +855,7 @@ public class PacketProcessor {
       if (metricsEnabled) {
         metricManager.loadState(stateManager);
       }
-    } catch (
-
-    Exception e) {
+    } catch (Exception e) {
       log.error("Error reading state file", e);
       // delete old corrupt state
       stateManager.delete();
@@ -702,10 +863,10 @@ public class PacketProcessor {
       stateManager.close();
     }
 
-    log.info("------------- Loader state stats -------------------------");
-    log.info("Loaded TCP state {} TCP flows", flows.size());
-    log.info("Loaded Datagram state {} Datagrams", datagrams.size());
-    // log.info("Loaded Request cache {} DNS requests", packetJoiner.getRequestCache().size());
+    log.info("------------- State loading Stats -------------------------");
+    log.info("Loaded TCP state {} TCP flows", flowCount);
+    log.info("Loaded Datagram state {} Datagrams", datagramCount);
+    log.info("Loaded Request cache {} DNS requests", joiner.getRequestCache().size());
     log.info("Loaded metrics state {} metrics", metricManager.size());
     log.info("----------------------------------------------------------");
   }
@@ -719,6 +880,8 @@ public class PacketProcessor {
       log.error("Error opening pcap file: " + file);
       return false;
     }
+
+    IPDecoder ipDecoder = new IPDecoder(null, null, null);
 
     try {
       InputStream decompressor =
@@ -738,8 +901,8 @@ public class PacketProcessor {
     // set the state of the reader, this can be loaded from disk and given
     // to the 1st reader. or it can be result of reader x and it is given to reader y
     // to have state continuity across readers.
-    pcapReader.setTcpFlows(flows);
-    pcapReader.setDatagrams(datagrams);
+    // pcapReader.setTcpFlows(tcpFlows);
+    // pcapReader.setDatagrams(datagrams);
 
 
     return true;

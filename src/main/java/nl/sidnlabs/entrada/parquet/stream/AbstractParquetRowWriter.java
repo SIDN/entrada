@@ -35,6 +35,7 @@ import nl.sidnlabs.entrada.file.FileManager;
 import nl.sidnlabs.entrada.file.FileManagerFactory;
 import nl.sidnlabs.entrada.load.RowWriter;
 import nl.sidnlabs.entrada.model.Partition;
+import nl.sidnlabs.entrada.model.ProtocolType;
 import nl.sidnlabs.entrada.parquet.ParquetPartitionWriter;
 import nl.sidnlabs.entrada.util.FileUtil;
 
@@ -45,7 +46,7 @@ public abstract class AbstractParquetRowWriter implements RowWriter {
 
   protected boolean open;
 
-  protected ServerContext serverCtx;
+  protected ServerContext ctx;
   protected int rowCounter;
   protected ParquetPartitionWriter writer;
   protected Schema avroSchema;
@@ -55,18 +56,22 @@ public abstract class AbstractParquetRowWriter implements RowWriter {
 
   @Value("${entrada.location.work}")
   protected String workLocation;
+  protected String serverHome;
 
   protected Calendar cal;
   protected Partition partition;
 
   protected Set<Partition> partitions = new HashSet<>();
 
-  public AbstractParquetRowWriter(int maxfilesize, int rowgroupsize, int pageRowLimit) {
+  public AbstractParquetRowWriter(int maxfilesize, int rowgroupsize, int pageRowLimit,
+      ServerContext ctx) {
     this.maxfilesize = maxfilesize;
     this.rowgroupsize = rowgroupsize;
     this.pageRowLimit = pageRowLimit;
+    this.ctx = ctx;
 
     this.cal = Calendar.getInstance();
+    this.serverHome = ctx.getServerInfo().getNormalizedName();
   }
 
   public Schema schema(String schema) {
@@ -85,8 +90,9 @@ public abstract class AbstractParquetRowWriter implements RowWriter {
     return avroSchema;
   }
 
-  public void open(String outputDir, String server, String name) {
-    String path = FileUtil.appendPath(outputDir, server, name);
+  public void open() {
+    String path =
+        FileUtil.appendPath(workLocation, serverHome, type() == ProtocolType.DNS ? "dns" : "icmp");
     log.info("Create new Parquet writer using path: " + path);
 
     // make sure the path exists

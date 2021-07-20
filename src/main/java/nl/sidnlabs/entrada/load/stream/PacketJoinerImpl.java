@@ -46,6 +46,7 @@ public class PacketJoinerImpl implements PacketJoiner {
   private int cacheTimeout;
   // stats counters
   private int counter = 0;
+  private int matchedCounter = 0;
   private int requestPacketCounter = 0;
   private int responsePacketCounter = 0;
 
@@ -69,7 +70,7 @@ public class PacketJoinerImpl implements PacketJoiner {
     counter++;
 
     if (counter % 100000 == 0) {
-      log.info("Received {} packets to join", counter);
+      log.info("Received {} packets to join", Integer.valueOf(counter));
     }
 
     if (isICMP(p)) {
@@ -79,7 +80,7 @@ public class PacketJoinerImpl implements PacketJoiner {
       }
       // handle icmp
       List<RowData> results = new ArrayList<>(1);
-      results.add(new RowData(p, null, null, null, false, p.getFilename()));
+      results.add(new RowData(p, null, null, null, false));
       return results;
 
     } else {
@@ -134,7 +135,7 @@ public class PacketJoinerImpl implements PacketJoiner {
       // packets for an ixfr/axfr.
       activeZoneTransfers
           .put(new RequestCacheKey(msg.getHeader().getId(), null, dnsPacket.getSrc(),
-              dnsPacket.getSrcPort(), 0), 0);
+              dnsPacket.getSrcPort(), 0), Integer.valueOf(0));
     }
 
     RequestCacheKey key = new RequestCacheKey(msg.getHeader().getId(), qname(msg),
@@ -145,7 +146,7 @@ public class PacketJoinerImpl implements PacketJoiner {
     }
 
     // put the query in the cache until we get a matching response
-    requestCache.put(key, new RequestCacheValue(msg, dnsPacket, fileName));
+    requestCache.put(key, new RequestCacheValue(msg, dnsPacket));
   }
 
   private RowData handDnsResponse(DNSPacket dnsPacket, Message msg, String fileName) {
@@ -158,7 +159,7 @@ public class PacketJoinerImpl implements PacketJoiner {
         dnsPacket.getDstPort(), 0);
     if (activeZoneTransfers.containsKey(key)) {
       if (log.isDebugEnabled()) {
-        log.debug("Ignore {} zone transfer response(s)", msg.getAnswer().size());
+        log.debug("Ignore {} zone transfer response(s)", Integer.valueOf(msg.getAnswer().size()));
       }
       // this response is part of an active zonetransfer.
       // only let the first response continue, reuse the "time" field of the RequestKey to
@@ -170,7 +171,7 @@ public class PacketJoinerImpl implements PacketJoiner {
       } else {
         // 1st response msg let it continue, add 1 to the map the indicate 1st resp msg
         // has been processed
-        activeZoneTransfers.put(key, 1);
+        activeZoneTransfers.put(key, Integer.valueOf(1));
       }
     }
     String qname = qname(msg);
@@ -192,9 +193,13 @@ public class PacketJoinerImpl implements PacketJoiner {
 
     if (request != null && request.getPacket() != null && request.getMessage() != null) {
 
+      matchedCounter++;
+      if (matchedCounter % 100000 == 0) {
+        log.info("Matched " + matchedCounter + " packets");
+      }
+
       // pushRow(
-      return new RowData(request.getPacket(), request.getMessage(), dnsPacket, msg, false,
-          fileName);
+      return new RowData(request.getPacket(), request.getMessage(), dnsPacket, msg, false);
       // );
 
     } else {
@@ -208,7 +213,7 @@ public class PacketJoinerImpl implements PacketJoiner {
 
       if (qname != null) {
         // pushRow(
-        return new RowData(null, null, dnsPacket, msg, false, fileName);
+        return new RowData(null, null, dnsPacket, msg, false);
         // );
       }
     }
@@ -233,10 +238,10 @@ public class PacketJoinerImpl implements PacketJoiner {
 
   public void logStats() {
     log.info("-------------- Done processing pcap file -----------------");
-    log.info("{} total DNS messages: ", counter);
-    log.info("{} requests: ", requestPacketCounter);
-    log.info("{} responses: ", responsePacketCounter);
-    log.info("{} request cache size: ", requestCache.size());
+    log.info("{} total DNS messages: ", Integer.valueOf(counter));
+    log.info("{} requests: ", Integer.valueOf(requestPacketCounter));
+    log.info("{} responses: ", Integer.valueOf(responsePacketCounter));
+    log.info("{} request cache size: ", Integer.valueOf(requestCache.size()));
   }
 
   public Map<RequestCacheKey, RequestCacheValue> getRequestCache() {
@@ -271,8 +276,7 @@ public class PacketJoinerImpl implements PacketJoiner {
             && cacheValue.getMessage().getHeader().getQr() == MessageType.QUERY) {
 
           expired
-              .add(new RowData(cacheValue.getPacket(), cacheValue.getMessage(), null, null, true,
-                  cacheValue.getFilename()));
+              .add(new RowData(cacheValue.getPacket(), cacheValue.getMessage(), null, null, true));
 
 
           if (log.isDebugEnabled()) {
@@ -286,12 +290,12 @@ public class PacketJoinerImpl implements PacketJoiner {
     }
 
     log.info("-------------- Joiner Cache Purge Stats ------------------");
-    log.info("Size before: {}", oldSize);
-    log.info("Purge TTL: {}", cacheTimeout);
-    log.info("Purge lastPacketTs: {}", lastPacketTs);
-    log.info("Purge max: {}", max);
-    log.info("Expired query's with rcode -1 (no response): {}", purgeCounter);
-    log.info("Size after: {}", requestCache.size());
+    log.info("Size before: {}", Integer.valueOf(oldSize));
+    log.info("Purge TTL: {}", Integer.valueOf(cacheTimeout));
+    log.info("Purge lastPacketTs: {}", Long.valueOf(lastPacketTs));
+    log.info("Purge max: {}", Long.valueOf(max));
+    log.info("Expired query's with rcode -1 (no response): {}", Integer.valueOf(purgeCounter));
+    log.info("Size after: {}", Integer.valueOf(requestCache.size()));
 
     return expired;
   }
@@ -299,6 +303,7 @@ public class PacketJoinerImpl implements PacketJoiner {
   @Override
   public void reset() {
     counter = 0;
+    matchedCounter = 0;
     requestPacketCounter = 0;
     responsePacketCounter = 0;
   }

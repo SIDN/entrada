@@ -22,8 +22,10 @@ package nl.sidnlabs.entrada.support;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
+@Setter
 @AllArgsConstructor
 @NoArgsConstructor
 public class RequestCacheKey {
@@ -34,12 +36,7 @@ public class RequestCacheKey {
   private int srcPort;
   // do not match request/response on time, this will never match
   // time is only use to allow setting a timeout on cached items
-  // @EqualsAndHashCode.Exclude
   private long time;
-
-  // public RequestCacheKey(int id, String qname, String src, int srcPort) {
-  // this(id, qname, src, srcPort, 0);
-  // }
 
   @Override
   public int hashCode() {

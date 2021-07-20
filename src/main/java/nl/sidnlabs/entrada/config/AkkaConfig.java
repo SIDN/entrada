@@ -17,7 +17,8 @@ public class AkkaConfig {
   private int dnsWriters;
   @Value("${entrada.writer.icmp.count:1}")
   private int icmpWriters;
-
+  @Value("${entrada.row.decoder.count:2}")
+  private int rowDecoderCount;
   @Value("${entrada.row.builder.count:1}")
   private int rowbuilderCount;
 
@@ -26,27 +27,32 @@ public class AkkaConfig {
   public Config config() {
 
     Map<String, Object> cfgMap = new HashMap<>();
-    cfgMap.putAll(createThreadConfig("reader-dispatcher", 1, "PinnedDispatcher"));
-    cfgMap.putAll(createThreadConfig("metrics-dispatcher", 1, "PinnedDispatcher"));
-    cfgMap.putAll(createThreadConfig("decoder-dispatcher", 1, "PinnedDispatcher"));
-    cfgMap
-        .putAll(
-            createThreadConfig("writer-dispatcher", dnsWriters + icmpWriters, "PinnedDispatcher"));
-    cfgMap.putAll(createThreadConfig("row-builder-dispatcher", rowbuilderCount, "Dispatcher"));
+    cfgMap.putAll(createForJoinPoolConfig("entrada-dispatcher"));
+    // cfgMap
+    // .putAll(createThreadConfig("entrada-writer-dispatcher", dnsWriters + icmpWriters, 1,
+    // "PinnedDispatcher"));
 
     return ConfigFactory.load().withFallback(ConfigFactory.parseMap(cfgMap));
-
   }
 
-  private Map<String, Object> createThreadConfig(String name, int poolSize, String dspType) {
-    log.info("Create akka dispatcher {} size = {}", name, poolSize);
+  private Map<String, Object> createForJoinPoolConfig(String name) {
+    log.info("Create akka fork-join-executor: {}", name);
 
     Map<String, Object> cfg = new HashMap<>();
-    cfg.put(name + ".type", dspType);
-    cfg.put(name + ".executor", "thread-pool-executor");
-    cfg.put(name + ".thread-pool-executor.fixed-pool-size", String.valueOf(poolSize));
-    cfg.put(name + ".throughput", "1");
+    cfg.put(name + ".type", "Dispatcher");
+    cfg.put(name + ".executor", "fork-join-executor");
     return cfg;
   }
+
+  // private Map<String, Object> createThreadConfig(String name, int size, int tp, String dp) {
+  // log.info("Create akka thread-pool-executor {}", name);
+  //
+  // Map<String, Object> cfg = new HashMap<>();
+  // cfg.put(name + ".type", dp);
+  // cfg.put(name + ".executor", "thread-pool-executor");
+  // cfg.put(name + ".thread-pool-executor.fixed-pool-size", "" + size);
+  // cfg.put(name + ".throughput", "" + tp);
+  // return cfg;
+  // }
 
 }

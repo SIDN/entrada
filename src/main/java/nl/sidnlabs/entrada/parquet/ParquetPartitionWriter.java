@@ -4,19 +4,20 @@ import java.util.HashMap;
 import java.util.Map;
 import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.model.Partition;
 import nl.sidnlabs.entrada.util.FileUtil;
 
 @Log4j2
-@Data
+@Getter
+@Setter
 public class ParquetPartitionWriter {
 
   private final static int MAX_SIZE_CHECK = 10000;
 
   private String path;
-  // default max 3 million packets per files max (+/- 125mb files)
   private int maxSize;
   private int rowgroupsize;
   private int pageRowLimit;

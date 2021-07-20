@@ -3,6 +3,10 @@ package nl.sidnlabs.entrada.model;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.lang3.NotImplementedException;
 import org.springframework.stereotype.Component;
 import akka.japi.Pair;
 import nl.sidnlabs.dnslib.message.Header;
@@ -19,349 +23,250 @@ import nl.sidnlabs.dnslib.message.records.edns0.PingOption;
 import nl.sidnlabs.dnslib.util.NameUtil;
 import nl.sidnlabs.entrada.ServerContext;
 import nl.sidnlabs.entrada.enrich.AddressEnrichment;
-import nl.sidnlabs.entrada.metric.HistoricalMetricManager;
-import nl.sidnlabs.entrada.metric.Metric;
 import nl.sidnlabs.entrada.support.RowData;
 import nl.sidnlabs.pcap.packet.Packet;
 import nl.sidnlabs.pcap.packet.PacketFactory;
 
-/**
- * Create output format independent row model
- *
- */
 @Component("dns")
-// @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class DNSRowBuilder extends AbstractRowBuilder {
 
   private static final int RCODE_QUERY_WITHOUT_RESPONSE = -1;
+  private static final int ID_UNKNOWN = -1;
+  private static final int OPCODE_UNKNOWN = -1;
 
+  private static final String DNS_AVRO_SCHEMA = "/avro/dns-query.avsc";
+
+  private Schema schema = schema(DNS_AVRO_SCHEMA);
 
   public DNSRowBuilder(List<AddressEnrichment> enrichments, ServerContext serverCtx) {
     super(enrichments, serverCtx);
   }
 
   @Override
-  public Pair<Row, List> build(RowData combo, String server) {
-    List<Metric> metrics = new ArrayList<>(20);
+  public Pair<GenericRecord, BaseMetricValues> build(Packet p, String server) {
+    throw new NotImplementedException();
+  }
 
-    packetCounter++;
-    if (packetCounter % STATUS_COUNT == 0) {
+  @Override
+  public Pair<GenericRecord, BaseMetricValues> build(RowData combo, String server) {
+    // try to be as efficient as possible, every object created here or expensive calculation can
+    // have major impact on performance
+    GenericRecord record = new GenericData.Record(schema);
+
+    counter++;
+    if (counter % STATUS_COUNT == 0) {
       showStatus();
     }
 
+    // dns request present
     Packet reqTransport = combo.getRequest();
     Message reqMessage = combo.getRequestMessage();
+    // dns response must be present
     Packet rspTransport = combo.getResponse();
     Message rspMessage = combo.getResponseMessage();
+    // safe request/response
+    Packet transport = combo.getRequest() != null ? combo.getRequest() : combo.getResponse();
+    Question question = null;
 
-    // get the time in milliseconds
-    long time = packetTime(reqTransport, rspTransport);
-    Row row = new Row(ProtocolType.DNS, time);
-
-    // get the question
-    Question question = lookupQuestion(reqMessage, rspMessage);
-
-    // get the headers from the messages.
-    Header requestHeader = null;
-    Header responseHeader = null;
-
-    if (reqMessage != null) {
-      requestHeader = reqMessage.getHeader();
-
-      row.addColumn(column("req_len", reqMessage.getBytes()));
-    }
-    if (rspMessage != null) {
-      responseHeader = rspMessage.getHeader();
-
-      row.addColumn(column("res_len", rspMessage.getBytes()));
-    }
-
-    // get the qname domain name details
-    String qname = question != null ? question.getQName() : null;
-    String domainname = null;
-    int labels = 0;
-    if (qname != null) {
-      domainname = domainCache.peek(qname);
-      labels = NameUtil.labels(qname);
-    }
-    if (domainname == null && qname != null) {
-      domainname = NameUtil.domainname(qname);
-      if (domainname != null) {
-        domainCache.put(qname, domainname);
-      }
-    } else {
-      domainCacheHits++;
-    }
+    DnsMetricValues mv = new DnsMetricValues(transport.getTsMilli());
 
     // check to see it a response was found, if not then use -1 value for rcode
     // otherwise use the rcode returned by the server in the response.
     // no response might be caused by rate limiting
     int rcode = RCODE_QUERY_WITHOUT_RESPONSE;
+    int id = ID_UNKNOWN;
+    int opcode = OPCODE_UNKNOWN;
 
-    // if no anycast location is encoded in the name then the anycast location will be null
-    row.addColumn(column("server_location", serverCtx.getServerInfo().getLocation()));
+    // fields from request
+    if (reqMessage != null) {
+      Header requestHeader = reqMessage.getHeader();
 
-    // add file name, makes it easier to find the original input pcap
-    // in case of of debugging.
-    row.addColumn(column("pcap_file", combo.getPcapFilename()));
+      id = requestHeader.getId();
+      opcode = requestHeader.getRawOpcode();
 
-    // add meta data for the client IP
-    if (reqTransport != null && reqTransport.getSrcAddr() != null) {
-      enrich(reqTransport.getSrc(), reqTransport.getSrcAddr(), "", row, false, metrics);
-    } else if (rspTransport != null && rspTransport.getDstAddr() != null) {
-      enrich(rspTransport.getDst(), rspTransport.getDstAddr(), "", row, false, metrics);
-    }
+      if (!reqMessage.getQuestions().isEmpty()) {
+        // request specific
 
-    if (reqTransport != null) {
-      // only add IP DF flag for server response packet
-      row.addColumn(column("req_ip_df", reqTransport.isDoNotFragment()));
+        question = reqMessage.getQuestions().get(0);
 
-      if (reqTransport.getTcpHandshake() != null) {
-        // found tcp handshake info
-        row.addColumn(column("tcp_hs_rtt", reqTransport.getTcpHandshake().rtt()));
+        record.put(FieldEnum.req_len.ordinal(), Integer.valueOf(reqMessage.getBytes()));
 
-        if (metricsEnabled) {
-          metrics
-              .add(HistoricalMetricManager
-                  .createMetric(HistoricalMetricManager.METRIC_IMPORT_TCP_HANDSHAKE_RTT,
-                      (int) reqTransport.getTcpHandshake().rtt(), time, false));
+        enrich(reqTransport.getSrc(), reqTransport.getSrcAddr(), "", record, false);
+
+        // only add IP DF flag for server response packet
+        record.put(FieldEnum.req_ip_df.ordinal(), Boolean.valueOf(reqTransport.isDoNotFragment()));
+
+        if (reqTransport.getTcpHandshakeRTT() != -1) {
+          // found tcp handshake info
+          record
+              .put(FieldEnum.tcp_hs_rtt.ordinal(),
+                  Integer.valueOf(reqTransport.getTcpHandshakeRTT()));
+
+          if (metricsEnabled) {
+            mv.tcpHandshake = reqTransport.getTcpHandshakeRTT();
+          }
         }
       }
+
+      record.put(FieldEnum.ttl.ordinal(), Integer.valueOf(reqTransport.getTtl()));
+      record.put(FieldEnum.rd.ordinal(), Boolean.valueOf(requestHeader.isRd()));
+      record.put(FieldEnum.z.ordinal(), Boolean.valueOf(requestHeader.isZ()));
+      record.put(FieldEnum.cd.ordinal(), Boolean.valueOf(requestHeader.isCd()));
+      record.put(FieldEnum.qdcount.ordinal(), Integer.valueOf(requestHeader.getQdCount()));
+      record.put(FieldEnum.q_tc.ordinal(), Boolean.valueOf(requestHeader.isTc()));
+      record.put(FieldEnum.q_ra.ordinal(), Boolean.valueOf(requestHeader.isRa()));
+      record.put(FieldEnum.q_ad.ordinal(), Boolean.valueOf(requestHeader.isAd()));
+
+      // ip fragments in the request
+      if (reqTransport.isFragmented()) {
+        record
+            .put(FieldEnum.frag.ordinal(), Integer.valueOf(reqTransport.getReassembledFragments()));
+      }
+
+      if (metricsEnabled) {
+        mv.dnsQuery = true;
+      }
+
+      // EDNS0 for request
+      writeRequestOptions(reqMessage, record);
     }
 
-    if (rspTransport != null) {
-      // only add IP DF flag for server response packet
-      row.addColumn(column("res_ip_df", rspTransport.isDoNotFragment()));
+    // fields from response
+    if (rspMessage != null) {
+      Header responseHeader = rspMessage.getHeader();
 
-      // these are the values that are retrieved from the response
-      if (rspMessage != null && responseHeader != null) {
-        // use rcode from response
+      id = responseHeader.getId();
+      opcode = responseHeader.getRawOpcode();
+
+      if (!rspMessage.getQuestions().isEmpty()) {
+        // response specific
+
+        if (question == null) {
+          question = rspMessage.getQuestions().get(0);
+        }
+
+        record.put(FieldEnum.res_len.ordinal(), Integer.valueOf(rspMessage.getBytes()));
+
+        enrich(rspTransport.getDst(), rspTransport.getDstAddr(), "", record, false);
+
+        // only add IP DF flag for server response packet
+        record.put(FieldEnum.res_ip_df.ordinal(), Boolean.valueOf(rspTransport.isDoNotFragment()));
+
+        // these are the values that are retrieved from the response
         rcode = responseHeader.getRawRcode();
 
-        row
-            .addColumn(column("id", responseHeader.getId()))
-            .addColumn(column("opcode", responseHeader.getRawOpcode()))
-            .addColumn(column("aa", responseHeader.isAa()))
-            .addColumn(column("tc", responseHeader.isTc()))
-            .addColumn(column("ra", responseHeader.isRa()))
-            .addColumn(column("ad", responseHeader.isAd()))
-            .addColumn(column("ancount", (int) responseHeader.getAnCount()))
-            .addColumn(column("arcount", (int) responseHeader.getArCount()))
-            .addColumn(column("nscount", (int) responseHeader.getNsCount()))
-            .addColumn(column("qdcount", (int) responseHeader.getQdCount()));
+        record.put(FieldEnum.aa.ordinal(), Boolean.valueOf(responseHeader.isAa()));
+        record.put(FieldEnum.tc.ordinal(), Boolean.valueOf(responseHeader.isTc()));
+        record.put(FieldEnum.ra.ordinal(), Boolean.valueOf(responseHeader.isRa()));
+        record.put(FieldEnum.ad.ordinal(), Boolean.valueOf(responseHeader.isAd()));
+        record.put(FieldEnum.ancount.ordinal(), Integer.valueOf(responseHeader.getAnCount()));
+        record.put(FieldEnum.arcount.ordinal(), Integer.valueOf(responseHeader.getArCount()));
+        record.put(FieldEnum.nscount.ordinal(), Integer.valueOf(responseHeader.getNsCount()));
+        record.put(FieldEnum.qdcount.ordinal(), Integer.valueOf(responseHeader.getQdCount()));
 
         // ip fragments in the response
         if (rspTransport.isFragmented()) {
           int frags = rspTransport.getReassembledFragments();
-          row.addColumn(column("resp_frag", frags));
+          record.put(FieldEnum.resp_frag.ordinal(), Integer.valueOf(frags));
         }
 
         // EDNS0 for response
-        writeResponseOptions(rspMessage, row);
+        writeResponseOptions(rspMessage, record);
         if (metricsEnabled) {
-          metrics
-              .add(HistoricalMetricManager
-                  .createMetric(HistoricalMetricManager.METRIC_IMPORT_DNS_RESPONSE_COUNT, 1, time,
-                      true));
-        }
+          mv.dnsResponse = true;
 
-      } // end of response only section
+        }
+      }
     }
+
+    String qname = null;
+    String domainname = null;
+    int labels = 0;
+
+    // a question is not always there, e.g. UPDATE message
+    if (question != null) {
+      // question can be from req or resp
+      // unassigned, private or unknown, get raw value
+      record.put(FieldEnum.qtype.ordinal(), Integer.valueOf(question.getQTypeValue()));
+      // unassigned, private or unknown, get raw value
+      record.put(FieldEnum.qclass.ordinal(), Integer.valueOf(question.getQClassValue()));
+
+      qname = question.getQName();
+      domainname = domainCache.peek(qname);
+      labels = NameUtil.labels(question.getQName());
+      if (domainname == null) {
+        domainname = NameUtil.domainname(question.getQName());
+        if (domainname != null) {
+          domainCacheInserted++;
+          domainCache.put(question.getQName(), domainname);
+        }
+      } else {
+        domainCacheHits++;
+      }
+
+      if (metricsEnabled) {
+        mv.dnsQtype = question.getQTypeValue();
+      }
+    }
+
+    record.put(FieldEnum.qname.ordinal(), qname);
+    record.put(FieldEnum.domainname.ordinal(), domainname);
+    record.put(FieldEnum.labels.ordinal(), Integer.valueOf(labels));
+
+    // if no anycast location is encoded in the name then the anycast location will be null
+    record.put(FieldEnum.server_location.ordinal(), serverCtx.getServerInfo().getLocation());
+
+    // add file name, makes it easier to find the original input pcap
+    // in case of of debugging.
+    record.put(FieldEnum.pcap_file.ordinal(), transport.getFilename());
 
     // values from request OR response now
     // if no request found in the request then use values from the response.
-    row
-        .addColumn(column("rcode", rcode))
-        .addColumn(column("time", time))
-        .addColumn(column("qname", qname))
-        .addColumn(column("domainname", domainname))
-        .addColumn(column("labels", labels))
-        .addColumn(column("ipv", ipVersion(reqTransport, rspTransport)))
+    record.put(FieldEnum.id.ordinal(), Integer.valueOf(id));
+    record.put(FieldEnum.opcode.ordinal(), Integer.valueOf(opcode));
+    record.put(FieldEnum.rcode.ordinal(), Integer.valueOf(rcode));
+    record.put(FieldEnum.time.ordinal(), Long.valueOf(transport.getTsMilli()));
+    record.put(FieldEnum.ipv.ordinal(), Integer.valueOf(transport.getIpVersion()));
 
-        .addColumn(column("dst", dstIpAdress(reqTransport, rspTransport)))
-        .addColumn(column("dstp", dstPort(reqTransport, rspTransport)))
-        .addColumn(column("srcp", srcPort(reqTransport, rspTransport)));
+    int prot = transport.getProtocol();
+    record.put(FieldEnum.prot.ordinal(), Integer.valueOf(prot));
 
-    if (!privacy) {
-      row.addColumn(column("src", srcIpAdress(reqTransport, rspTransport)));
-    }
+    // get ip src/dst from either request of response
+    if (reqTransport != null) {
+      record.put(FieldEnum.dst.ordinal(), reqTransport.getDst());
+      record.put(FieldEnum.dstp.ordinal(), Integer.valueOf(reqTransport.getDstPort()));
+      record.put(FieldEnum.srcp.ordinal(), Integer.valueOf(reqTransport.getSrcPort()));
 
-    int prot = protocol(reqTransport, rspTransport);
-    row.addColumn(column("prot", prot));
-    int opcode = opCode(requestHeader, responseHeader);
+      if (!privacy) {
+        record.put(FieldEnum.src.ordinal(), reqTransport.getSrc());
+      }
+    } else {
+      record.put(FieldEnum.dst.ordinal(), rspTransport.getSrc());
+      record.put(FieldEnum.dstp.ordinal(), Integer.valueOf(rspTransport.getSrcPort()));
+      record.put(FieldEnum.srcp.ordinal(), Integer.valueOf(rspTransport.getDstPort()));
 
-    // get values from the request only.
-    // may overwrite values from the response
-    if (reqTransport != null && requestHeader != null) {
-      row
-          .addColumn(column("ttl", reqTransport.getTtl()))
-          .addColumn(column("id", requestHeader.getId()))
-          .addColumn(column("opcode", opcode))
-          .addColumn(column("rd", requestHeader.isRd()))
-          .addColumn(column("z", requestHeader.isZ()))
-          .addColumn(column("cd", requestHeader.isCd()))
-          .addColumn(column("qdcount", (int) requestHeader.getQdCount()))
-          .addColumn(column("id", requestHeader.getId()))
-          .addColumn(column("q_tc", requestHeader.isTc()))
-          .addColumn(column("q_ra", requestHeader.isRa()))
-          .addColumn(column("q_ad", requestHeader.isAd()));
-
-      // ip fragments in the request
-      if (reqTransport.isFragmented()) {
-        int requestFrags = reqTransport.getReassembledFragments();
-        row.addColumn(column("frag", requestFrags));
-      } // end request only section
-      if (metricsEnabled) {
-        metrics
-            .add(HistoricalMetricManager
-                .createMetric(HistoricalMetricManager.METRIC_IMPORT_DNS_QUERY_COUNT, 1, time,
-                    true));
+      if (!privacy) {
+        record.put(FieldEnum.src.ordinal(), rspTransport.getDst());
       }
     }
-
-    // question
-    if (question != null) {
-      writeQuestion(question, row);
-      if (metricsEnabled) {
-        metrics
-            .add(HistoricalMetricManager
-                .createMetric(HistoricalMetricManager.METRIC_IMPORT_DNS_QTYPE + "."
-                    + question.getQTypeValue(), 1, time, true));
-      }
-
-    }
-
-    // EDNS0 for request
-    writeRequestOptions(reqMessage, row, metrics);
 
     // calculate the processing time
     if (reqTransport != null && rspTransport != null) {
-      row.addColumn(column("proc_time", rspTransport.getTsMilli() - reqTransport.getTsMilli()));
+      record
+          .put(FieldEnum.proc_time.ordinal(),
+              Long.valueOf(rspTransport.getTsMilli() - reqTransport.getTsMilli()));
     }
 
     // create metrics
     if (metricsEnabled) {
-      metrics
-          .add(HistoricalMetricManager
-              .createMetric(HistoricalMetricManager.METRIC_IMPORT_DNS_RCODE + "." + rcode, 1, time,
-                  true));
-
-      metrics
-          .add(HistoricalMetricManager
-              .createMetric(HistoricalMetricManager.METRIC_IMPORT_DNS_OPCODE + "." + opcode, 1,
-                  time, true));
-
-
-      if (reqTransport != null) {
-        if (reqTransport.getIpVersion() == 4) {
-          metrics
-              .add(HistoricalMetricManager
-                  .createMetric(HistoricalMetricManager.METRIC_IMPORT_DNS_RESPONSE_COUNT, 1, time,
-                      true));
-
-        } else {
-          metrics
-              .add(HistoricalMetricManager
-                  .createMetric(HistoricalMetricManager.METRIC_IMPORT_IP_VERSION_6_COUNT, 1, time,
-                      true));
-        }
-      } else if (rspTransport != null) {
-        if (rspTransport.getIpVersion() == 4) {
-          metrics
-              .add(HistoricalMetricManager
-                  .createMetric(HistoricalMetricManager.METRIC_IMPORT_IP_VERSION_4_COUNT, 1, time,
-                      true));
-        } else {
-          metrics
-              .add(HistoricalMetricManager
-                  .createMetric(HistoricalMetricManager.METRIC_IMPORT_IP_VERSION_6_COUNT, 1, time,
-                      true));
-        }
-      }
-
-      if (prot == PacketFactory.PROTOCOL_TCP) {
-        metrics
-            .add(HistoricalMetricManager
-                .createMetric(HistoricalMetricManager.METRIC_IMPORT_TCP_COUNT, 1, time, true));
-      } else {
-        metrics
-            .add(HistoricalMetricManager
-                .createMetric(HistoricalMetricManager.METRIC_IMPORT_UDP_COUNT, 1, time, true));
-      }
+      mv.dnsRcode = rcode;
+      mv.dnsOpcode = opcode;
+      mv.ipV4 = transport.getIpVersion() == 4;
+      mv.ProtocolUdp = prot == PacketFactory.PROTOCOL_UDP;
+      mv.country = (String) record.get(FieldEnum.country.ordinal());
     }
 
-    // row.setMetrics(metrics);
-    return Pair.create(row, metrics);
-  }
-
-  private int opCode(Header req, Header rsp) {
-
-    if (req != null) {
-      return req.getRawOpcode();
-    }
-
-    if (rsp != null) {
-      return rsp.getRawOpcode();
-    }
-
-    return -1;
-  }
-
-  private int srcPort(Packet reqTransport, Packet respTransport) {
-    return reqTransport != null ? reqTransport.getSrcPort() : respTransport.getDstPort();
-  }
-
-  private int dstPort(Packet reqTransport, Packet respTransport) {
-    return reqTransport != null ? reqTransport.getDstPort() : respTransport.getSrcPort();
-  }
-
-
-  private int protocol(Packet reqTransport, Packet respTransport) {
-    return reqTransport != null ? (int) reqTransport.getProtocol()
-        : (int) respTransport.getProtocol();
-  }
-
-  private int ipVersion(Packet reqTransport, Packet respTransport) {
-    return reqTransport != null ? (int) reqTransport.getIpVersion()
-        : (int) respTransport.getIpVersion();
-  }
-
-  private String dstIpAdress(Packet reqTransport, Packet respTransport) {
-    return reqTransport != null ? reqTransport.getDst() : respTransport.getSrc();
-  }
-
-  private String srcIpAdress(Packet reqTransport, Packet respTransport) {
-    return reqTransport != null ? reqTransport.getSrc() : respTransport.getDst();
-  }
-
-  /**
-   * Get the question, from the request packet if not available then from the response, which should
-   * be the same.
-   *
-   * @param reqMessage
-   * @param respMessage
-   * @return
-   */
-  private Question lookupQuestion(Message reqMessage, Message respMessage) {
-    if (reqMessage != null && !reqMessage.getQuestions().isEmpty()) {
-      return reqMessage.getQuestions().get(0);
-    } else if (respMessage != null && !respMessage.getQuestions().isEmpty()) {
-      return respMessage.getQuestions().get(0);
-    }
-    // should never get here
-    return null;
-  }
-
-  private long packetTime(Packet reqPacket, Packet respTransport) {
-    return (reqPacket != null) ? reqPacket.getTsMilli() : respTransport.getTsMilli();
-  }
-
-
-  private void writeQuestion(Question q, Row row) {
-    // unassigned, private or unknown, get raw value
-    row.addColumn(column("qtype", q.getQTypeValue()));
-    // unassigned, private or unknown, get raw value
-    row.addColumn(column("qclass", q.getQClassValue()));
+    return Pair.create(record, mv);
   }
 
   /**
@@ -370,7 +275,7 @@ public class DNSRowBuilder extends AbstractRowBuilder {
    * @param message
    * @param builder
    */
-  private void writeResponseOptions(Message message, Row row) {
+  private void writeResponseOptions(Message message, GenericRecord record) {
     if (message == null) {
       return;
     }
@@ -380,7 +285,7 @@ public class DNSRowBuilder extends AbstractRowBuilder {
       for (EDNS0Option option : opt.getOptions()) {
         if (option instanceof NSidOption) {
           String id = ((NSidOption) option).getId();
-          row.addColumn(column("edns_nsid", id != null ? id : ""));
+          record.put(FieldEnum.edns_nsid.ordinal(), id != null ? id : "");
 
           // this is the only server edns data we support, stop processing other options
           break;
@@ -396,71 +301,88 @@ public class DNSRowBuilder extends AbstractRowBuilder {
    * @param message
    * @param builder
    */
-  private void writeRequestOptions(Message message, Row row, List<Metric> metrics) {
-    if (message == null) {
-      return;
-    }
+  private void writeRequestOptions(Message message, GenericRecord record) {
 
     OPTResourceRecord opt = message.getPseudo();
     if (opt != null) {
-      row
-          .addColumn(column("edns_udp", (int) opt.getUdpPlayloadSize()))
-          .addColumn(column("edns_version", (int) opt.getVersion()))
-          .addColumn(column("edns_do", opt.isDnssecDo()));
 
-      List<Integer> otherEdnsOptions = new ArrayList<>();
+      record.put(FieldEnum.edns_udp.ordinal(), Integer.valueOf(opt.getUdpPlayloadSize()));
+      record.put(FieldEnum.edns_version.ordinal(), Integer.valueOf(opt.getVersion()));
+      record.put(FieldEnum.edns_do.ordinal(), Boolean.valueOf(opt.isDnssecDo()));
+
+      List<Integer> otherEdnsOptions = null;
       for (EDNS0Option option : opt.getOptions()) {
         if (option instanceof PingOption) {
-          row.addColumn(column("edns_ping", true));
+          record.put(FieldEnum.edns_ping.ordinal(), Boolean.TRUE);
         } else if (option instanceof DNSSECOption) {
           if (option.getCode() == DNSSECOption.OPTION_CODE_DAU) {
-            row.addColumn(column("edns_dnssec_dau", ((DNSSECOption) option).export()));
+            record.put(FieldEnum.edns_dnssec_dau.ordinal(), ((DNSSECOption) option).export());
           } else if (option.getCode() == DNSSECOption.OPTION_CODE_DHU) {
-            row.addColumn(column("edns_dnssec_dhu", ((DNSSECOption) option).export()));
+            record.put(FieldEnum.edns_dnssec_dhu.ordinal(), ((DNSSECOption) option).export());
           } else { // N3U
-            row.addColumn(column("edns_dnssec_n3u", ((DNSSECOption) option).export()));
+            record.put(FieldEnum.edns_dnssec_n3u.ordinal(), ((DNSSECOption) option).export());
           }
         } else if (option instanceof ClientSubnetOption) {
           ClientSubnetOption scOption = (ClientSubnetOption) option;
           // get client country and asn
 
           if (scOption.getAddress() != null) {
-            enrich(scOption.getAddress(), scOption.getInetAddress(), "edns_client_subnet_", row,
-                true, metrics);
+            enrich(scOption.getAddress(), scOption.getInetAddress(), "edns_client_subnet_", record,
+                true);
           }
 
           if (!privacy) {
-            row.addColumn(column("edns_client_subnet", scOption.export()));
+            record.put(FieldEnum.edns_client_subnet.ordinal(), scOption.export());
           }
 
 
         } else if (option instanceof PaddingOption) {
-          row.addColumn(column("edns_padding", ((PaddingOption) option).getLength()));
+          record
+              .put(FieldEnum.edns_padding.ordinal(),
+                  Integer.valueOf(((PaddingOption) option).getLength()));
         } else if (option instanceof KeyTagOption) {
           KeyTagOption kto = (KeyTagOption) option;
-          row.addColumn(column("edns_keytag_count", kto.getKeytags().size()));
+          record
+              .put(FieldEnum.edns_keytag_count.ordinal(), Integer.valueOf(kto.getKeytags().size()));
 
           if (!kto.getKeytags().isEmpty()) {
-            row
-                .addColumn(column("edns_keytag_list",
+            record
+                .put(FieldEnum.edns_keytag_list.ordinal(),
                     kto
                         .getKeytags()
                         .stream()
                         .map(Object::toString)
-                        .collect(Collectors.joining(","))));
+                        .collect(Collectors.joining(",")));
           }
         } else {
           // other
-          otherEdnsOptions.add(option.getCode());
+          if (otherEdnsOptions == null) {
+            otherEdnsOptions = new ArrayList<>();
+          }
+          otherEdnsOptions.add(Integer.valueOf(option.getCode()));
         }
       }
 
-      if (!otherEdnsOptions.isEmpty()) {
-        row
-            .addColumn(column("edns_other",
-                otherEdnsOptions.stream().map(Object::toString).collect(Collectors.joining(","))));
+      if (otherEdnsOptions != null && !otherEdnsOptions.isEmpty()) {
+        if (otherEdnsOptions.size() == 1) {
+          record.put(FieldEnum.edns_other.ordinal(), otherEdnsOptions.get(0).toString());
+        } else {
+          StringBuilder sb = new StringBuilder();
+          for (Integer option : otherEdnsOptions) {
+            sb.append(option.toString());
+          }
+
+          record.put(FieldEnum.edns_other.ordinal(), sb.toString());
+        }
+
       }
     }
   }
+
+  @Override
+  public ProtocolType type() {
+    return ProtocolType.DNS;
+  }
+
 
 }

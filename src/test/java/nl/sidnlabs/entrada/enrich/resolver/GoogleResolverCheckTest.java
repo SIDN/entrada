@@ -1,8 +1,9 @@
 package nl.sidnlabs.entrada.enrich.resolver;
 
-import static org.junit.Assert.assertTrue;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.net.InetAddress;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import com.google.common.net.InetAddresses;
 
 public class GoogleResolverCheckTest {
@@ -17,9 +18,9 @@ public class GoogleResolverCheckTest {
     check.init();
 
     InetAddress addr = InetAddresses.forString("173.194.169.16");
-    assertTrue("No resolver match found", check.match(addr.getHostAddress(), addr));
+    assertTrue(check.match(addr.getHostAddress(), addr), "No resolver match found");
     // try 2nd time see if cache is working correct
-    assertTrue("No resolver match found", check.match(addr.getHostAddress(), addr));
+    assertTrue(check.match(addr.getHostAddress(), addr), "No resolver match found");
   }
 
 }

@@ -32,10 +32,14 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import com.codahale.metrics.graphite.Graphite;
 import com.codahale.metrics.graphite.GraphiteSender;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.ServerContext;
 import nl.sidnlabs.entrada.load.StateManager;
+import nl.sidnlabs.entrada.model.BaseMetricValues;
+import nl.sidnlabs.entrada.model.DnsMetricValues;
+import nl.sidnlabs.entrada.model.IcmpMetricValues;
 
 
 /**
@@ -45,11 +49,9 @@ import nl.sidnlabs.entrada.load.StateManager;
  */
 @Log4j2
 @Component
-@Data
+@Getter
+@Setter
 public class HistoricalMetricManager {
-
-  // do not send last minute
-  private static final int FLUSH_TIMESTAMP_WAIT = 10;
 
   // dns stats
   public static final String METRIC_IMPORT_DNS_QUERY_COUNT = "dns.query";
@@ -71,8 +73,7 @@ public class HistoricalMetricManager {
 
   public static final String METRIC_IMPORT_TCP_HANDSHAKE_RTT = "tcp.rtt.handshake.median";
   public static final String METRIC_IMPORT_TCP_HANDSHAKE_RTT_SAMPLES = "tcp.rtt.handshake.samples";
-  public static final String METRIC_IMPORT_TCP_PACKET_RTT = "tcp.rtt.packet.median";
-  public static final String METRIC_IMPORT_TCP_PACKET_RTT_SAMPLES = "tcp.rtt.packet.samples";
+
 
   @Value("${management.metrics.export.graphite.enabled:true}")
   protected boolean metricsEnabled;
@@ -112,39 +113,68 @@ public class HistoricalMetricManager {
         .toString();
   }
 
-  @SuppressWarnings("unchecked")
-  public void update(@SuppressWarnings("rawtypes") List l) {
-    if (!metricsEnabled || l == null) {
+  public void update(BaseMetricValues mv) {
+
+    if (!metricsEnabled || mv == null) {
       // do nothing
       return;
     }
 
-    List<Metric> metrics = (List<Metric>) l;
-    for (Metric m : metrics) {
-      if (m != null) {
-        update(m);
+    Long time = Long.valueOf(roundToRetention(mv.time));
+
+    if (mv instanceof IcmpMetricValues) {
+      update(METRIC_IMPORT_ICMP_COUNT, time, 1, true);
+
+      return;
+    }
+
+    DnsMetricValues dmv = (DnsMetricValues) mv;
+    if (dmv.dnsQuery) {
+      update(METRIC_IMPORT_DNS_QUERY_COUNT, time, 1, true);
+    }
+
+    if (dmv.dnsResponse) {
+      update(METRIC_IMPORT_DNS_RESPONSE_COUNT, time, 1, true);
+    }
+
+    update(METRIC_IMPORT_DNS_QTYPE + "." + dmv.dnsQtype, time, 1, true);
+    update(METRIC_IMPORT_DNS_RCODE + "." + dmv.dnsRcode, time, 1, true);
+    update(METRIC_IMPORT_DNS_OPCODE + "." + dmv.dnsOpcode, time, 1, true);
+    update(METRIC_IMPORT_COUNTRY_COUNT + "." + dmv.country, time, 1, true);
+
+    if (dmv.ProtocolUdp) {
+      update(METRIC_IMPORT_UDP_COUNT, time, 1, true);
+    } else {
+      update(METRIC_IMPORT_TCP_COUNT, time, 1, true);
+      if (dmv.tcpHandshake != -1) {
+        update(METRIC_IMPORT_TCP_HANDSHAKE_RTT, time, dmv.tcpHandshake, true);
       }
+    }
+
+    if (dmv.ipV4) {
+      update(METRIC_IMPORT_IP_VERSION_4_COUNT, time, 1, true);
+    } else {
+      update(METRIC_IMPORT_IP_VERSION_6_COUNT, time, 1, true);
     }
   }
 
+  private void update(String name, Long time, int value, boolean simple) {
 
-  private void update(Metric m) {
-    long metricTime = round(m.getTime());
-    Long time = Long.valueOf(metricTime);
-    String metricName = createMetricName(m.getName());
-    TreeMap<Long, Metric> metricValues = metricCache.get(metricName);
+    TreeMap<Long, Metric> metricValues = metricCache.get(name);
 
     if (metricValues == null) {
       // create new treemap
       metricValues = new TreeMap<>();
+      Metric m = createMetric(name, value, time.longValue(), simple);
       metricValues.put(time, m);
-      metricCache.put(metricName, metricValues);
+      metricCache.put(m.getName(), metricValues);
     } else {
 
       Metric mHist = metricValues.get(time);
       if (mHist != null) {
-        mHist.update(m.getValue());
+        mHist.update(value);
       } else {
+        Metric m = createMetric(name, value, time.longValue(), simple);
         metricValues.put(time, m);
       }
     }
@@ -155,6 +185,12 @@ public class HistoricalMetricManager {
       return new SimpleMetric(metric, value, timestamp);
     }
     return new MeanMetric(metric, value, timestamp);
+  }
+
+  private long roundToRetention(long millis) {
+    // get retention from config
+    long secs = (millis / 1000);
+    return secs - (secs % retention);
   }
 
   /**
@@ -212,32 +248,40 @@ public class HistoricalMetricManager {
   }
 
   private void trunc(TreeMap<Long, Metric> metricValues) {
-    int max = metricValues.size() - FLUSH_TIMESTAMP_WAIT;
-    if (max < 1) {
+    int limit = metricValues.size() - 1;
+    if (limit == 0) {
       // no metrics to send
       return;
     }
-    List<Long> toDelete = metricValues.keySet().stream().limit(max).collect(Collectors.toList());
+    List<Long> toDelete = metricValues.keySet().stream().limit(limit).collect(Collectors.toList());
     toDelete.stream().forEach(metricValues::remove);
   }
 
   private void send(GraphiteSender graphite, TreeMap<Long, Metric> metricValues) {
-    // do not send the last FLUSH_TIMESTAMP_WAIT timestamps to prevent duplicate timestamps
+    // do not send the last timestamp to prevent duplicate timestamp
     // being sent to graphite. (only the last will count) and will cause dips in charts
-    int max = metricValues.size() - FLUSH_TIMESTAMP_WAIT;
-    if (max < 1) {
+    int limit = metricValues.size() - 1;
+    if (limit == 0) {
       // no metrics to send
       return;
     }
-    metricValues.entrySet().stream().limit(max).forEach(e -> send(graphite, e.getValue()));
+    metricValues.entrySet().stream().limit(limit).forEach(e -> send(graphite, e.getValue()));
   }
 
   private void send(GraphiteSender graphite, Metric m) {
+    if (m.isCached() && !m.isUpdated()) {
+      // old cached metric from previous run, was not updated this run
+      // most likely due to wrong order in pcaps.
+      // ignore this metric, otherwise we get dips in the charts
+      return;
+    }
+
+    String fqMetricName = createMetricName(m.getName());
     try {
-      graphite.send(m.getName(), String.valueOf(m.getValue()), m.getTime());
+      graphite.send(fqMetricName, String.valueOf(m.getValue()), m.getTime());
       if (m.getSamples() > 0) {
         graphite
-            .send(StringUtils.replace(m.getName(), ".median", ".samples"),
+            .send(StringUtils.replace(fqMetricName, ".median", ".samples"),
                 String.valueOf(m.getSamples()), m.getTime());
       }
     } catch (IOException e) {
@@ -246,14 +290,14 @@ public class HistoricalMetricManager {
   }
 
 
-  private long round(long millis) {
-    // get retention from config
-    long secs = (millis / 1000);
-    return secs - (secs % retention);
-  }
-
   public void persistState(StateManager stateManager) {
-    stateManager.write(metricCache);
+    for (Map.Entry<String, TreeMap<Long, Metric>> e : metricCache.entrySet()) {
+      for (Map.Entry<Long, Metric> metric : e.getValue().entrySet()) {
+        metric.getValue().setCached();
+      }
+
+    }
+    stateManager.writeObject(metricCache);
   }
 
   public int size() {
@@ -261,7 +305,7 @@ public class HistoricalMetricManager {
   }
 
   public void loadState(StateManager stateManager) {
-    metricCache = (Map<String, TreeMap<Long, Metric>>) stateManager.read();
+    metricCache = (Map<String, TreeMap<Long, Metric>>) stateManager.readObject();
     if (metricCache == null) {
       metricCache = new HashMap<>();
     }

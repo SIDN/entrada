@@ -1,11 +1,11 @@
 package nl.sidnlabs.entrada;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import nl.sidnlabs.dnslib.types.ResourceRecordType;
 import nl.sidnlabs.pcap.PcapReader;
 import nl.sidnlabs.pcap.packet.DNSPacket;

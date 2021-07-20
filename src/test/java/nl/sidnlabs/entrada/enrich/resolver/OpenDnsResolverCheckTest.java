@@ -1,11 +1,11 @@
 package nl.sidnlabs.entrada.enrich.resolver;
 
-import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.net.util.SubnetUtils;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import nl.sidnlabs.entrada.util.IpUtil;
 import nl.sidnlabs.entrada.util.StringUtil;
 
@@ -19,7 +19,7 @@ public class OpenDnsResolverCheckTest {
     check.setTimeout(5);
 
     List<String> ips = check.fetch();
-    assertTrue("No IPs found", ips.size() > 0);
+    assertTrue(ips.size() > 0, "No IPs found");
   }
 
 

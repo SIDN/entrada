@@ -10,7 +10,6 @@ import nl.sidnlabs.entrada.enrich.AddressEnrichment;
 public class ResolverEnrichment implements AddressEnrichment {
 
   private List<DnsResolverCheck> resolverChecks;
-  // private String value;
 
   public ResolverEnrichment(List<DnsResolverCheck> resolverChecks) {
     this.resolverChecks = resolverChecks;
@@ -18,11 +17,6 @@ public class ResolverEnrichment implements AddressEnrichment {
       check.init();
     }
   }
-
-  // @Override
-  // public String getValue() {
-  // return value;
-  // }
 
   /**
    * Check if the IP address is linked to a known open resolver operator

@@ -36,18 +36,18 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.math.NumberUtils;
 import org.apache.commons.lang3.time.DateUtils;
 import org.apache.commons.net.util.SubnetUtils;
-import org.cache2k.Cache;
-import org.cache2k.Cache2kBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import com.google.common.base.Charsets;
 import com.google.common.hash.BloomFilter;
 import com.google.common.hash.Funnels;
 import com.googlecode.ipv6.IPv6Address;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.log4j.Log4j2;
 
 @Log4j2
-@Data
+@Getter
+@Setter
 public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
   private List<FastIpSubnet> matchers4 = new ArrayList<>();
@@ -59,7 +59,7 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   @Value("${public-resolver.match.cache.size:10000}")
   private int maxMatchCacheSize;
 
-  private Cache<String, Boolean> hitCache;
+  // private Cache<String, Boolean> hitCache;
 
   private BloomFilter<String> ipv4Filter;
 
@@ -75,9 +75,9 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
     load(file);
 
-    if (hitCache == null) {
-      hitCache = new Cache2kBuilder<String, Boolean>() {}.entryCapacity(maxMatchCacheSize).build();
-    }
+    // if (hitCache == null) {
+    // hitCache = new Cache2kBuilder<String, Boolean>() {}.entryCapacity(maxMatchCacheSize).build();
+    // }
   }
 
   private void createIpV4BloomFilter(List<String> subnets) {
@@ -201,9 +201,9 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
   protected abstract String getFilename();
 
-  private Boolean cached(String address) {
-    return hitCache.peek(address);
-  }
+  // private Boolean cached(String address) {
+  // return hitCache.peek(address);
+  // }
 
   private boolean isIpv4(String address) {
     return address.indexOf('.') != -1;
@@ -216,10 +216,10 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   @Override
   public boolean match(String address, InetAddress inetAddress) {
 
-    Boolean value = cached(address);
-    if (value != null) {
-      return true;
-    }
+    // Boolean value = cached(address);
+    // if (value != null) {
+    // return true;
+    // }
 
     if (isIpv4(address)) {
       // do v4 check only
@@ -238,7 +238,7 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   private boolean checkv4(String address, InetAddress inetAddress) {
     for (FastIpSubnet sn : matchers4) {
       if (sn.contains(inetAddress)) {
-        addToCache(address);
+        // addToCache(address);
         return true;
       }
     }
@@ -249,16 +249,16 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     IPv6Address v6 = IPv6Address.fromInetAddress(inetAddress);
     for (FastIpV6Subnet sn : matchers6) {
       if (sn.contains(v6)) {
-        addToCache(address);
+        // addToCache(address);
         return true;
       }
     }
     return false;
   }
 
-  private void addToCache(String address) {
-    hitCache.put(address, Boolean.TRUE);
-  }
+  // private void addToCache(String address) {
+  // hitCache.put(address, Boolean.TRUE);
+  // }
 
   @Override
   public int getMatcherCount() {
@@ -274,7 +274,7 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     // delete all cache and bloomfilter structures, makes them
     // avail for garbage collection and prevents incorrect data in
     // the filter when the source data is changed
-    hitCache.clear();
+    // hitCache.clear();
     ipv4Filter = null;
   }
 

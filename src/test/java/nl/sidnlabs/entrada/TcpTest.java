@@ -1,9 +1,9 @@
 package nl.sidnlabs.entrada;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import nl.sidnlabs.dnslib.message.Message;
 import nl.sidnlabs.dnslib.types.MessageType;
 import nl.sidnlabs.dnslib.types.ResourceRecordType;

@@ -12,13 +12,15 @@ import org.apache.parquet.avro.AvroParquetWriter;
 import org.apache.parquet.column.ParquetProperties.WriterVersion;
 import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
-import lombok.Value;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.experimental.NonFinal;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.exception.ApplicationException;
 
 @Log4j2
-@Value
+@Getter
+@Setter
 public class ParquetPartition<T> {
 
   private static Configuration conf = new Configuration();

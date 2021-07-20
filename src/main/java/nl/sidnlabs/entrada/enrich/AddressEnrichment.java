@@ -6,8 +6,6 @@ public interface AddressEnrichment {
 
   String match(String address, InetAddress inetAddress);
 
-  // String getValue();
-
   String getColumn();
 
 }

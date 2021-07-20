@@ -20,59 +20,58 @@
 package nl.sidnlabs.entrada.parquet.stream;
 
 import java.util.Calendar;
-import java.util.List;
-import org.apache.avro.Schema.Field;
+import org.apache.avro.Schema;
 import org.apache.avro.generic.GenericRecord;
-import org.apache.avro.generic.GenericRecordBuilder;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
-import nl.sidnlabs.entrada.model.ProtocolType;
+import nl.sidnlabs.entrada.ServerContext;
 import nl.sidnlabs.entrada.model.Partition;
-import nl.sidnlabs.entrada.model.Row;
+import nl.sidnlabs.entrada.model.ProtocolType;
 
 @Component("parquet-icmp")
 @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class ICMPParquetPacketWriterImpl extends AbstractParquetRowWriter {
 
   private static final String ICMP_AVRO_SCHEMA = "/avro/icmp-packet.avsc";
+  private Schema schema = schema(ICMP_AVRO_SCHEMA);
 
-  private GenericRecordBuilder builder;
-  private List<Field> fields;
+  // private GenericRecordBuilder builder;
+  // private List<Field> fields;
 
   public ICMPParquetPacketWriterImpl(
       @Value("#{${entrada.parquet.filesize.max:128}*1024*1024}") int maxfilesize,
       @Value("#{${entrada.parquet.rowgroup.size:128}*1024*1024}") int rowgroupsize,
-      @Value("${entrada.parquet.page-row.limit:20000}") int pageRowLimit) {
-    super(maxfilesize, rowgroupsize, pageRowLimit);
+      @Value("${entrada.parquet.page-row.limit:20000}") int pageRowLimit, ServerContext ctx) {
+    super(maxfilesize, rowgroupsize, pageRowLimit, ctx);
 
-    this.builder = recordBuilder(ICMP_AVRO_SCHEMA);
-    this.fields = schema(ICMP_AVRO_SCHEMA).getFields();
+    // this.builder = recordBuilder(ICMP_AVRO_SCHEMA);
+    // this.fields = schema(ICMP_AVRO_SCHEMA).getFields();
   }
 
   @Override
-  public void write(Row row, String server) {
+  public void write(GenericRecord record, String server) {
     if (writer == null) {
-      open(workLocation, server, "icmp");
+      open();
     }
 
     rowCounter++;
     if (rowCounter % STATUS_COUNT == 0) {
       showStatus();
     }
-    cal.setTimeInMillis(row.getTime());
+    cal.setTimeInMillis(((Long) record.get("time")).longValue());
 
     // reuse old builder, first clear old values
-    for (Field f : fields) {
-      builder.clear(f);
-    }
+    // for (Field f : fields) {
+    // builder.clear(f);
+    // }
 
     // map all the columns in the row to the avro record fields
-    row.getColumns().stream().forEach(c -> {
-      builder.set(c.getName(), c.getValue());
-    });
+    // row.getColumns().stream().forEach(c -> {
+    // builder.set(c.getName(), c.getValue());
+    // });
 
     // create the actual record and write to parquet file
 
@@ -94,8 +93,10 @@ public class ICMPParquetPacketWriterImpl extends AbstractParquetRowWriter {
 
     }
 
-    GenericRecord record = builder.build();
-    writer.write(record, schema(ICMP_AVRO_SCHEMA), partition);
+    writer.write(record, schema, partition);
+
+    // GenericRecord record = builder.build();
+    // writer.write(record, schema(ICMP_AVRO_SCHEMA), partition);
   }
 
   @Override

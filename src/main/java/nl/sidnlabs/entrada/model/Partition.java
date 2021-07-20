@@ -2,9 +2,9 @@ package nl.sidnlabs.entrada.model;
 
 import org.apache.commons.lang3.StringUtils;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 
-@Data
+@Getter
 @Builder
 public class Partition {
 

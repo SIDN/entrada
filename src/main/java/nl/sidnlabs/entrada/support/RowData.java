@@ -20,16 +20,17 @@
 package nl.sidnlabs.entrada.support;
 
 import lombok.AllArgsConstructor;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import nl.sidnlabs.dnslib.message.Message;
 import nl.sidnlabs.pcap.packet.Packet;
 
-@Data
+@Getter
+@Setter
 @AllArgsConstructor
 public class RowData {
 
-  public static final RowData NULL =
-      new RowData(null, null, null, null, false, null);
+  public static final RowData NULL = new RowData(null, null, null, null, false);
 
   private Packet request;
   private Message requestMessage;
@@ -37,6 +38,5 @@ public class RowData {
   private Message responseMessage;
   // true if this packet has expired from cache
   private boolean expired;
-  private String pcapFilename;
 
 }

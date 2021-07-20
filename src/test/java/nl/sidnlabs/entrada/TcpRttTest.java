@@ -1,11 +1,12 @@
 package nl.sidnlabs.entrada;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.List;
 import java.util.stream.Collectors;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import nl.sidnlabs.pcap.PcapReader;
 import nl.sidnlabs.pcap.packet.Packet;
 
@@ -18,10 +19,7 @@ public class TcpRttTest extends AbstractTest {
     List<Packet> pckts = reader.stream().collect(Collectors.toList());
     assertEquals(2, pckts.size());
 
-    long count = pckts
-        .stream()
-        .filter(p -> p.getTcpHandshake() != null && p.getTcpHandshake().rtt() > 0)
-        .count();
+    long count = pckts.stream().filter(p -> p.getTcpHandshakeRTT() > 0).count();
     assertEquals(1, count);
   }
 
@@ -33,10 +31,7 @@ public class TcpRttTest extends AbstractTest {
 
     // retransmission of client SYN packets, the decoder must ignore the tcp handshake
     // because it is unclear to which packet the server responded.
-    long count = pckts
-        .stream()
-        .filter(p -> p.getTcpHandshake() != null && p.getTcpHandshake().rtt() > 0)
-        .count();
+    long count = pckts.stream().filter(p -> p.getTcpHandshakeRTT() > 0).count();
     assertEquals(0, count);
   }
 
@@ -49,9 +44,9 @@ public class TcpRttTest extends AbstractTest {
     assertEquals(2, pckts.size());
 
     // 1st packet only has handshake
-    assertNotNull(pckts.get(0).getTcpHandshake());
+    assertTrue(pckts.get(0).getTcpHandshakeRTT() > 0);
 
-    assertNull(pckts.get(1).getTcpHandshake());
+    assertFalse(pckts.get(1).getTcpHandshakeRTT() > 0);
   }
 
   @Test
@@ -62,7 +57,7 @@ public class TcpRttTest extends AbstractTest {
     assertEquals(4, pckts.size());
 
     // 1st packet only has handshake
-    assertNotNull(pckts.get(0).getTcpHandshake());
+    assertTrue(pckts.get(0).getTcpHandshakeRTT() > 0);
   }
 
   @Test

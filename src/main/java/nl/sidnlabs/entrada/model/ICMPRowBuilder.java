@@ -1,7 +1,10 @@
 package nl.sidnlabs.entrada.model;
 
-import java.util.ArrayList;
 import java.util.List;
+import org.apache.avro.Schema;
+import org.apache.avro.generic.GenericData;
+import org.apache.avro.generic.GenericRecord;
+import org.apache.commons.lang3.NotImplementedException;
 import org.springframework.stereotype.Component;
 import akka.japi.Pair;
 import nl.sidnlabs.dnslib.message.Header;
@@ -11,8 +14,6 @@ import nl.sidnlabs.dnslib.message.records.edns0.OPTResourceRecord;
 import nl.sidnlabs.dnslib.util.NameUtil;
 import nl.sidnlabs.entrada.ServerContext;
 import nl.sidnlabs.entrada.enrich.AddressEnrichment;
-import nl.sidnlabs.entrada.metric.HistoricalMetricManager;
-import nl.sidnlabs.entrada.metric.Metric;
 import nl.sidnlabs.entrada.support.RowData;
 import nl.sidnlabs.pcap.packet.DNSPacket;
 import nl.sidnlabs.pcap.packet.ICMPPacket;
@@ -21,28 +22,34 @@ import nl.sidnlabs.pcap.packet.Packet;
 @Component("icmp")
 public class ICMPRowBuilder extends AbstractRowBuilder {
 
+  private static final String ICMP_AVRO_SCHEMA = "/avro/icmp-packet.avsc";
+
+  private Schema schema = schema(ICMP_AVRO_SCHEMA);
+
   public ICMPRowBuilder(List<AddressEnrichment> enrichments, ServerContext serverCtx) {
     super(enrichments, serverCtx);
   }
 
   @Override
-  public Pair<Row, List> build(RowData combo, String server) {
-    List<Metric> metrics = new ArrayList<>(1);
+  public Pair<GenericRecord, BaseMetricValues> build(RowData combo, String server) {
+    throw new NotImplementedException();
+  }
 
-    ICMPPacket icmpPacket = (ICMPPacket) combo.getRequest();
-    if (metricsEnabled) {
-      metrics
-          .add(HistoricalMetricManager
-              .createMetric(HistoricalMetricManager.METRIC_IMPORT_UDP_COUNT, 1,
-                  icmpPacket.getTsMilli(), true));
-    }
+  @Override
+  public Pair<GenericRecord, BaseMetricValues> build(Packet p, String server) {
+
+    GenericRecord record = new GenericData.Record(schema);
+
+    ICMPPacket icmpPacket = (ICMPPacket) p;
+
+    IcmpMetricValues mv = new IcmpMetricValues(icmpPacket.getTsMilli());
 
     Packet originalPacket = null;
     Message dnsResponseMessage = null;
     ICMPPacket originalICMPPacket = null;
 
-    packetCounter++;
-    if (packetCounter % STATUS_COUNT == 0) {
+    counter++;
+    if (counter % STATUS_COUNT == 0) {
       showStatus();
     }
 
@@ -58,11 +65,7 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
       originalICMPPacket = (ICMPPacket) originalPacket;
     }
 
-
-    // get the time in milliseconds
-    Row row = new Row(ProtocolType.ICMP, icmpPacket.getTsMilli());
-
-    enrich(icmpPacket.getSrc(), icmpPacket.getSrcAddr(), "ip_", row, false, metrics);
+    enrich(icmpPacket.getSrc(), icmpPacket.getSrcAddr(), "ip_", record, false);
 
     // icmp payload
     Question q = null;
@@ -84,7 +87,7 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
       if (domainname == null && qname != null) {
         domainname = NameUtil.domainname(qname);
         if (domainname != null) {
-          domainCache.put(qname, domainname);
+          domainCache.putIfAbsent(qname, domainname);
         }
       } else {
         domainCacheHits++;
@@ -94,105 +97,112 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
     }
 
     // values from query now.
-    row
-        .addColumn(column("time", icmpPacket.getTsMilli()))
-        .addColumn(column("icmp_type", icmpPacket.getType()))
-        .addColumn(column("icmp_code", icmpPacket.getCode()))
-        .addColumn(column("icmp_echo_client_type", icmpPacket.getClientType()))
-        .addColumn(column("ip_ttl", icmpPacket.getTtl()))
-        .addColumn(column("ip_v", (int) icmpPacket.getIpVersion()))
-        .addColumn(column("ip_dst", icmpPacket.getDst()))
-        .addColumn(column("l4_prot", (int) icmpPacket.getProtocol()))
-        .addColumn(column("l4_srcp", icmpPacket.getSrcPort()))
-        .addColumn(column("l4_dstp", icmpPacket.getDstPort()))
-        // size of ip packet incl headers
-        .addColumn(column("ip_len", icmpPacket.getTotalLength()));
+
+    record.put("time", Long.valueOf(icmpPacket.getTsMilli()));
+    record.put("icmp_type", Integer.valueOf(icmpPacket.getType()));
+    record.put("icmp_code", Integer.valueOf(icmpPacket.getCode()));
+    record.put("icmp_echo_client_type", Integer.valueOf(icmpPacket.getClientType()));
+    record.put("ip_ttl", Integer.valueOf(icmpPacket.getTtl()));
+    record.put("ip_v", Integer.valueOf(icmpPacket.getIpVersion()));
+    record.put("ip_dst", icmpPacket.getDst());
+    record.put("l4_prot", Integer.valueOf(icmpPacket.getProtocol()));
+    record.put("l4_srcp", Integer.valueOf(icmpPacket.getSrcPort()));
+    record.put("l4_dstp", Integer.valueOf(icmpPacket.getDstPort()));
+    // size of ip packet incl headers
+    record.put("ip_len", Integer.valueOf(icmpPacket.getTotalLength()));
 
     if (icmpPacket.getMtu() > 0) {
-      row.addColumn(column("icmp_ip_mtu", icmpPacket.getMtu()));
+      record.put("icmp_ip_mtu", Integer.valueOf(icmpPacket.getMtu()));
     }
 
     if (!privacy) {
-      row.addColumn(column("ip_src", icmpPacket.getSrc()));
+      record.put("ip_src", icmpPacket.getSrc());
     }
     // add file name
-    row.addColumn(column("pcap_file", combo.getPcapFilename()));
+    record.put("pcap_file", p.getFilename());
 
-    row.addColumn(column("server", server));
+    record.put("server", server);
     // if no anycast location is encoded in the name then the anycast server name and location will
     // be null
     // only store this column in case of anycast, to save storage space.
     // the server name can be determined with the "svr" column
-    row.addColumn(column("server_location", serverCtx.getServerInfo().getLocation()));
+    record.put("server_location", serverCtx.getServerInfo().getLocation());
 
     // orig packet from payload
 
     if (originalPacket != null && originalPacket != Packet.NULL) {
 
-      row
-          .addColumn(column("orig_ip_ttl", originalPacket.getTtl()))
-          .addColumn(column("orig_ip_v", (int) originalPacket.getIpVersion()))
-          .addColumn(column("orig_ip_dst", originalPacket.getDst()))
-          .addColumn(column("orig_l4_prot", (int) originalPacket.getProtocol()))
-          .addColumn(column("orig_l4_srcp", originalPacket.getSrcPort()))
-          .addColumn(column("orig_l4_dstp", originalPacket.getDstPort()))
-          // size of ip packet incl headers
-          .addColumn(column("orig_ip_len", originalPacket.getTotalLength()));
+      record.put("orig_ip_ttl", Integer.valueOf(originalPacket.getTtl()));
+      record.put("orig_ip_v", Integer.valueOf(originalPacket.getIpVersion()));
+      record.put("orig_ip_dst", originalPacket.getDst());
+      record.put("orig_l4_prot", Integer.valueOf(originalPacket.getProtocol()));
+      record.put("orig_l4_srcp", Integer.valueOf(originalPacket.getSrcPort()));
+      record.put("orig_l4_dstp", Integer.valueOf(originalPacket.getDstPort()));
+      // size of ip packet incl headers
+      record.put("orig_ip_len", Integer.valueOf(originalPacket.getTotalLength()));
 
       if (!privacy) {
-        row.addColumn(column("orig_ip_src", originalPacket.getSrc()));
+        record.put("orig_ip_src", originalPacket.getSrc());
       }
 
       if (originalICMPPacket != null) {
-        row
-            .addColumn(column("orig_icmp_type", originalICMPPacket.getType()))
-            .addColumn(column("orig_icmp_code", originalICMPPacket.getCode()))
-            .addColumn(column("orig_icmp_echo_client_type", originalICMPPacket.getClientType()));
+
+        record.put("orig_icmp_type", Integer.valueOf(originalICMPPacket.getType()));
+        record.put("orig_icmp_code", Integer.valueOf(originalICMPPacket.getCode()));
+        record
+            .put("orig_icmp_echo_client_type", Integer.valueOf(originalICMPPacket.getClientType()));
       }
 
       if (dnsResponseMessage != null) {
         // orig dns response from icmp packet
-        row
-            .addColumn(column("orig_dns_len", originalPacket.getPayloadLength())) // get the size
-                                                                                  // from the
-            // reassembled udp header of
-            // the original udp response
-            .addColumn(column("orig_dns_id", dnsResponseHdr.getId()))
-            .addColumn(column("orig_dns_qname", qname))
-            .addColumn(column("orig_dns_domainname", domainname))
-            .addColumn(column("orig_dns_aa", dnsResponseHdr.isAa()))
-            .addColumn(column("orig_dns_tc", dnsResponseHdr.isTc()))
-            .addColumn(column("orig_dns_rd", dnsResponseHdr.isRd()))
-            .addColumn(column("orig_dns_ra", dnsResponseHdr.isRa()))
-            .addColumn(column("orig_dns_z", dnsResponseHdr.isZ()))
-            .addColumn(column("orig_dns_ad", dnsResponseHdr.isAd()))
-            .addColumn(column("orig_dns_cd", dnsResponseHdr.isCd()))
-            .addColumn(column("orig_dns_ancount", (int) dnsResponseHdr.getAnCount()))
-            .addColumn(column("orig_dns_arcount", (int) dnsResponseHdr.getArCount()))
-            .addColumn(column("orig_dns_nscount", (int) dnsResponseHdr.getNsCount()))
-            .addColumn(column("orig_dns_qdcount", (int) dnsResponseHdr.getQdCount()))
-            .addColumn(column("orig_dns_rcode", dnsResponseHdr.getRawRcode()))
-            .addColumn(column("orig_dns_opcode", dnsResponseHdr.getRawOpcode()))
-            .addColumn(column("orig_dns_labels", labels));
+
+        record.put("orig_dns_len", Integer.valueOf(originalPacket.getPayloadLength())); // get the
+                                                                                        // size
+        // from the
+        // reassembled udp header of
+        // the original udp response
+        record.put("orig_dns_id", Integer.valueOf(dnsResponseHdr.getId()));
+        record.put("orig_dns_qname", qname);
+        record.put("orig_dns_domainname", domainname);
+        record.put("orig_dns_aa", Boolean.valueOf(dnsResponseHdr.isAa()));
+        record.put("orig_dns_tc", Boolean.valueOf(dnsResponseHdr.isTc()));
+        record.put("orig_dns_rd", Boolean.valueOf(dnsResponseHdr.isRd()));
+        record.put("orig_dns_ra", Boolean.valueOf(dnsResponseHdr.isRa()));
+        record.put("orig_dns_z", Boolean.valueOf(dnsResponseHdr.isZ()));
+        record.put("orig_dns_ad", Boolean.valueOf(dnsResponseHdr.isAd()));
+        record.put("orig_dns_cd", Boolean.valueOf(dnsResponseHdr.isCd()));
+        record.put("orig_dns_ancount", Integer.valueOf(dnsResponseHdr.getAnCount()));
+        record.put("orig_dns_arcount", Integer.valueOf(dnsResponseHdr.getArCount()));
+        record.put("orig_dns_nscount", Integer.valueOf(dnsResponseHdr.getNsCount()));
+        record.put("orig_dns_qdcount", Integer.valueOf(dnsResponseHdr.getQdCount()));
+        record.put("orig_dns_rcode", Integer.valueOf(dnsResponseHdr.getRawRcode()));
+        record.put("orig_dns_opcode", Integer.valueOf(dnsResponseHdr.getRawOpcode()));
+        record.put("orig_dns_labels", Integer.valueOf(labels));
 
         if (q != null) {
           // unassinged, private or unknown, get raw value
-          row.addColumn(column("orig_dns_qtype", q.getQTypeValue()));
-          // unassinged, private or unknown, get raw value
-          row.addColumn(column("orig_dns_qclass", q.getQClassValue()));
+          record.put("orig_dns_qtype", Integer.valueOf(q.getQTypeValue()));
+          // unassinged, private or unknown, get raw value)
+          record.put("orig_dns_qclass", Integer.valueOf(q.getQClassValue()));
         }
 
         OPTResourceRecord opt = dnsResponseMessage.getPseudo();
         if (opt != null) {
-          row
-              .addColumn(column("orig_dns_edns_udp", (int) opt.getUdpPlayloadSize()))
-              .addColumn(column("orig_dns_edns_version", (int) opt.getVersion()))
-              .addColumn(column("orig_dns_edns_do", opt.isDnssecDo()));
+
+          record.put("orig_dns_edns_udp", Integer.valueOf(opt.getUdpPlayloadSize()));
+          record.put("orig_dns_edns_version", Integer.valueOf(opt.getVersion()));
+          record.put("orig_dns_edns_do", Boolean.valueOf(opt.isDnssecDo()));
         }
       }
     }
 
-    return Pair.create(row, metrics);
+    return Pair.create(record, mv);
   }
+
+  @Override
+  public ProtocolType type() {
+    return ProtocolType.ICMP;
+  }
+
 
 }

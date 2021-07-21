@@ -51,4 +51,9 @@ public class Partition {
     return path;
   }
 
+  @Override
+  public String toString() {
+    return toPath();
+  }
+
 }

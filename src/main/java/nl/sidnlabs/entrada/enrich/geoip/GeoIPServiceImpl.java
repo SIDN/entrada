@@ -53,7 +53,6 @@ import nl.sidnlabs.entrada.util.FileUtil;
  */
 @Log4j2
 @Component
-// @Scope(value = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class GeoIPServiceImpl implements GeoIPService {
 
   // free dbs
@@ -202,7 +201,6 @@ public class GeoIPServiceImpl implements GeoIPService {
   public Optional<CountryResponse> lookupCountry(InetAddress ip) {
     try {
       return geoReader.tryCountry(ip);
-      // return Optional.ofNullable(geoReader.country(ip).getCountry().getIsoCode());
     } catch (Exception e) {
       log.error("Maxmind lookup error for: {}", ip, e);
     }
@@ -224,7 +222,6 @@ public class GeoIPServiceImpl implements GeoIPService {
 
       // use free version
       return asnReader.tryAsn(ip);
-      // return asn(r.getAutonomousSystemNumber(), r.getAutonomousSystemOrganization(), ip);
 
     } catch (Exception e) {
       log.error("Maxmind error for IP: {}", ip, e);

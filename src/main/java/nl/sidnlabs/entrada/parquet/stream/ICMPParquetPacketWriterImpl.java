@@ -38,17 +38,11 @@ public class ICMPParquetPacketWriterImpl extends AbstractParquetRowWriter {
   private static final String ICMP_AVRO_SCHEMA = "/avro/icmp-packet.avsc";
   private Schema schema = schema(ICMP_AVRO_SCHEMA);
 
-  // private GenericRecordBuilder builder;
-  // private List<Field> fields;
-
   public ICMPParquetPacketWriterImpl(
       @Value("#{${entrada.parquet.filesize.max:128}*1024*1024}") int maxfilesize,
       @Value("#{${entrada.parquet.rowgroup.size:128}*1024*1024}") int rowgroupsize,
       @Value("${entrada.parquet.page-row.limit:20000}") int pageRowLimit, ServerContext ctx) {
     super(maxfilesize, rowgroupsize, pageRowLimit, ctx);
-
-    // this.builder = recordBuilder(ICMP_AVRO_SCHEMA);
-    // this.fields = schema(ICMP_AVRO_SCHEMA).getFields();
   }
 
   @Override
@@ -62,16 +56,6 @@ public class ICMPParquetPacketWriterImpl extends AbstractParquetRowWriter {
       showStatus();
     }
     cal.setTimeInMillis(((Long) record.get("time")).longValue());
-
-    // reuse old builder, first clear old values
-    // for (Field f : fields) {
-    // builder.clear(f);
-    // }
-
-    // map all the columns in the row to the avro record fields
-    // row.getColumns().stream().forEach(c -> {
-    // builder.set(c.getName(), c.getValue());
-    // });
 
     // create the actual record and write to parquet file
 
@@ -94,9 +78,6 @@ public class ICMPParquetPacketWriterImpl extends AbstractParquetRowWriter {
     }
 
     writer.write(record, schema, partition);
-
-    // GenericRecord record = builder.build();
-    // writer.write(record, schema(ICMP_AVRO_SCHEMA), partition);
   }
 
   @Override

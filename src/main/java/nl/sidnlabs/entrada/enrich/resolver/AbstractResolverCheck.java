@@ -59,8 +59,6 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   @Value("${public-resolver.match.cache.size:10000}")
   private int maxMatchCacheSize;
 
-  // private Cache<String, Boolean> hitCache;
-
   private BloomFilter<String> ipv4Filter;
 
   public void init() {
@@ -74,10 +72,6 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     }
 
     load(file);
-
-    // if (hitCache == null) {
-    // hitCache = new Cache2kBuilder<String, Boolean>() {}.entryCapacity(maxMatchCacheSize).build();
-    // }
   }
 
   private void createIpV4BloomFilter(List<String> subnets) {
@@ -201,9 +195,6 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
   protected abstract String getFilename();
 
-  // private Boolean cached(String address) {
-  // return hitCache.peek(address);
-  // }
 
   private boolean isIpv4(String address) {
     return address.indexOf('.') != -1;
@@ -215,11 +206,6 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
   @Override
   public boolean match(String address, InetAddress inetAddress) {
-
-    // Boolean value = cached(address);
-    // if (value != null) {
-    // return true;
-    // }
 
     if (isIpv4(address)) {
       // do v4 check only
@@ -256,10 +242,6 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     return false;
   }
 
-  // private void addToCache(String address) {
-  // hitCache.put(address, Boolean.TRUE);
-  // }
-
   @Override
   public int getMatcherCount() {
     return matchers4.size() + matchers6.size();
@@ -271,10 +253,6 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
       log.debug("{} Clear match cache", getName());
     }
 
-    // delete all cache and bloomfilter structures, makes them
-    // avail for garbage collection and prevents incorrect data in
-    // the filter when the source data is changed
-    // hitCache.clear();
     ipv4Filter = null;
   }
 

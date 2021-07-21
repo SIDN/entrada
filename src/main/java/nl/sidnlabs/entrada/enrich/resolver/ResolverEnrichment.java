@@ -6,7 +6,6 @@ import org.springframework.stereotype.Component;
 import nl.sidnlabs.entrada.enrich.AddressEnrichment;
 
 @Component
-// @Scope(value = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class ResolverEnrichment implements AddressEnrichment {
 
   private List<DnsResolverCheck> resolverChecks;

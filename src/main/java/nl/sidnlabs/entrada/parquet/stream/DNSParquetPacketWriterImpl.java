@@ -37,21 +37,12 @@ public class DNSParquetPacketWriterImpl extends AbstractParquetRowWriter {
 
   private static final String DNS_AVRO_SCHEMA = "/avro/dns-query.avsc";
   private Schema schema = schema(DNS_AVRO_SCHEMA);
-  // private GenericRecord record;
-  // private List<Field> fields;
-  // private Map<String, Integer> fieldPosMap = new HashMap<>();
 
   public DNSParquetPacketWriterImpl(
       @Value("#{${entrada.parquet.filesize.max:128}*1024*1024}") int maxfilesize,
       @Value("#{${entrada.parquet.rowgroup.size:128}*1024*1024}") int rowgroupsize,
       @Value("${entrada.parquet.page-row.limit:20000}") int pageRowLimit, ServerContext ctx) {
     super(maxfilesize, rowgroupsize, pageRowLimit, ctx);
-
-    // this.fields = schema.getFields();
-    // for (Field f : fields) {
-    // fieldPosMap.put(f.name(), Integer.valueOf(f.pos()));
-    // }
-    // this.record = new GenericData.Record(schema);
   }
 
   /**
@@ -62,7 +53,7 @@ public class DNSParquetPacketWriterImpl extends AbstractParquetRowWriter {
    */
   @Override
   public void write(GenericRecord record, String server) {
-    // NOTE: make sure not to do any expensive stuff here, this method is called
+    // NOTE: make sure not to do any expensive work here, this method is called
     // many times. cache stuff where possible
     // thats why we are not using the Avro GenericRecordBuilder
 

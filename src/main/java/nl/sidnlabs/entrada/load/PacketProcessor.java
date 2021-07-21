@@ -798,11 +798,11 @@ public class PacketProcessor {
     }
 
     log.info("------------- State Persist Stats ------------------------");
-    log.info("Persist state to disk time {}", System.currentTimeMillis() - startTs);
-    log.info("Persist {} TCP flows", flowCount);
-    log.info("Persist {} Datagrams", datagramCount);
-    log.info("Persist {} DNS requests from cache", cacheCount);
-    log.info("Persist {} unsent metrics", metricManager.size());
+    log.info("{} (ms) save to disk time", System.currentTimeMillis() - startTs);
+    log.info("{} TCP flows", flowCount);
+    log.info("{} UDP datagrams", datagramCount);
+    log.info("{} DNS requests from joiner cache", cacheCount);
+    log.info("{} unsent metrics", metricManager.size());
     log.info("----------------------------------------------------------");
   }
 

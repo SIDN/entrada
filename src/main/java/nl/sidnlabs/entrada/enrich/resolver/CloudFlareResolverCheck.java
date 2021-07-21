@@ -38,7 +38,6 @@ import lombok.extern.log4j.Log4j2;
  */
 @Log4j2
 @Component
-// @Scope(value = ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public final class CloudFlareResolverCheck extends AbstractResolverCheck {
 
   private static final String RESOLVER_STATE_FILENAME = "cloudflare-resolvers";

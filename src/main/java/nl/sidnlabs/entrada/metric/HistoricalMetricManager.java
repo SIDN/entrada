@@ -244,7 +244,7 @@ public class HistoricalMetricManager {
   }
 
   public void clear() {
-    metricCache.clear();
+    metricCache = new ConcurrentHashMap<>(1000);
   }
 
   private void trunc(TreeMap<Long, Metric> metricValues) {

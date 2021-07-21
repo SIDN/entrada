@@ -45,6 +45,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import com.google.common.collect.Multimap;
+import com.google.common.collect.TreeMultimap;
 import com.typesafe.config.Config;
 import akka.Done;
 import akka.actor.ActorSystem;
@@ -467,7 +468,7 @@ public class PacketProcessor {
 
       Sink<GenericRecord, CompletionStage<Done>> s = Flow
           .of(GenericRecord.class)
-          .buffer(1000, OverflowStrategy.backpressure())
+          .buffer(streamBufferSize, OverflowStrategy.backpressure())
           .toMat(Sink.<GenericRecord>foreach(r -> w.write(r, serverName)), Keep.right())
           .async("entrada-dispatcher");
 
@@ -482,7 +483,7 @@ public class PacketProcessor {
 
       Sink<GenericRecord, CompletionStage<Done>> s = Flow
           .of(GenericRecord.class)
-          .buffer(1000, OverflowStrategy.backpressure())
+          .buffer(streamBufferSize, OverflowStrategy.backpressure())
           .toMat(Sink.<GenericRecord>foreach(r -> w.write(r, serverName)), Keep.right())
           .async("entrada-dispatcher");
 
@@ -505,7 +506,8 @@ public class PacketProcessor {
           .add(Source
               .fromJavaStream(() -> pcapReader.stream())
               .buffer(streamBufferSize, OverflowStrategy.backpressure())
-              // send last packet when pcap stream is done to let downstream operators cleanup/close
+              // send last packet when pcap stream is done to let downstream operators
+              // cleanup/close
               .concat(Source.single(Packet.LAST))
               .async("entrada-dispatcher")
               .log("Akka-SRC"))
@@ -580,7 +582,7 @@ public class PacketProcessor {
       final FlowShape<RowData, Pair<GenericRecord, BaseMetricValues>> DNS_ROW_BUILDER = builder
           .add(Flow
               .of(RowData.class)
-              .buffer(streamBufferSize, OverflowStrategy.backpressure())
+              .buffer(streamBufferSize, OverflowStrategy.backpressure()) // .withLogLevel(Logging.InfoLevel()))
               .mapAsyncUnordered(dnsRowbuilderCount, rd -> CompletableFuture
                   .supplyAsync(() -> dnsRowbuiler.build(rd, serverName), ex)));
 
@@ -809,7 +811,6 @@ public class PacketProcessor {
     log.info("Load internal state from file");
 
     stateLoaded = true;
-    // datagrams = TreeMultimap.create();
     int flowCount = 0;
     int datagramCount = 0;
     try {
@@ -856,9 +857,17 @@ public class PacketProcessor {
         metricManager.loadState(stateManager);
       }
     } catch (Exception e) {
+      // when changing the number of configured decoders, loading the old state will fail
       log.error("Error reading state file", e);
       // delete old corrupt state
       stateManager.delete();
+
+      for (IPDecoder id : ipDecoders) {
+        ((TCPDecoder) id.getTcpReader()).setFlows(new HashMap<>());
+        id.setDatagrams(TreeMultimap.create());
+      }
+      joiner.setRequestCache(new HashMap<>());
+      metricManager.clear();
     } finally {
       stateManager.close();
     }

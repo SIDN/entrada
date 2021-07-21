@@ -18,4 +18,4 @@ ADD target/${JAR_FILE} $APP_HOME/bin/entrada.jar
 
 ENV JAVA_OPTS=""
 
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Djava.security.egd=file:/dev/./urandom -jar $APP_HOME/bin/entrada.jar"]
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -Djava.security.egd=file:/dev/./urandom -XX:AutoBoxCacheMax=10000 -XX:+PrintFlagsFinal -XX:+PrintStringTableStatistics -jar $APP_HOME/bin/entrada.jar"]

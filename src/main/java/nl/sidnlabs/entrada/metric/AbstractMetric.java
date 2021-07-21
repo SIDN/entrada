@@ -10,7 +10,8 @@ import lombok.Setter;
 public class AbstractMetric implements Metric {
 
   protected String name;
-  protected int value;
+  protected double value;
+  protected int samples;
   protected long time;
   protected boolean cached;
   protected boolean updated;
@@ -34,7 +35,7 @@ public class AbstractMetric implements Metric {
 
   @Override
   public int getSamples() {
-    return -1;
+    return samples;
   }
 
   @Override

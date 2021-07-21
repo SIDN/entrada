@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.apache.avro.Schema;
+import org.apache.avro.Schema.Field;
 import org.apache.avro.generic.GenericData;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang3.NotImplementedException;
@@ -40,6 +41,17 @@ public class DNSRowBuilder extends AbstractRowBuilder {
 
   public DNSRowBuilder(List<AddressEnrichment> enrichments, ServerContext serverCtx) {
     super(enrichments, serverCtx);
+
+    // check if schema fields match with the ordering used in FieldEnum
+    // this may happen when the schema is changed but the enum is forgotten.
+    for (Field field : schema.getFields()) {
+
+      if (field.pos() != FieldEnum.valueOf(field.name()).ordinal()) {
+        throw new RuntimeException(
+            "Ordering of Avro schema field \"" + field.name() + "\" not correct, expected: "
+                + field.pos() + " found: " + FieldEnum.valueOf(field.name()).ordinal());
+      }
+    }
   }
 
   @Override

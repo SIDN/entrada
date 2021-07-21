@@ -1,5 +1,7 @@
 package nl.sidnlabs.entrada.model;
 
+// ENUM for fast access to the index of a avro record field, this saves an additional looklup to
+// find index for field name.
 public enum FieldEnum {
   // make sure the order of fields matches the order used in dns-query.avsc schema
   id,

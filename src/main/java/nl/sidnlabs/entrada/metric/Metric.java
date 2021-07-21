@@ -19,7 +19,7 @@ public interface Metric {
 
   String getName();
 
-  int getValue();
+  double getValue();
 
   void setCached();
 

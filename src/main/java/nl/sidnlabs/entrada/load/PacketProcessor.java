@@ -906,14 +906,6 @@ public class PacketProcessor {
       }
       return false;
     }
-
-    // set the state of the reader, this can be loaded from disk and given
-    // to the 1st reader. or it can be result of reader x and it is given to reader y
-    // to have state continuity across readers.
-    // pcapReader.setTcpFlows(tcpFlows);
-    // pcapReader.setDatagrams(datagrams);
-
-
     return true;
   }
 

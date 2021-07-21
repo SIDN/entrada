@@ -71,7 +71,7 @@ public class HistoricalMetricManager {
 
   public static final String METRIC_IMPORT_COUNTRY_COUNT = "geo.country";
 
-  public static final String METRIC_IMPORT_TCP_HANDSHAKE_RTT = "tcp.rtt.handshake.median";
+  public static final String METRIC_IMPORT_TCP_HANDSHAKE_RTT = "tcp.rtt.handshake.avg";
   public static final String METRIC_IMPORT_TCP_HANDSHAKE_RTT_SAMPLES = "tcp.rtt.handshake.samples";
 
 
@@ -147,7 +147,7 @@ public class HistoricalMetricManager {
     } else {
       update(METRIC_IMPORT_TCP_COUNT, time, 1, true);
       if (dmv.tcpHandshake != -1) {
-        update(METRIC_IMPORT_TCP_HANDSHAKE_RTT, time, dmv.tcpHandshake, true);
+        update(METRIC_IMPORT_TCP_HANDSHAKE_RTT, time, dmv.tcpHandshake, false);
       }
     }
 
@@ -184,7 +184,7 @@ public class HistoricalMetricManager {
     if (simple) {
       return new SimpleMetric(metric, value, timestamp);
     }
-    return new MeanMetric(metric, value, timestamp);
+    return new AvgMetric(metric, value, timestamp);
   }
 
   private long roundToRetention(long millis) {
@@ -281,7 +281,7 @@ public class HistoricalMetricManager {
       graphite.send(fqMetricName, String.valueOf(m.getValue()), m.getTime());
       if (m.getSamples() > 0) {
         graphite
-            .send(StringUtils.replace(fqMetricName, ".median", ".samples"),
+            .send(StringUtils.replace(fqMetricName, ".avg", ".samples"),
                 String.valueOf(m.getSamples()), m.getTime());
       }
     } catch (IOException e) {

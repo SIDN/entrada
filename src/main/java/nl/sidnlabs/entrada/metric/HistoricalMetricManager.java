@@ -158,14 +158,14 @@ public class HistoricalMetricManager {
     }
   }
 
-  private void update(String name, Long time, int value, boolean simple) {
+  private void update(String name, Long time, int value, boolean counter) {
 
     TreeMap<Long, Metric> metricValues = metricCache.get(name);
 
     if (metricValues == null) {
       // create new treemap
       metricValues = new TreeMap<>();
-      Metric m = createMetric(name, value, time.longValue(), simple);
+      Metric m = createMetric(name, value, time.longValue(), counter);
       metricValues.put(time, m);
       metricCache.put(m.getName(), metricValues);
     } else {
@@ -174,15 +174,15 @@ public class HistoricalMetricManager {
       if (mHist != null) {
         mHist.update(value);
       } else {
-        Metric m = createMetric(name, value, time.longValue(), simple);
+        Metric m = createMetric(name, value, time.longValue(), counter);
         metricValues.put(time, m);
       }
     }
   }
 
-  public static Metric createMetric(String metric, int value, long timestamp, boolean simple) {
-    if (simple) {
-      return new SimpleMetric(metric, value, timestamp);
+  public static Metric createMetric(String metric, int value, long timestamp, boolean counter) {
+    if (counter) {
+      return new CounterMetric(metric, value, timestamp);
     }
     return new AvgMetric(metric, value, timestamp);
   }
@@ -279,7 +279,7 @@ public class HistoricalMetricManager {
     String fqMetricName = createMetricName(m.getName());
     try {
       graphite.send(fqMetricName, String.valueOf(m.getValue()), m.getTime());
-      if (m.getSamples() > 0) {
+      if (m instanceof AvgMetric) {
         graphite
             .send(StringUtils.replace(fqMetricName, ".avg", ".samples"),
                 String.valueOf(m.getSamples()), m.getTime());

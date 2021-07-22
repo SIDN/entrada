@@ -92,8 +92,8 @@ public class HistoricalMetricManager {
   @Value("${management.metrics.export.graphite.port}")
   private int port;
 
-  @Value("${management.metrics.export.graphite.retention}")
-  private int retention = 10;
+  @Value("${management.metrics.export.graphite.retention:60}")
+  private int retention;
 
   private ServerContext settings;
 

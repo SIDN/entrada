@@ -56,4 +56,41 @@ public class Partition {
     return toPath();
   }
 
+  @Override
+  public int hashCode() {
+    final int prime = 31;
+    int result = 1;
+    result = prime * result + day;
+    result = prime * result + (dns ? 1231 : 1237);
+    result = prime * result + month;
+    result = prime * result + ((server == null) ? 0 : server.hashCode());
+    result = prime * result + year;
+    return result;
+  }
+
+  @Override
+  public boolean equals(Object obj) {
+    if (this == obj)
+      return true;
+    if (obj == null)
+      return false;
+    if (getClass() != obj.getClass())
+      return false;
+    Partition other = (Partition) obj;
+    if (day != other.day)
+      return false;
+    if (dns != other.dns)
+      return false;
+    if (month != other.month)
+      return false;
+    if (server == null) {
+      if (other.server != null)
+        return false;
+    } else if (!server.equals(other.server))
+      return false;
+    if (year != other.year)
+      return false;
+    return true;
+  }
+
 }

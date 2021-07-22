@@ -30,7 +30,7 @@ public abstract class AbstractRowBuilder implements RowBuilder {
   protected boolean metricsEnabled;
 
   protected Schema avroSchema;
-  protected int counter = 0;
+  protected int counter;
   private List<AddressEnrichment> enrichments;
   protected ServerContext serverCtx;
 
@@ -40,8 +40,8 @@ public abstract class AbstractRowBuilder implements RowBuilder {
   protected Cache<String, String> domainCache;
 
   protected Cache<String, List<EnrichmentValue>> enrichmentCache;
-  private int cacheHits = 0;
-  private int cacheInserts = 0;
+  protected int cacheHits;
+  protected int cacheInserts;
 
 
   public class EnrichmentValue {
@@ -83,22 +83,6 @@ public abstract class AbstractRowBuilder implements RowBuilder {
     return avroSchema;
   }
 
-  // protected Column<String> column(String name, String value) {
-  // return new Column<>(name, value);
-  // }
-  //
-  // protected Column<Integer> column(String name, int value) {
-  // return new Column<>(name, Integer.valueOf(value));
-  // }
-  //
-  // protected Column<Boolean> column(String name, boolean value) {
-  // return new Column<>(name, Boolean.valueOf(value));
-  // }
-  //
-  // protected Column<Long> column(String name, long value) {
-  // return new Column<>(name, Long.valueOf(value));
-  // }
-
   /**
    * Enrich row based on IP address, use both String and InetAddress params tp prevent having to
    * convert between the 2 too many times
@@ -108,12 +92,11 @@ public abstract class AbstractRowBuilder implements RowBuilder {
    * @param prefix
    * @param row
    */
-  protected void enrich(String address, InetAddress inetAddress, String prefix,
+  protected boolean enrich(String address, InetAddress inetAddress, String prefix,
       GenericRecord record, boolean skipResolvers) {
 
     List<EnrichmentValue> cached = enrichmentCache.peek(address);
     if (cached != null) {
-      cacheHits++;
       for (EnrichmentValue ev : cached) {
         if (skipResolvers && ev.resolver) {
           continue;
@@ -123,7 +106,7 @@ public abstract class AbstractRowBuilder implements RowBuilder {
         record.put(prefix + ev.name, ev.value);
       }
 
-      return;
+      return true;
     }
 
     // not cached, do lookups and cache results
@@ -151,21 +134,9 @@ public abstract class AbstractRowBuilder implements RowBuilder {
       cacheInserts++;
       enrichmentCache.put(address, cached);
     }
-  }
 
-  // private void addColumn(GenericRecord record, String prefix, String col, String value,
-  // List<Metric> metrics, long time) {
-  // record.put(prefix + col, value);
-  //
-  // if (metricsEnabled && StringUtils.equals(col, "country")) {
-  //
-  // metrics
-  // .add(HistoricalMetricManager
-  // .createMetric(HistoricalMetricManager.METRIC_IMPORT_COUNTRY_COUNT + "." + value, 1,
-  // time, true));
-  //
-  // }
-  // }
+    return false;
+  }
 
   protected void showStatus() {
     log.info(counter + " rows created.");
@@ -186,9 +157,25 @@ public abstract class AbstractRowBuilder implements RowBuilder {
     log.info("------------------ " + type().name() + " Row Builder stats ---------------------");
     log.info("Rows: {}", counter);
     log.info("Cache inserts (enrichment): {}", cacheInserts);
+    log.info("Cache inserts (enrichment): {}%", percent(cacheInserts, counter));
+
     log.info("Cache hits (enrichment): {}", cacheHits);
+    log.info("Cache hits (enrichment): {}%", percent(cacheHits, counter));
+
     log.info("Cache inserts (domain): {}", domainCacheInserted);
+    log.info("Cache inserts (domain): {}%", percent(domainCacheInserted, counter));
+
     log.info("Cache hits (domain): {}", domainCacheHits);
+    log.info("Cache hits (domain): {}%", percent(domainCacheHits, counter));
+  }
+
+  private String percent(int frac, int total) {
+    if (total == 0) {
+      return "0";
+    }
+
+    return String.format("%.2f", ((double) frac / total) * 100.0);
+
   }
 
 }

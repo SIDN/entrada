@@ -816,8 +816,6 @@ public class PacketProcessor {
     try {
       if (!stateManager.stateAvailable()) {
         log.info("No state file found, do not try to load previous state");
-
-        // tcpFlows = new HashMap<>();
         return;
       }
       for (IPDecoder id : ipDecoders) {

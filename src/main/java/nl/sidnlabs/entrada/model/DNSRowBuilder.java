@@ -103,8 +103,6 @@ public class DNSRowBuilder extends AbstractRowBuilder {
 
         record.put(FieldEnum.req_len.ordinal(), Integer.valueOf(reqMessage.getBytes()));
 
-        enrich(reqTransport.getSrc(), reqTransport.getSrcAddr(), "", record, false);
-
         // only add IP DF flag for server response packet
         record.put(FieldEnum.req_ip_df.ordinal(), Boolean.valueOf(reqTransport.isDoNotFragment()));
 
@@ -158,8 +156,6 @@ public class DNSRowBuilder extends AbstractRowBuilder {
         }
 
         record.put(FieldEnum.res_len.ordinal(), Integer.valueOf(rspMessage.getBytes()));
-
-        enrich(rspTransport.getDst(), rspTransport.getDstAddr(), "", record, false);
 
         // only add IP DF flag for server response packet
         record.put(FieldEnum.res_ip_df.ordinal(), Boolean.valueOf(rspTransport.isDoNotFragment()));
@@ -245,6 +241,10 @@ public class DNSRowBuilder extends AbstractRowBuilder {
 
     // get ip src/dst from either request of response
     if (reqTransport != null) {
+      if (enrich(reqTransport.getSrc(), reqTransport.getSrcAddr(), "", record, false)) {
+        cacheHits++;
+      }
+
       record.put(FieldEnum.dst.ordinal(), reqTransport.getDst());
       record.put(FieldEnum.dstp.ordinal(), Integer.valueOf(reqTransport.getDstPort()));
       record.put(FieldEnum.srcp.ordinal(), Integer.valueOf(reqTransport.getSrcPort()));
@@ -253,6 +253,10 @@ public class DNSRowBuilder extends AbstractRowBuilder {
         record.put(FieldEnum.src.ordinal(), reqTransport.getSrc());
       }
     } else {
+      if (enrich(rspTransport.getDst(), rspTransport.getDstAddr(), "", record, false)) {
+        cacheHits++;
+      }
+
       record.put(FieldEnum.dst.ordinal(), rspTransport.getSrc());
       record.put(FieldEnum.dstp.ordinal(), Integer.valueOf(rspTransport.getSrcPort()));
       record.put(FieldEnum.srcp.ordinal(), Integer.valueOf(rspTransport.getDstPort()));

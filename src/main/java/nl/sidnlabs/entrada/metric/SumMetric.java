@@ -7,7 +7,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @Getter
 @Setter
-public class AbstractMetric implements Metric {
+public class SumMetric implements Metric {
 
   protected String name;
   protected double value;
@@ -17,14 +17,15 @@ public class AbstractMetric implements Metric {
   protected boolean updated;
 
 
-  public AbstractMetric(String name, int value, long time) {
+  public SumMetric(String name, int value, long time) {
     this.name = name;
-    this.value = value;
     this.time = time;
+    update(value);
   }
 
   public void update(int value) {
     this.value += value;
+    samples++;
     updated = true;
   }
 

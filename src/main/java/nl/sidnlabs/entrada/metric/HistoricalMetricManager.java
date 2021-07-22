@@ -182,7 +182,7 @@ public class HistoricalMetricManager {
 
   public static Metric createMetric(String metric, int value, long timestamp, boolean counter) {
     if (counter) {
-      return new CounterMetric(metric, value, timestamp);
+      return new SumMetric(metric, value, timestamp);
     }
     return new AvgMetric(metric, value, timestamp);
   }

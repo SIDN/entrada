@@ -65,7 +65,9 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
       originalICMPPacket = (ICMPPacket) originalPacket;
     }
 
-    enrich(icmpPacket.getSrc(), icmpPacket.getSrcAddr(), "ip_", record, false);
+    if (enrich(icmpPacket.getSrc(), icmpPacket.getSrcAddr(), "ip_", record, false)) {
+      cacheHits++;
+    }
 
     // icmp payload
     Question q = null;
@@ -87,7 +89,7 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
       if (domainname == null && qname != null) {
         domainname = NameUtil.domainname(qname);
         if (domainname != null) {
-          domainCache.putIfAbsent(qname, domainname);
+          domainCache.put(qname, domainname);
         }
       } else {
         domainCacheHits++;

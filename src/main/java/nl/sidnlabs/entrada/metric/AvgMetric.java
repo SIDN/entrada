@@ -3,7 +3,7 @@ package nl.sidnlabs.entrada.metric;
 import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
-public class AvgMetric extends AbstractMetric {
+public class AvgMetric extends SumMetric {
 
   public AvgMetric(String name, int value, long time) {
     super(name, value, time);

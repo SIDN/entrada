@@ -30,7 +30,7 @@ ENTRADA handles the required workflow actions such as:
 
 For more information see the [ENTRADA website](https://entrada.sidnlabs.nl/).
 
-ENTRADA uses [Akka Streams](https://doc.akka.io/docs/akka/current/stream/index.html) see image below for an overview of the Akka Streams graph created by ENTRADA. [ENTRADA Akka Streams flow](https://raw.githubusercontent.com/SIDN/entrada/master/docs/entrada-streams-diagram.svg)
+ENTRADA uses [Akka Streams](https://doc.akka.io/docs/akka/current/stream/index.html) see image below for an overview of the Akka Streams graph created by ENTRADA. ![ENTRADA Akka Streams flow](https://raw.githubusercontent.com/SIDN/entrada/master/docs/streams-diagram.svg)
 
 ## How to use
 

@@ -33,7 +33,7 @@
     { "name": "orig_dns_id", "type": ["null","int"], "default": null},
     { "name": "orig_dns_qname", "type": ["null","string"], "default": null},
     { "name": "orig_dns_domainname", "type": ["null","string"], "default": null},
-    { "name": "orig_dns_len", "type": "int","default": 0 },
+    { "name": "orig_dns_len", "type": ["null","int"], "default": null},
     { "name": "orig_dns_aa", "type": ["null","boolean"], "default": null},
     { "name": "orig_dns_tc", "type": ["null","boolean"], "default": null},
     { "name": "orig_dns_rd", "type": ["null","boolean"], "default": null},

@@ -89,6 +89,7 @@ public class ICMPRowBuilder extends AbstractRowBuilder {
       if (domainname == null && qname != null) {
         domainname = NameUtil.domainname(qname);
         if (domainname != null) {
+          domainCacheInserted++;
           domainCache.put(qname, domainname);
         }
       } else {

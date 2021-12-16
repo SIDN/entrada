@@ -12,7 +12,7 @@
 
 	<groupId>nl.sidnlabs</groupId>
 	<artifactId>entrada</artifactId>
-	<version>2.4.1</version>
+	<version>2.4.2</version>
 	<name>${project.groupId}:${project.artifactId}</name>
 	<description>Convert en enrich DNS data to Parquet format</description>
 	<url>https://github.com/SIDN/entrada</url>
@@ -42,20 +42,20 @@
 		<spring-cloud.version>Hoxton.SR11</spring-cloud.version>
 		<scala.binary.version>2.13</scala.binary.version>
 		<!--  https://spring.io/blog/2021/12/10/log4j2-vulnerability-and-spring-boot -->
-		<log4j2.version>2.15.0</log4j2.version>
+		<log4j2.version>2.16.0</log4j2.version>
 	</properties>
 
 	<dependencies>
 		<dependency>
 			<groupId>nl.sidnlabs</groupId>
 			<artifactId>dnslib</artifactId>
-			<version>0.2.13</version>
+			<version>0.2.14</version>
 		</dependency>
 
 		<dependency>
 			<groupId>nl.sidnlabs</groupId>
 			<artifactId>pcap-lib</artifactId>
-			<version>0.2.18</version>
+			<version>0.2.19</version>
 		</dependency>
 
 		<dependency>

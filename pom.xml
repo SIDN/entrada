@@ -257,6 +257,20 @@
 			<version>2.0.21</version>
 		</dependency>
 
+
+		<!-- use more recent core version to support IRSA / WebTokens-->
+		<dependency>
+			<groupId>com.amazonaws</groupId>
+			<artifactId>aws-java-sdk-core</artifactId>
+			<version>1.11.775</version>
+		</dependency>
+
+		<dependency>
+			<groupId>com.amazonaws</groupId>
+			<artifactId>aws-java-sdk-sts</artifactId>
+			<version>1.11.775</version>
+		</dependency>
+
 		<!-- Cloudera Impala JDBC is not in cetral repo, added it to local repo -->
 		<dependency>
 			<groupId>com.cloudera</groupId>

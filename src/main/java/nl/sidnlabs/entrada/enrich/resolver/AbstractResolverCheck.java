@@ -51,7 +51,7 @@ import lombok.extern.log4j.Log4j2;
 public abstract class AbstractResolverCheck implements DnsResolverCheck {
 
   private List<FastIpSubnet> matchers4 = new ArrayList<>();
-  private List<FastIpV6Subnet> matchers6 = new ArrayList<>();
+  private List<FastIpSubnet> matchers6 = new ArrayList<>();
 
   @Value("${entrada.location.persistence}")
   private String workDir;
@@ -137,7 +137,7 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
     lines
         .stream()
         .filter(s -> s.contains(":"))
-        .map(this::v6SubnetFor)
+        .map(this::subnetFor)
         .filter(Objects::nonNull)
         .forEach(s -> matchers6.add(s));
 
@@ -147,16 +147,6 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   private FastIpSubnet subnetFor(String address) {
     try {
       return new FastIpSubnet(address);
-    } catch (UnknownHostException e) {
-      log.error("Cannot create subnet for: {}", address, e);
-    }
-
-    return null;
-  }
-
-  private FastIpV6Subnet v6SubnetFor(String address) {
-    try {
-      return new FastIpV6Subnet(address);
     } catch (UnknownHostException e) {
       log.error("Cannot create subnet for: {}", address, e);
     }
@@ -232,9 +222,8 @@ public abstract class AbstractResolverCheck implements DnsResolverCheck {
   }
 
   private boolean checkv6(String address, InetAddress inetAddress) {
-    IPv6Address v6 = IPv6Address.fromInetAddress(inetAddress);
-    for (FastIpV6Subnet sn : matchers6) {
-      if (sn.contains(v6)) {
+    for (FastIpSubnet sn : matchers6) {
+      if (sn.contains(inetAddress)) {
         // addToCache(address);
         return true;
       }

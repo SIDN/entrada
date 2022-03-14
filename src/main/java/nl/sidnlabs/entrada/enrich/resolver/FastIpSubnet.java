@@ -1,14 +1,17 @@
 package nl.sidnlabs.entrada.enrich.resolver;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
-import org.jboss.netty.handler.ipfilter.CIDR;
+
+import io.netty.handler.ipfilter.IpFilterRuleType;
+import io.netty.handler.ipfilter.IpSubnetFilterRule;
 import lombok.Getter;
 
 @Getter
 public class FastIpSubnet implements Comparable<FastIpSubnet> {
 
-  private final CIDR cidr;
+  private final IpSubnetFilterRule cidr;
   private String cidrString;
 
   public FastIpSubnet() {
@@ -16,16 +19,18 @@ public class FastIpSubnet implements Comparable<FastIpSubnet> {
   }
 
   /**
-   * Create IpSubnet using the CIDR or normal Notation<BR>
+   * Create IpSubnet using the CIDR Notation<BR>
    * i.e.:<br>
    * IpSubnet subnet = new IpSubnet("10.10.10.0/24"); or<br>
-   * IpSubnet subnet = new IpSubnet("10.10.10.0/255.255.255.0"); or<br>
    * IpSubnet subnet = new IpSubnet("1fff:0:0a88:85a3:0:0:0:0/24");
    *
    * @param netAddress a network address as string.
    */
   public FastIpSubnet(String netAddress) throws UnknownHostException {
-    cidr = CIDR.newCIDR(netAddress);
+    String[] split = netAddress.split("/");
+    String cidr = split[0];
+    int cidrPrefix = Integer.parseInt(split[1]);
+    this.cidr = new IpSubnetFilterRule(cidr, cidrPrefix, IpFilterRuleType.ACCEPT);
     cidrString = cidr.toString();
   }
 
@@ -39,7 +44,7 @@ public class FastIpSubnet implements Comparable<FastIpSubnet> {
     if (cidr == null) {
       return false;
     }
-    return cidr.contains(inetAddress);
+    return cidr.matches(new InetSocketAddress(inetAddress, 0));
   }
 
   @Override
@@ -63,6 +68,6 @@ public class FastIpSubnet implements Comparable<FastIpSubnet> {
 
   /** Compare two IpSubnet */
   public int compareTo(FastIpSubnet o) {
-    return cidrString.compareTo(o.getCidrString());
+    return cidr.compareTo(o.getCidr());
   }
 }

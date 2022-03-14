@@ -35,6 +35,8 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.Executor;
 import java.util.stream.Collectors;
+
+import io.micrometer.core.instrument.MeterRegistry;
 import javax.annotation.PostConstruct;
 import org.apache.avro.generic.GenericRecord;
 import org.apache.commons.lang3.StringUtils;
@@ -186,12 +188,14 @@ public class PacketProcessor {
 
   private boolean stateLoaded = false;
 
+  private final MeterRegistry registry;
+
   public PacketProcessor(ServerContext serverCtx, StateManager persistenceManager,
       ArchiveService fileArchiveService, FileManagerFactory fileManagerFactory,
       PartitionService partitionService, HistoricalMetricManager historicalMetricManager,
       UploadService uploadService, SharedContext sharedContext, Config akkaConfig,
       ApplicationContext applicationContext, PacketJoiner joiner,
-      @Qualifier("dns") RowBuilder dnsRowbuiler, @Qualifier("icmp") RowBuilder icmpRowbuiler) {
+      @Qualifier("dns") RowBuilder dnsRowbuiler, @Qualifier("icmp") RowBuilder icmpRowbuiler, MeterRegistry registry) {
 
     this.serverCtx = serverCtx;
     this.stateManager = persistenceManager;
@@ -199,6 +203,7 @@ public class PacketProcessor {
     this.fileManagerFactory = fileManagerFactory;
     this.partitionService = partitionService;
     this.uploadService = uploadService;
+    this.registry = registry;
     this.metricManager = historicalMetricManager;
     this.sharedContext = sharedContext;
     this.applicationContext = applicationContext;
@@ -296,9 +301,9 @@ public class PacketProcessor {
       reset();
 
       fileCounter++;
-
       long startTs = System.currentTimeMillis();
       read(file);
+      registry.counter("entrada.pcap.files.processed").increment();
       long fileProcTime = (System.currentTimeMillis() - startTs);
 
       double packetsMs = 0;

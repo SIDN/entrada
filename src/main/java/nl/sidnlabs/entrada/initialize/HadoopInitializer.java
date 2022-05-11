@@ -22,10 +22,10 @@ public class HadoopInitializer extends AbstractInitializer {
   private String group;
 
   @Value("${hdfs.data.dir.permission}")
-  private int dirPermission;
+  private String dirPermission;
 
   @Value("${hdfs.data.file.permission}")
-  private int filePermission;
+  private String filePermission;
 
   private FileManager fileManager;
 

@@ -51,10 +51,10 @@ public class HDFSFileManagerImpl implements FileManager {
   private String group;
 
   @Value("${hdfs.data.dir.permission}")
-  private int dirPermission;
+  private String dirPermission;
 
   @Value("${hdfs.data.file.permission}")
-  private int filePermission;
+  private String filePermission;
 
 
   @Override
@@ -432,7 +432,7 @@ public class HDFSFileManagerImpl implements FileManager {
     return true;
   }
 
-  public boolean chmod(String path, int permDir, int permFile) {
+  public boolean chmod(String path, String permDir, String permFile) {
     FileSystem fs = null;
     try {
       fs = createFS();
@@ -443,7 +443,7 @@ public class HDFSFileManagerImpl implements FileManager {
     }
   }
 
-  private boolean chmod(FileSystem fs, String path, int permDir, int permFile) {
+  private boolean chmod(FileSystem fs, String path, String permDir, String permFile) {
 
     if (log.isDebugEnabled()) {
       log.debug("Chmod permissions for path: {}", path);

@@ -432,6 +432,17 @@ public class HDFSFileManagerImpl implements FileManager {
     return true;
   }
 
+  public boolean chmod(String path, int permDir, int permFile) {
+    FileSystem fs = null;
+    try {
+      fs = createFS();
+      return chmod(fs, path, permDir, permFile);
+    } catch (Exception e) {
+      log.error("Cannot chmod, path: " + path, e);
+      return false;
+    }
+  }
+
   private boolean chmod(FileSystem fs, String path, int permDir, int permFile) {
 
     if (log.isDebugEnabled()) {

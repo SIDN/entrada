@@ -220,4 +220,10 @@ public class LocalFileManagerImpl implements FileManager {
     // do nothing
   }
 
+  @Override
+  public boolean chmod(String path, int permDir, int permFile) {
+    // do nothing
+    return true;
+  }
+
 }

@@ -371,4 +371,10 @@ public class S3FileManagerImpl implements FileManager {
     // do nothing
   }
 
+  @Override
+  public boolean chmod(String path, int permDir, int permFile) {
+    // do nothing
+    return true;
+  }
+
 }

@@ -21,6 +21,12 @@ public class HadoopInitializer extends AbstractInitializer {
   @Value("${hdfs.data.group}")
   private String group;
 
+  @Value("${hdfs.data.dir.permission}")
+  private int dirPermission;
+
+  @Value("${hdfs.data.file.permission}")
+  private int filePermission;
+
   private FileManager fileManager;
 
   public HadoopInitializer(@Qualifier("hdfs") FileManager fileManager,
@@ -47,7 +53,8 @@ public class HadoopInitializer extends AbstractInitializer {
     }
 
     if ((fileManager.supported(output) && !fileManager.exists(output))
-        && (!fileManager.mkdir(output) || !fileManager.chown(output, owner, group))) {
+        && (!fileManager.mkdir(output) || !fileManager.chown(output, owner, group)
+            || !fileManager.chmod(output, dirPermission, filePermission))) {
       return false;
     }
 

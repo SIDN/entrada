@@ -56,6 +56,8 @@ public interface FileManager {
 
   boolean chown(String path, String owner, String group);
 
+  public boolean chmod(String path, int permDir, int permFile);
+
   /**
    * Get a list of files that have expired, meaning that are older than maxAge days. This will
    * recursively scan for files.

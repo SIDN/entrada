@@ -19,6 +19,7 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.LocatedFileStatus;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.fs.RemoteIterator;
+import org.apache.hadoop.fs.permission.FsPermission;
 import org.apache.hadoop.security.UserGroupInformation;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -48,6 +49,13 @@ public class HDFSFileManagerImpl implements FileManager {
 
   @Value("${hdfs.data.group}")
   private String group;
+
+  @Value("${hdfs.data.dir.permission}")
+  private int dirPermission;
+
+  @Value("${hdfs.data.file.permission}")
+  private int filePermission;
+
 
   @Override
   public String schema() {
@@ -198,7 +206,8 @@ public class HDFSFileManagerImpl implements FileManager {
         if (log.isDebugEnabled()) {
           log.debug("Setting correct file permissions to uploaded file");
         }
-        chown(fs, dst.toString(), owner, group);
+        return chown(fs, dst.toString(), owner, group)
+            && chmod(fs, dst.toString(), dirPermission, filePermission);
       }
 
     } catch (IOException e) {
@@ -418,6 +427,36 @@ public class HDFSFileManagerImpl implements FileManager {
       }
     } catch (Exception e) {
       log.error("Error while doing chown for {}", path, e);
+      return false;
+    }
+    return true;
+  }
+
+  private boolean chmod(FileSystem fs, String path, int permDir, int permFile) {
+
+    if (log.isDebugEnabled()) {
+      log.debug("Chmod permissions for path: {}", path);
+    }
+
+    Path p = new Path(path);
+    try {
+      if (owner != null && group != null) {
+        FileStatus fStatus = fs.getFileStatus(p);
+
+        if (fStatus.isDirectory()) {
+          for (FileStatus child : fs.listStatus(p)) {
+            chmod(fs, child.getPath().toString(), permDir, permFile);
+          }
+        }
+
+        if (fStatus.isDirectory()) {
+          fs.setPermission(p, new FsPermission(permDir));
+        } else {
+          fs.setPermission(p, new FsPermission(permFile));
+        }
+      }
+    } catch (Exception e) {
+      log.error("Error while doing chmod for {}", path, e);
       return false;
     }
     return true;

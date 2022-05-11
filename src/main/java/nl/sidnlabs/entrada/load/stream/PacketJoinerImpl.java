@@ -7,6 +7,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import javax.annotation.PostConstruct;
+
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
@@ -50,6 +52,12 @@ public class PacketJoinerImpl implements PacketJoiner {
   private int requestPacketCounter = 0;
   private int responsePacketCounter = 0;
 
+  private final MeterRegistry registry;
+
+  public PacketJoinerImpl(MeterRegistry registry) {
+    this.registry = registry;
+  }
+
   @PostConstruct
   private void init() {
     this.cacheTimeout = cacheTimeoutConfig * 1000;
@@ -68,6 +76,7 @@ public class PacketJoinerImpl implements PacketJoiner {
     }
 
     counter++;
+    registry.counter("entrada.pcap.packets.processed").increment();
 
     if (counter % 100000 == 0) {
       log.info("Received {} packets to join", Integer.valueOf(counter));
@@ -123,6 +132,7 @@ public class PacketJoinerImpl implements PacketJoiner {
 
   private void handDnsRequest(DNSPacket dnsPacket, Message msg, String fileName) {
     requestPacketCounter++;
+    registry.counter("entrada.dns.packets.requests").increment();
     // check for ixfr/axfr request
     if (!msg.getQuestions().isEmpty()
         && (msg.getQuestions().get(0).getQType() == ResourceRecordType.AXFR
@@ -151,6 +161,7 @@ public class PacketJoinerImpl implements PacketJoiner {
 
   private RowData handDnsResponse(DNSPacket dnsPacket, Message msg, String fileName) {
     responsePacketCounter++;
+    registry.counter("entrada.dns.packets.responses").increment();
     // try to find the request
 
     // check for ixfr/axfr response, the query might be missing from the response
@@ -285,6 +296,7 @@ public class PacketJoinerImpl implements PacketJoiner {
                     + cacheValue.getMessage().getQuestions().get(0).getQName());
           }
           purgeCounter++;
+          registry.counter("entrada.dns.packets.expired").increment();
         }
       }
     }

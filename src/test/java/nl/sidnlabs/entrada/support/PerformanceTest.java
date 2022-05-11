@@ -1,10 +1,11 @@
 package nl.sidnlabs.entrada.support;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import java.net.InetAddress;
-import org.jboss.netty.handler.ipfilter.CIDR;
+import java.net.InetSocketAddress;
+
+import io.netty.handler.ipfilter.IpFilterRuleType;
+import io.netty.handler.ipfilter.IpSubnetFilterRule;
 import org.junit.jupiter.api.Test;
-import com.google.common.net.InetAddresses;
 import com.googlecode.ipv6.IPv6Address;
 import com.googlecode.ipv6.IPv6AddressRange;
 import nl.sidnlabs.dnslib.util.DomainName;
@@ -47,7 +48,7 @@ public class PerformanceTest {
         .fromFirstAndLast(IPv6Address.fromString("2a00:1450:4013::"),
             IPv6Address.fromString("2a00:1450:4013:ffff:ffff:ffff:ffff:ffff"));
 
-    InetAddress addr = InetAddresses.forString("2a00:1450:4013:0:0:0:0:8844");
+    InetSocketAddress addr = new InetSocketAddress("2a00:1450:4013:0:0:0:0:8844", 0);
 
     IPv6Address addr1 = IPv6Address.fromString("2a00:1450:4013:0:0:0:0:8844");
 
@@ -58,13 +59,13 @@ public class PerformanceTest {
     long time1 = System.currentTimeMillis() - start;
     System.out.println(time1);
 
-    CIDR cidr1 = CIDR.newCIDR("2a00:1450:4013::/48");
-    // CIDR cidr2 = CIDR.newCIDR("fe80::226:2dff:fefa:ffff");
+    IpSubnetFilterRule cidr1 = new IpSubnetFilterRule("2a00:1450:4013::", 48, IpFilterRuleType.ACCEPT);
+    // IpSubnetFilterRule cidr2 = new IpSubnetFilterRule("fe80::226:2dff:fefa:ffff", 128, IpFilterRuleType.ACCEPT);
 
 
     start = System.currentTimeMillis();
     for (int i = 0; i < 100000; i++) {
-      cidr1.contains(addr);
+      cidr1.matches(addr);
     }
     long time2 = System.currentTimeMillis() - start;
     System.out.println(time2);

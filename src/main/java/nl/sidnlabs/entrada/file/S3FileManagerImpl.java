@@ -97,6 +97,7 @@ public class S3FileManagerImpl implements FileManager {
       do {
         listing = amazonS3.listObjectsV2(lor);
         listing.getObjectSummaries().stream().forEach(os -> files.add(os.getKey()));
+        lor.setContinuationToken(listing.getNextContinuationToken());
       } while (listing.isTruncated());
 
     } catch (Exception e) {

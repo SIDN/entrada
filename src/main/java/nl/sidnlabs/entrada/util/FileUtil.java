@@ -61,7 +61,7 @@ public class FileUtil {
 
     Iterator<File> files;
     try {
-      files = FileUtils.iterateFiles(f, new String[] {"pcap", "pcap.gz", "pcap.xz"}, false);
+      files = FileUtils.iterateFiles(f, new String[] {"pcap", "pcap.gz", "pcap.xz", "pcap.bz2"}, false);
       while (files.hasNext()) {
         files.next();
         filecount++;

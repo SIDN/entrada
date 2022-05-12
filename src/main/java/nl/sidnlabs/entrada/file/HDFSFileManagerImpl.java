@@ -185,6 +185,9 @@ public class HDFSFileManagerImpl implements FileManager {
 
       if (!exists(fs, pathDst)) {
         mkdir(fs, pathDst);
+        // set correct permissions
+        chown(fs, pathDst.toString(), owner, group);
+        chmod(fs, pathDst.toString(), dirPermission, filePermission);
       }
       return upload(fs, pathSrc, pathDst, archive);
     } catch (Exception e) {
@@ -403,7 +406,7 @@ public class HDFSFileManagerImpl implements FileManager {
   private boolean chown(FileSystem fs, String path, String owner, String group) {
 
     if (log.isDebugEnabled()) {
-      log.debug("Chown permissions for path: {}", path);
+      log.debug("Chown permissions for path: {} tp {}:{}", path, owner, group);
     }
 
     Path p = new Path(path);

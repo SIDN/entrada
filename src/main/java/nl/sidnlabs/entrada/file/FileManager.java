@@ -54,9 +54,9 @@ public interface FileManager {
 
   boolean mkdir(String path);
 
-  boolean chown(String path, String owner, String group);
+  boolean chown(String path, String owner, String group, boolean recursive);
 
-  public boolean chmod(String path, String permDir, String permFile);
+  public boolean chmod(String path, String permDir, String permFile, boolean recursive);
 
   /**
    * Get a list of files that have expired, meaning that are older than maxAge days. This will
@@ -69,5 +69,19 @@ public interface FileManager {
   List<String> expired(String location, int maxAge, String... filter);
 
   void close();
+
+  /**
+   * Chown without owner:group uses FS defaults
+   * 
+   * @param path
+   */
+  void chown(String path, boolean recursive);
+
+  /**
+   * Chmod without dir and file permissions uses FS defaults
+   * 
+   * @param path
+   */
+  void chmod(String path, boolean recursive);
 
 }

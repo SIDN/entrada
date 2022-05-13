@@ -174,7 +174,7 @@ public class HDFSFileManagerImpl implements FileManager {
     File f = new File(src);
 
     if (!f.exists()) {
-      log.error("Location {} does not exist, cannot continue with upload");
+      log.error("Source location {} does not exist, cannot continue with upload");
       return false;
     }
     FileSystem fs = null;
@@ -184,19 +184,18 @@ public class HDFSFileManagerImpl implements FileManager {
       Path pathDst = new Path(dst);
 
       if (!exists(fs, pathDst)) {
+        log.info("Destination location {} does not exist, create now", dst);
+
         mkdir(fs, pathDst);
-        // set correct permissions
-        chown(fs, pathDst.toString(), owner, group);
-        chmod(fs, pathDst.toString(), dirPermission, filePermission);
       }
-      return upload(fs, pathSrc, pathDst, archive);
+      return upload(fs, pathSrc, pathDst);
     } catch (Exception e) {
       log.error("Cannot upload, src: " + src + " dst: " + dst, e);
       return false;
     }
   }
 
-  private boolean upload(FileSystem fs, Path src, Path dst, boolean archive) {
+  private boolean upload(FileSystem fs, Path src, Path dst) {
     if (log.isDebugEnabled()) {
       log.debug("Upload file {} to {}", src, dst);
     }
@@ -204,14 +203,14 @@ public class HDFSFileManagerImpl implements FileManager {
     try {
       fs.copyFromLocalFile(false, true, src, dst);
 
-      if (!archive) {
-        // when uploading non-pcap data files set the correct hdfs permissions
-        if (log.isDebugEnabled()) {
-          log.debug("Setting correct file permissions to uploaded file");
-        }
-        return chown(fs, dst.toString(), owner, group)
-            && chmod(fs, dst.toString(), dirPermission, filePermission);
-      }
+      // if (!archive) {
+      // // when uploading non-pcap data files set the correct hdfs permissions
+      // if (log.isDebugEnabled()) {
+      // log.debug("Setting correct file permissions to uploaded file");
+      // }
+      // return chown(fs, dst.toString(), owner, group)
+      // && chmod(fs, dst.toString(), dirPermission, filePermission);
+      // }
 
     } catch (IOException e) {
       log.error("Error while uploading {} to {}", src, dst, e);
@@ -392,18 +391,18 @@ public class HDFSFileManagerImpl implements FileManager {
     return false;
   }
 
-  public boolean chown(String path, String owner, String group) {
+  public boolean chown(String path, String owner, String group, boolean recursive) {
     FileSystem fs = null;
     try {
       fs = createFS();
-      return chown(fs, path, owner, group);
+      return chown(fs, path, owner, group, recursive);
     } catch (Exception e) {
       log.error("Cannot chown, path: " + path, e);
       return false;
     }
   }
 
-  private boolean chown(FileSystem fs, String path, String owner, String group) {
+  private boolean chown(FileSystem fs, String path, String owner, String group, boolean recursive) {
 
     if (log.isDebugEnabled()) {
       log.debug("Chown permissions for path: {} tp {}:{}", path, owner, group);
@@ -414,9 +413,9 @@ public class HDFSFileManagerImpl implements FileManager {
       if (owner != null && group != null) {
         FileStatus fStatus = fs.getFileStatus(p);
 
-        if (fStatus.isDirectory()) {
+        if (fStatus.isDirectory() && recursive) {
           for (FileStatus child : fs.listStatus(p)) {
-            chown(fs, child.getPath().toString(), owner, group);
+            chown(fs, child.getPath().toString(), owner, group, recursive);
           }
         }
 
@@ -435,18 +434,19 @@ public class HDFSFileManagerImpl implements FileManager {
     return true;
   }
 
-  public boolean chmod(String path, String permDir, String permFile) {
+  public boolean chmod(String path, String permDir, String permFile, boolean recursive) {
     FileSystem fs = null;
     try {
       fs = createFS();
-      return chmod(fs, path, permDir, permFile);
+      return chmod(fs, path, permDir, permFile, recursive);
     } catch (Exception e) {
       log.error("Cannot chmod, path: " + path, e);
       return false;
     }
   }
 
-  private boolean chmod(FileSystem fs, String path, String permDir, String permFile) {
+  private boolean chmod(FileSystem fs, String path, String permDir, String permFile,
+      boolean recursive) {
 
     if (log.isDebugEnabled()) {
       log.debug("Chmod permissions for path: {}", path);
@@ -457,9 +457,9 @@ public class HDFSFileManagerImpl implements FileManager {
       if (owner != null && group != null) {
         FileStatus fStatus = fs.getFileStatus(p);
 
-        if (fStatus.isDirectory()) {
+        if (fStatus.isDirectory() && recursive) {
           for (FileStatus child : fs.listStatus(p)) {
-            chmod(fs, child.getPath().toString(), permDir, permFile);
+            chmod(fs, child.getPath().toString(), permDir, permFile, recursive);
           }
         }
 
@@ -510,5 +510,19 @@ public class HDFSFileManagerImpl implements FileManager {
         .filter(p -> checkFilter(p, Arrays.asList(filter)))
         .collect(Collectors.toList());
   }
+
+  @Override
+  public void chown(String path, boolean recursive) {
+    log.info("Chown path: {} with {}:{}", path, owner, group);
+    chown(path, owner, group, recursive);
+  }
+
+  @Override
+  public void chmod(String path, boolean recursive) {
+    log.info("Chmod path: {} with {}:{}", path, dirPermission, filePermission);
+    chmod(path, dirPermission, filePermission, recursive);
+  }
+
+
 
 }

@@ -53,8 +53,8 @@ public class HadoopInitializer extends AbstractInitializer {
     }
 
     if ((fileManager.supported(output) && !fileManager.exists(output))
-        && (!fileManager.mkdir(output) || !fileManager.chown(output, owner, group)
-            || !fileManager.chmod(output, dirPermission, filePermission))) {
+        && (!fileManager.mkdir(output) || !fileManager.chown(output, owner, group, false)
+            || !fileManager.chmod(output, dirPermission, filePermission, false))) {
       return false;
     }
 

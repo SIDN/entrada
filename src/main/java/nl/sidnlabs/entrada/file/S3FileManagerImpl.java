@@ -356,7 +356,7 @@ public class S3FileManagerImpl implements FileManager {
   }
 
   @Override
-  public boolean chown(String path, String owner, String group) {
+  public boolean chown(String path, String owner, String group, boolean recursive) {
     throw new UnsupportedOperationException();
   }
 
@@ -372,9 +372,18 @@ public class S3FileManagerImpl implements FileManager {
   }
 
   @Override
-  public boolean chmod(String path, String permDir, String permFile) {
+  public boolean chmod(String path, String permDir, String permFile, boolean recursive) {
     // do nothing
     return true;
   }
 
+  @Override
+  public void chown(String path, boolean recursive) {
+    // do nothing
+  }
+
+  @Override
+  public void chmod(String path, boolean recursive) {
+    // do nothing
+  }
 }

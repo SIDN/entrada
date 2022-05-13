@@ -56,6 +56,18 @@ public class Partition {
     return toPath();
   }
 
+  public String toYear() {
+    return "year=" + year;
+  }
+
+  public String toMonth() {
+    return "month=" + month;
+  }
+
+  public String toDay() {
+    return "day=" + day;
+  }
+
   @Override
   public int hashCode() {
     final int prime = 31;

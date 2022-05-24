@@ -227,13 +227,15 @@ public class LocalFileManagerImpl implements FileManager {
   }
 
   @Override
-  public void chown(String path, boolean recursive) {
+  public boolean chown(String path, boolean recursive) {
     // do nothing
+    return true;
   }
 
   @Override
-  public void chmod(String path, boolean recursive) {
+  public boolean chmod(String path, boolean recursive) {
     // do nothing
+    return true;
   }
 
 }

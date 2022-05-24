@@ -88,7 +88,7 @@ public class UploadService {
         }
 
         if (filesToUpload.size() > 0) {
-          // make sure correct permissions are set, do not set recursive at year.minth level
+          // make sure correct permissions are set, do not set recursive at year/month level
           // when many files this will take long time
           fmOutput.chown(FileUtil.appendPath(dstLocation, partition.toYear()), false);
           fmOutput.chmod(FileUtil.appendPath(dstLocation, partition.toYear()), false);

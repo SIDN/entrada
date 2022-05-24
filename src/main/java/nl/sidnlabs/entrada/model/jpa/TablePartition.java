@@ -78,4 +78,16 @@ public class TablePartition {
   @Column(name = "privacy_purge_time")
   private Integer privacyPurgeTime;
 
+  public String toYear() {
+    return "year=" + year;
+  }
+
+  public String toMonth() {
+    return "month=" + month;
+  }
+
+  public String toDay() {
+    return "day=" + day;
+  }
+
 }

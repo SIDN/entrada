@@ -75,13 +75,13 @@ public interface FileManager {
    * 
    * @param path
    */
-  void chown(String path, boolean recursive);
+  boolean chown(String path, boolean recursive);
 
   /**
    * Chmod without dir and file permissions uses FS defaults
    * 
    * @param path
    */
-  void chmod(String path, boolean recursive);
+  boolean chmod(String path, boolean recursive);
 
 }

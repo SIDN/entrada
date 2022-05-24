@@ -512,15 +512,15 @@ public class HDFSFileManagerImpl implements FileManager {
   }
 
   @Override
-  public void chown(String path, boolean recursive) {
+  public boolean chown(String path, boolean recursive) {
     log.info("Chown path: {} with {}:{}", path, owner, group);
-    chown(path, owner, group, recursive);
+    return chown(path, owner, group, recursive);
   }
 
   @Override
-  public void chmod(String path, boolean recursive) {
+  public boolean chmod(String path, boolean recursive) {
     log.info("Chmod path: {} with {}:{}", path, dirPermission, filePermission);
-    chmod(path, dirPermission, filePermission, recursive);
+    return chmod(path, dirPermission, filePermission, recursive);
   }
 
 

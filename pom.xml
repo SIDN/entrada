@@ -1,6 +1,4 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
@@ -103,7 +101,7 @@
 			<groupId>org.apache.hadoop</groupId>
 			<artifactId>hadoop-client</artifactId>
 			<version>3.3.1</version>
-<!--			<scope>provided</scope>-->
+			<!--			<scope>provided</scope>-->
 			<exclusions>
 				<exclusion>
 					<groupId>org.slf4j</groupId>
@@ -254,27 +252,33 @@
 		<!-- Athena is not in central repo, added it to local repo -->
 		<!-- generated via mvn -Dfile=AthenaJDBC42_2.0.9.jar -DgroupId=com.amazon.aws 
 			-DartifactId=athena -Dpackaging=jar -Dversion=2.0.9 -DlocalRepositoryPath=lib 
-			install:install-file -->
-
-		<dependency>
-			<groupId>com.amazon.aws</groupId>
-			<artifactId>athena</artifactId>
-			<version>2.0.21</version>
-		</dependency>
-
-
+			install:install-file 
+			
+			OR
+			
+			mvn install:install-file -Dfile=/abs/path/to/lib/com/amazon/aws/athena/2.0.29/athena-2.0.29.jar \
+			 -DpomFile=/abs/path/to/lib/com/amazon/aws/athena/2.0.29/athena-2.0.29.pom
+			-->
 		<!-- use more recent core version to support IRSA / WebTokens-->
 		<dependency>
 			<groupId>com.amazonaws</groupId>
 			<artifactId>aws-java-sdk-core</artifactId>
-			<version>1.11.775</version>
+			<version>1.12.225</version>
 		</dependency>
 
 		<dependency>
 			<groupId>com.amazonaws</groupId>
 			<artifactId>aws-java-sdk-sts</artifactId>
-			<version>1.11.775</version>
+			<version>1.12.225</version>
 		</dependency>
+
+		<!-- Include athena after other aws sdk jars otherwise error with class signing differences might popup  -->
+		<dependency>
+			<groupId>com.amazon.aws</groupId>
+			<artifactId>athena</artifactId>
+			<version>2.0.29</version>
+		</dependency>
+
 
 		<!-- Cloudera Impala JDBC is not in cetral repo, added it to local repo -->
 		<dependency>

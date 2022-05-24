@@ -11,8 +11,10 @@ import org.springframework.stereotype.Component;
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.engine.QueryEngine;
 import nl.sidnlabs.entrada.file.FileManager;
+import nl.sidnlabs.entrada.file.FileManagerFactory;
 import nl.sidnlabs.entrada.model.jpa.TablePartition;
 import nl.sidnlabs.entrada.service.PartitionService;
+import nl.sidnlabs.entrada.util.FileUtil;
 
 @Log4j2
 @Component
@@ -25,6 +27,9 @@ public class ScheduledCompaction {
   @Value("${entrada.parquet.compaction.enabled}")
   private boolean enabled;
 
+  @Value("${entrada.location.output}")
+  private String outputLocation;
+
   // we need this option so only 1 instance act as master instance to prevent
   @Value("${entrada.node.master:true}")
   private boolean master;
@@ -33,14 +38,16 @@ public class ScheduledCompaction {
   private QueryEngine queryEngine;
   private SharedContext sharedContext;
   private List<FileManager> fileManagers;
-
+  private FileManagerFactory fileManagerFactory;
 
   public ScheduledCompaction(PartitionService partitionService, QueryEngine queryEngine,
-      SharedContext sharedContext, List<FileManager> fileManagers) {
+      SharedContext sharedContext, List<FileManager> fileManagers,
+      FileManagerFactory fileManagerFactory) {
     this.partitionService = partitionService;
     this.queryEngine = queryEngine;
     this.sharedContext = sharedContext;
     this.fileManagers = fileManagers;
+    this.fileManagerFactory = fileManagerFactory;
   }
 
 
@@ -68,6 +75,8 @@ public class ScheduledCompaction {
     int compacted = 0;
 
     try {
+      FileManager fmOutput = fileManagerFactory.getFor(outputLocation);
+
       // make sure not running at the same time as the purge task
       sharedContext.getTableUpdater().acquire();
       sharedContext.setCompactionStatus(true);
@@ -81,6 +90,21 @@ public class ScheduledCompaction {
           // stop compacting until the error cause is fixed
           return;
         }
+
+        String dstLocation = FileUtil.appendPath(outputLocation, p.getTable());
+
+        // make sure correct permissions are set, do not set recursive at year/month level
+        // when many files this will take long time
+        fmOutput.chown(FileUtil.appendPath(dstLocation, p.toYear()), false);
+        fmOutput.chmod(FileUtil.appendPath(dstLocation, p.toYear()), false);
+
+        fmOutput.chown(FileUtil.appendPath(dstLocation, p.toYear(), p.toMonth()), false);
+        fmOutput.chmod(FileUtil.appendPath(dstLocation, p.toYear(), p.toMonth()), false);
+
+        // recursive update under the day level
+        fmOutput.chown(FileUtil.appendPath(dstLocation, p.toYear(), p.toMonth(), p.toDay()), true);
+        fmOutput.chmod(FileUtil.appendPath(dstLocation, p.toYear(), p.toMonth(), p.toDay()), true);
+
         compacted++;
       }
     } catch (Exception e) {

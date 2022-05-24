@@ -1,7 +1,6 @@
 package nl.sidnlabs.entrada.initialize;
 
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 import lombok.extern.log4j.Log4j2;
@@ -14,18 +13,6 @@ import nl.sidnlabs.entrada.file.FileManagerFactory;
 @Component
 @ConditionalOnProperty(name = "entrada.engine", havingValue = "hadoop")
 public class HadoopInitializer extends AbstractInitializer {
-
-  @Value("${hdfs.data.owner}")
-  private String owner;
-
-  @Value("${hdfs.data.group}")
-  private String group;
-
-  @Value("${hdfs.data.dir.permission}")
-  private String dirPermission;
-
-  @Value("${hdfs.data.file.permission}")
-  private String filePermission;
 
   private FileManager fileManager;
 
@@ -53,8 +40,8 @@ public class HadoopInitializer extends AbstractInitializer {
     }
 
     if ((fileManager.supported(output) && !fileManager.exists(output))
-        && (!fileManager.mkdir(output) || !fileManager.chown(output, owner, group, false)
-            || !fileManager.chmod(output, dirPermission, filePermission, false))) {
+        && (!fileManager.mkdir(output) || !fileManager.chown(output, false)
+            || !fileManager.chmod(output, false))) {
       return false;
     }
 

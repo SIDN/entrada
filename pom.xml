@@ -4,7 +4,7 @@
 	<parent>
 		<groupId>org.springframework.boot</groupId>
 		<artifactId>spring-boot-starter-parent</artifactId>
-		<version>2.5.10</version>
+		<version>2.5.11</version>
 		<relativePath /> <!-- lookup parent from repository -->
 	</parent>
 
@@ -24,8 +24,8 @@
 
 	<developers>
 		<developer>
-			<name>Maarten Wullink</name>
-			<email>entrada@sidn.nl</email>
+			<name>SIDN Labs</name>
+			<email>sidnlabs@sidn.nl</email>
 			<organization>SIDN</organization>
 			<organizationUrl>https://www.sidn.nl</organizationUrl>
 		</developer>
@@ -36,7 +36,7 @@
 		<maven-jar-plugin.version>3.1.1</maven-jar-plugin.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<dockerfile-maven-version>1.4.13</dockerfile-maven-version>
-		<java.version>11</java.version>
+		<java.version>17</java.version>
 		<spring-cloud.version>Hoxton.SR11</spring-cloud.version>
 		<scala.binary.version>2.13</scala.binary.version>
 		<!--  https://spring.io/blog/2021/12/10/log4j2-vulnerability-and-spring-boot -->
@@ -47,13 +47,13 @@
 		<dependency>
 			<groupId>nl.sidnlabs</groupId>
 			<artifactId>dnslib</artifactId>
-			<version>0.2.14</version>
+			<version>0.2.15</version>
 		</dependency>
 
 		<dependency>
 			<groupId>nl.sidnlabs</groupId>
 			<artifactId>pcap-lib</artifactId>
-			<version>0.2.19</version>
+			<version>0.2.20</version>
 		</dependency>
 
 		<dependency>
@@ -363,9 +363,10 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.10.1</version>
 				<configuration>
-					<source>11</source>
-					<target>11</target>
+					<source>17</source>
+					<target>17</target>
 				</configuration>
 			</plugin>
 

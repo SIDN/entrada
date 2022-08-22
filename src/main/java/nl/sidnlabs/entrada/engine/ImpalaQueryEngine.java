@@ -54,7 +54,8 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
             p.getTable());
     Map<String, Object> values =
         templateValues(p.getTable(), p.getYear(), p.getMonth(), p.getDay(), p.getServer());
-    // update meta data to let impala know the files have been updated and recalculate partition
+    // invalidate the meta data to let impala know the data files have been updated and recalculate
+    // partition
     // statistics
 
     String sqlComputeStats = TemplateUtil
@@ -62,7 +63,7 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
             new ClassPathResource("/sql/impala/compute-stats-" + p.getTable() + ".sql", getClass()),
             values);
 
-    return refresh(p.getTable(), values) && execute(sqlComputeStats);
+    return invalidate(p.getTable(), values) && execute(sqlComputeStats);
   }
 
   @Override
@@ -74,6 +75,13 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
 
 
     return refresh(p.getTable(), values);
+  }
+
+  private boolean invalidate(String table, Map<String, Object> values) {
+    String sqlRefresh = TemplateUtil
+        .template(new ClassPathResource("/sql/impala/invalidate-metadata.sql", getClass()), values);
+
+    return execute(sqlRefresh);
   }
 
 

@@ -50,7 +50,8 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
     log.info("Perform post-compaction actions");
 
     log
-        .info("Perform post-compaction actions, refresh and compute stats for table: {}",
+        .info(
+            "Perform post-compaction actions, invalidate metadata and compute stats for table: {}",
             p.getTable());
     Map<String, Object> values =
         templateValues(p.getTable(), p.getYear(), p.getMonth(), p.getDay(), p.getServer());
@@ -78,10 +79,13 @@ public class ImpalaQueryEngine extends AbstractQueryEngine {
   }
 
   private boolean invalidate(String table, Map<String, Object> values) {
-    String sqlRefresh = TemplateUtil
+
+    log.info("Invalidate metadata, table: {}", table);
+
+    String sql = TemplateUtil
         .template(new ClassPathResource("/sql/impala/invalidate-metadata.sql", getClass()), values);
 
-    return execute(sqlRefresh);
+    return execute(sql);
   }
 
 

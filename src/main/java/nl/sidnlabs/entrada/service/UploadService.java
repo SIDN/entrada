@@ -156,6 +156,31 @@ public class UploadService {
           }
 
           if (filesToUpload.size() > 0) {
+
+            // make sure correct permissions are set, do not set recursive at year/month level
+            // when many files this will take long time
+            fmOutput.chown(FileUtil.appendPath(dstLocation, partition.toYear()), false);
+            fmOutput.chmod(FileUtil.appendPath(dstLocation, partition.toYear()), false);
+
+            fmOutput
+                .chown(FileUtil.appendPath(dstLocation, partition.toYear(), partition.toMonth()),
+                    false);
+            fmOutput
+                .chmod(FileUtil.appendPath(dstLocation, partition.toYear(), partition.toMonth()),
+                    false);
+
+            // recursive update under the day level
+            fmOutput
+                .chown(FileUtil
+                    .appendPath(dstLocation, partition.toYear(), partition.toMonth(),
+                        partition.toDay()),
+                    true);
+            fmOutput
+                .chmod(FileUtil
+                    .appendPath(dstLocation, partition.toYear(), partition.toMonth(),
+                        partition.toDay()),
+                    true);
+
             queryEngine.addPartition("icmp", tableNameIcmp, partition);
           }
         }

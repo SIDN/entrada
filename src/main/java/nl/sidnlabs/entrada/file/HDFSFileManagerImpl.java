@@ -141,6 +141,12 @@ public class HDFSFileManagerImpl implements FileManager {
     return Collections.emptyList();
   }
 
+  @Override
+  public List<String> folders(String dir) {
+// TODO: see how to list first level directories on hadoop; since we don't run on hadoop we can't test it
+    return Collections.emptyList();
+  }
+
   private boolean checkFilter(String file, List<String> filters) {
     if (filters.isEmpty()) {
       return true;

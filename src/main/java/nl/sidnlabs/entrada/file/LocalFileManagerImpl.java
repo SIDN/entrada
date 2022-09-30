@@ -70,6 +70,22 @@ public class LocalFileManagerImpl implements FileManager {
         .collect(Collectors.toList());
   }
 
+  @Override
+  public List<String> folders(String dir) {
+
+    File fDir = new File(dir);
+    if (!fDir.isDirectory()) {
+      log.error("{} is not a valid directory", dir);
+      return Collections.emptyList();
+    }
+
+    return Arrays
+            .stream(fDir.listFiles())
+            .filter(File::isDirectory)
+            .map(File::getName)
+            .collect(Collectors.toList());
+  }
+
   private boolean checkFilter(String file, List<String> filters) {
     if (filters.isEmpty()) {
       return true;

@@ -112,6 +112,32 @@ public class S3FileManagerImpl implements FileManager {
         .collect(Collectors.toList());
   }
 
+  @Override
+  public List<String> folders(String location) {
+    List<String> folders = new ArrayList<>();
+
+    Optional<S3Details> details = S3Details.from(location);
+    if (!details.isPresent()) {
+      return folders;
+    }
+
+    ListObjectsV2Request lor = new ListObjectsV2Request()
+            .withBucketName(details.get().getBucket())
+            .withPrefix(details.get().getKey())
+            .withDelimiter("/");
+
+    ListObjectsV2Result listing = amazonS3.listObjectsV2(lor);
+    listing.getCommonPrefixes().stream().forEach(os -> folders.add(
+            StringUtils.replace(
+                    StringUtils.removeEnd(os, "/"),
+                    details.get().getKey(),
+                    ""
+            )
+    ));
+
+    return folders;
+  }
+
   private boolean checkFilter(String file, List<String> filters) {
     if (filters.isEmpty()) {
       return true;

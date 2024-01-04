@@ -60,7 +60,7 @@ public final class CloudFlareResolverCheck extends AbstractResolverCheck {
         .setConnectionRequestTimeout(timeoutInMillis)
         .setSocketTimeout(timeoutInMillis)
         .build();
-    CloseableHttpClient client = HttpClientBuilder.create().setDefaultRequestConfig(config).build();
+    CloseableHttpClient client = HttpClientBuilder.create().setDefaultRequestConfig(config).useSystemProperties().build();
 
     List<String> subnets = new ArrayList<>();
     process(client, urlV4, subnets);

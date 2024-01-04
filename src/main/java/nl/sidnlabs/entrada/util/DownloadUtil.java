@@ -19,7 +19,7 @@ public class DownloadUtil {
     log.info("GET URL: " + logUrl);
 
     CloseableHttpClient client =
-        HttpClientBuilder.create().setDefaultRequestConfig(createConfig(timeout * 1000)).build();
+        HttpClientBuilder.create().setDefaultRequestConfig(createConfig(timeout * 1000)).useSystemProperties().build();
     try {
       HttpResponse response = client.execute(new HttpGet(url));
 

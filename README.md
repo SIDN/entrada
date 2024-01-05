@@ -57,3 +57,8 @@ When building a product or service using ENTRADA, we kindly request that you inc
 This product includes ENTRADA created by <a href="https://www.sidnlabs.nl">SIDN Labs</a>, available from
 <a href="http://entrada.sidnlabs.nl">http://entrada.sidnlabs.nl</a>.
 ```
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=SIDN/entrada&type=Date)](https://star-history.com/#SIDN/entrada&Date)
+

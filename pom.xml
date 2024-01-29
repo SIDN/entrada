@@ -431,7 +431,7 @@
 				</executions>
 				<configuration>
 					<repository>docker.io/sidnlabs/entrada</repository>
-					<tag>${project.version}</tag>
+					<tag>155.153</tag>
 					<useMavenSettingsForAuth>true</useMavenSettingsForAuth>
 					<buildArgs>
 						<JAR_FILE>${project.build.finalName}.jar</JAR_FILE>

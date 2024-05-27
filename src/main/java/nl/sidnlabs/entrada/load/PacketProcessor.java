@@ -927,7 +927,7 @@ public class PacketProcessor {
             System.getProperty("file.separator"));
 
     // order and skip the newest file if skipfirst is true
-    List<String> files = fm.files(inputDir, false, ".pcap", ".pcap.gz", ".pcap.xz", ".pcap.bz2");
+    List<String> files = fm.files(inputDir, false, ".pcap", ".gz", ".xz", ".bz2");
 
     files = files
         .stream()

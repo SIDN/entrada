@@ -1,4 +1,4 @@
-FROM openjdk:17
+FROM --platform=linux/amd64 openjdk:21
 # Cannot use Alpine Linux because we need libc for Snappy.
 
 LABEL maintainer="entrada@sidn.nl"
@@ -14,7 +14,7 @@ EXPOSE 8080
 EXPOSE 9999
 
 ARG JAR_FILE
-ADD target/${JAR_FILE} $APP_HOME/bin/entrada.jar
+ADD target/entrada-*.jar $APP_HOME/bin/entrada.jar
 
 ENV JAVA_OPTS=""
 ENV JAVA_PRE_OPTS -Djava.security.egd=file:/dev/./urandom \

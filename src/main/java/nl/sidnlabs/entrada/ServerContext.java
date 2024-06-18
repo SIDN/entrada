@@ -53,7 +53,7 @@ public class ServerContext {
     serverInfo.setNormalizedName(cleanName.replaceAll("[^A-Za-z0-9 ]", "_"));
 
     if (cleanName.length() > 0 && cleanName.contains("_")) {
-      String[] parts = StringUtils.split(cleanName, "_");
+      String[] parts = StringUtils.split(cleanName, "_", 2);
       if (parts.length == 2) {
         // found anycast location in name, split into server and location part
         serverInfo.setServer(parts[0]);

@@ -69,7 +69,7 @@ public final class OpenDNSResolverCheck extends AbstractResolverCheck {
         .setConnectionRequestTimeout(timeout * 1000)
         .setSocketTimeout(timeout * 1000)
         .build();
-    CloseableHttpClient client = HttpClientBuilder.create().setDefaultRequestConfig(config).build();
+    CloseableHttpClient client = HttpClientBuilder.create().setDefaultRequestConfig(config).useSystemProperties().build();
 
     try {
       HttpGet get = new HttpGet(url);

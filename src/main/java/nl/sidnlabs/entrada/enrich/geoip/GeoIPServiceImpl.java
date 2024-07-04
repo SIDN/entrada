@@ -29,21 +29,33 @@ import java.io.InputStream;
 import java.net.InetAddress;
 import java.nio.file.Paths;
 import java.util.Calendar;
+import java.util.Date;
 import java.util.Optional;
+
 import javax.annotation.PostConstruct;
+
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.RegExUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.http.HttpStatus;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpHead;
+import org.apache.http.client.utils.DateUtils;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+
 import com.maxmind.db.CHMCache;
 import com.maxmind.db.Reader.FileMode;
 import com.maxmind.geoip2.DatabaseReader;
 import com.maxmind.geoip2.model.AsnResponse;
 import com.maxmind.geoip2.model.CountryResponse;
+
 import lombok.extern.log4j.Log4j2;
 import nl.sidnlabs.entrada.util.DownloadUtil;
 import nl.sidnlabs.entrada.util.FileUtil;
@@ -108,26 +120,28 @@ public class GeoIPServiceImpl implements GeoIPService {
 
     String countryFile = countryFile();
     String asnFile = asnFile();
+    
+    String url = urlCountryDb + licenseKeyFree;
+    if (usePaidVersion) {
+      url = urlCountryDbPaid + licenseKeyPaid;
+    }
 
-    if (shouldUpdate(countryFile)) {
+    if (shouldUpdate(countryFile, url)) {
       log.info("GEOIP country database does not exist or is too old, fetch latest version");
-      String url = urlCountryDb + licenseKeyFree;
-      if (usePaidVersion) {
-        log.info("Download paid Maxmind country database");
-        url = urlCountryDbPaid + licenseKeyPaid;
-      }
+     
       download(countryFile, url, 30);
       geoDbInitialised = false;
     }
 
 
-    if (shouldUpdate(asnFile)) {
+    url = urlAsnDb + licenseKeyFree;
+    if (usePaidVersion) {
+      url = urlAsnDbPaid + licenseKeyPaid;
+    }
+    
+    if (shouldUpdate(asnFile, url)) {
       log.info("GEOIP ASN database does not exist or is too old, fetch latest version");
-      String url = urlAsnDb + licenseKeyFree;
-      if (usePaidVersion) {
-        log.info("Download paid Maxmind ISP database");
-        url = urlAsnDbPaid + licenseKeyPaid;
-      }
+      
       download(asnFile, url, 30);
       geoDbInitialised = false;
     }
@@ -167,7 +181,7 @@ public class GeoIPServiceImpl implements GeoIPService {
    * @param database named of database
    * @return true if database file does not exist or is too old
    */
-  private boolean shouldUpdate(String database) {
+  private boolean shouldUpdate(String database, String url) {
     File f = new File(FileUtil.appendPath(location, database));
 
     if (log.isDebugEnabled()) {
@@ -182,8 +196,10 @@ public class GeoIPServiceImpl implements GeoIPService {
       log.info("File is expired: {}", f);
       return true;
     }
+    
+    Date lastModified = lastModifiedOnline(url, 30);
+    return lastModified.after(new Date(f.lastModified()));
 
-    return false;
   }
 
   private boolean isExpired(File f, int max) {
@@ -191,6 +207,30 @@ public class GeoIPServiceImpl implements GeoIPService {
     calendar.add(Calendar.DATE, -1 * max);
     return FileUtils.isFileOlder(f, calendar.getTime());
   }
+  
+  public Date lastModifiedOnline(String url, int timeout) {
+
+	    try (CloseableHttpClient client =
+	        HttpClientBuilder.create().setDefaultRequestConfig(createConfig(timeout * 1000)).build()){
+	    
+	     
+	    	try(CloseableHttpResponse response = client.execute(new HttpHead(url))){
+
+		      if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
+		        
+		    	return  DateUtils.parseDate(response.getFirstHeader("last-modified").getValue());
+		    	
+//		    	 Date now = new Date();
+// 	    	    return lastModified
+
+		      }
+	      }
+	    } catch (Exception e) {
+	      log.error("Errror executing HTTP HEAD request" + e);
+	    }
+
+	    return null;
+	  }
 
   /*
    * (non-Javadoc)
@@ -231,6 +271,7 @@ public class GeoIPServiceImpl implements GeoIPService {
   }
 
   public boolean download(String database, String url, int timeout) {
+
     // do not log api key
     String logUrl = RegExUtils.removePattern(url, "&license_key=.+");
     Optional<byte[]> data = DownloadUtil.getAsBytes(url, logUrl, timeout);
@@ -249,6 +290,24 @@ public class GeoIPServiceImpl implements GeoIPService {
     // no data could be downloaded
     return false;
   }
+  
+  
+
+  
+ 
+  private static RequestConfig createConfig(int timeoutMillis) {
+	    return RequestConfig
+	        .custom()
+	        // timeout for waiting during creating of connection
+	        .setConnectTimeout(timeoutMillis)
+	        .setConnectionRequestTimeout(timeoutMillis)
+	        .setSocketTimeout(timeoutMillis)
+	        // socket has timeout, for slow senders
+	        .setSocketTimeout(timeoutMillis)
+	        // do not let the apache http client initiate redirects
+	        // build it
+	        .build();
+	  }
 
   private void extractDatabase(InputStream in, String database) throws IOException {
     GzipCompressorInputStream gzipIn = new GzipCompressorInputStream(in);

@@ -28,7 +28,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
 import java.nio.file.Paths;
-import java.util.Calendar;
 import java.util.Date;
 import java.util.Optional;
 
@@ -37,7 +36,6 @@ import javax.annotation.PostConstruct;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
-import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.RegExUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpStatus;
@@ -187,42 +185,33 @@ public class GeoIPServiceImpl implements GeoIPService {
     if (log.isDebugEnabled()) {
       log.debug("Check for file expiration for: {}", f);
     }
+   
+    // no file downlaoded yet, download for first time
     if (!f.exists()) {
-      log.info("File does not exist: {}", f);
+      log.info("Database file {} does not exist", f);
       return true;
     }
-
-    if (isExpired(f, maxAge)) {
-      log.info("File is expired: {}", f);
-      return true;
-    }
-    
+   
+    // check if there is online update for local file
     Date lastModified = lastModifiedOnline(url, 30);
-    return lastModified.after(new Date(f.lastModified()));
-
-  }
-
-  private boolean isExpired(File f, int max) {
-    Calendar calendar = Calendar.getInstance();
-    calendar.add(Calendar.DATE, -1 * max);
-    return FileUtils.isFileOlder(f, calendar.getTime());
+    return lastModified != null && lastModified.after(new Date(f.lastModified()));
   }
   
   public Date lastModifiedOnline(String url, int timeout) {
 
 	    try (CloseableHttpClient client =
 	        HttpClientBuilder.create().setDefaultRequestConfig(createConfig(timeout * 1000)).build()){
-	    
-	     
+	    	     
 	    	try(CloseableHttpResponse response = client.execute(new HttpHead(url))){
-
 		      if (response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
-		        
+		    	if(log.isDebugEnabled()) {
+		    		log.debug("Maxmind API HEAD request status is OK, last-modified header value = " + response.getFirstHeader("last-modified").getValue());
+		    	}
 		    	return  DateUtils.parseDate(response.getFirstHeader("last-modified").getValue());
-		    	
-//		    	 Date now = new Date();
-// 	    	    return lastModified
-
+		      }else  if (response.getStatusLine().getStatusCode() == HttpStatus.SC_TOO_MANY_REQUESTS) {
+		    	  log.error("Maxmind API Ratelimiting error, make sure to limit the number of requests to the Maxmind API. ");
+		      }else {
+		         log.error("Maxmind API HEAD request failed, status code: " + response.getStatusLine().getStatusCode());
 		      }
 	      }
 	    } catch (Exception e) {

@@ -52,6 +52,9 @@ public abstract class AbstractInitializer implements Initializer {
   @Value("${aws.encryption}")
   protected boolean encrypt;
 
+  @Value("${entrada.parquet.compression}")
+  protected String parquetCompression;
+
 
   private QueryEngine queryEngine;
   private String scriptPrefix;
@@ -147,6 +150,7 @@ public abstract class AbstractInitializer implements Initializer {
     parameters.put("TABLE_NAME", tableDns);
     parameters.put("TABLE_LOC", FileUtil.appendPath(output, tableDns));
     parameters.put("ENCRYPTED", encrypt);
+    parameters.put("PARQUET_COMPRESSION", parquetCompression);
     return parameters;
   }
 
@@ -157,6 +161,7 @@ public abstract class AbstractInitializer implements Initializer {
     parameters.put("TABLE_NAME", tableIcmp);
     parameters.put("TABLE_LOC", FileUtil.appendPath(output, tableIcmp));
     parameters.put("ENCRYPTED", encrypt);
+    parameters.put("PARQUET_COMPRESSION", parquetCompression);
     return parameters;
   }
 

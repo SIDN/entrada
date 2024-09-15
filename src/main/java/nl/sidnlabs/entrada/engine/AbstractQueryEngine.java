@@ -37,6 +37,9 @@ public abstract class AbstractQueryEngine implements QueryEngine {
   @Value("${entrada.database.table.icmp}")
   protected String tableIcmp;
 
+  @Value("${entrada.parquet.compression}")
+  protected String parquetCompression;
+
   protected JdbcTemplate jdbcTemplate;
   protected FileManager fileManager;
   private String scriptPrefix;
@@ -143,6 +146,7 @@ public abstract class AbstractQueryEngine implements QueryEngine {
     values.put("MONTH", p.getMonth());
     values.put("DAY", p.getDay());
     values.put("SERVER", p.getServer());
+    values.put("PARQUET_COMPRESSION", parquetCompression);
     return values;
   }
 

@@ -2,7 +2,7 @@ CREATE TABLE ${DATABASE_NAME}.tmp_compaction
 WITH (
       external_location = '${TABLE_LOC}',
       format = 'Parquet',
-      parquet_compression = 'SNAPPY')
+      parquet_compression = '${PARQUET_COMPRESSION}')
 AS SELECT 
 	  id,
 	  time,

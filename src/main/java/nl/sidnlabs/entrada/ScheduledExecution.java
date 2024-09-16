@@ -2,6 +2,8 @@ package nl.sidnlabs.entrada;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
+import nl.sidnlabs.entrada.file.FileManagerFactory;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,17 +29,23 @@ public class ScheduledExecution {
   @Value("${entrada.nameservers}")
   private String servers;
 
+  @Value("${entrada.location.input}")
+  private String inputLocation;
+
   @Autowired
   private GeoIPService geoIPService;
 
   private Timer processTimer;
 
+  private FileManagerFactory fileManagerFactory;
+
   public ScheduledExecution(ServerContext serverCtx, ApplicationContext ctx, MeterRegistry registry,
-      SharedContext sharedContext, List<FileManager> fileManagers) {
+      SharedContext sharedContext, FileManagerFactory fileManagerFactory, List<FileManager> fileManagers) {
 
     this.serverCtx = serverCtx;
     this.ctx = ctx;
     this.sharedContext = sharedContext;
+    this.fileManagerFactory = fileManagerFactory;
     this.fileManagers = fileManagers;
     processTimer = registry.timer("processor.execution.time");
   }
@@ -64,11 +72,24 @@ public class ScheduledExecution {
     if (StringUtils.isBlank(servers)) {
       // no individual servers configured, assume the pcap data is in the input location root dir
       runForServer("", ctx.getBean(PacketProcessor.class));
+    } else if (Objects.equals(servers, "auto")) {
+      // auto scanning for folder configured, deducing server name from folder names
+      FileManager fm = fileManagerFactory.getFor(inputLocation);
+
+      log.info("Scan for directories in: {}", inputLocation);
+
+      inputLocation = StringUtils
+              .appendIfMissing(inputLocation, System.getProperty("file.separator"),
+                      System.getProperty("file.separator"));
+
+      List<String> folders = fm.folders(inputLocation);
+
+      log.info("Server directories found to process: {}",  folders);
+      runForServer(folders.stream());
+
     } else {
       // individual servers configured, process each server directory
-      Arrays
-          .stream(StringUtils.split(servers, ","))
-          .forEach(s -> runForServer(s, ctx.getBean(PacketProcessor.class)));
+      runForServer(Arrays.stream(StringUtils.split(servers, ",")));
     }
 
     // cleanup filesystems, make sure all cached data and locked files are cleanup up
@@ -77,6 +98,10 @@ public class ScheduledExecution {
     sharedContext.setExecutionStatus(false);
 
     log.info("Completed loading name server data");
+  }
+
+  private void runForServer(Stream<String> servers) {
+    servers.forEach(s -> runForServer(s, ctx.getBean(PacketProcessor.class)));
   }
 
   private void runForServer(String server, PacketProcessor processor) {

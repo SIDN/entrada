@@ -22,6 +22,8 @@ public interface FileManager {
 
   List<String> files(String location, boolean recursive, String... filter);
 
+  List<String> folders(String location);
+
   Optional<InputStream> open(String location);
 
   /**
